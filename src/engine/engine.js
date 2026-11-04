@@ -86,6 +86,21 @@ export class Engine {
     }
   }
 
+  // Limpar tudo: pilha, registradores, financeiros, fita; mantém o formato (pt-BR / en-US).
+  reset() {
+    const locale = this.locale;
+    Object.assign(this, new Engine({ locale }));
+  }
+
+  // Linha da fita tocada: o valor entra em X, respeitando a regra de elevação da pilha.
+  loadValue(v) {
+    if (this.error) return;
+    this.pending = null;
+    this.shift = null;
+    this.justStored = false;
+    this.stack.recall(v);
+  }
+
   // ⌫ (só no teclado do PC): apaga o último dígito; limpa erro ou prefixo pendente.
   backspace() {
     if (this.error) {

@@ -262,3 +262,19 @@ test('backspace do Engine apaga a digitação e limpa erro sem executar', () => 
   e2.backspace();
   assert.equal(e2.state.error, null);
 });
+
+test('reset zera pilha, registradores, financeiros e fita, mantendo o formato', () => {
+  const e = run(new Engine({ locale: 'us' }), '30 g n 5 sto 2 3 enter 4 plus');
+  e.reset();
+  const novo = new Engine({ locale: 'us' });
+  assert.deepEqual(e.state, novo.state);
+  assert.equal(e.state.tape.length, 0);
+});
+
+test('loadValue coloca um valor em X seguindo a regra de elevação (linha da fita)', () => {
+  const e = run(new Engine(), '3 enter 4 plus');
+  e.loadValue(42);
+  assert.equal(e.state.stack.x, 42);
+  assert.equal(e.state.stack.y, 7);
+  assert.equal(e.state.error, null);
+});

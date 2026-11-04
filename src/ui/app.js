@@ -1,6 +1,8 @@
 import { KEYS } from '../engine/keymap.js';
 import { Engine } from '../engine/engine.js';
 import { renderDisplay, bindKeyboard } from './display.js';
+import { mountDrawer } from './tape.js';
+import { loadState, saveState } from './storage.js';
 
 const NOTICE_MS = 2200;
 
@@ -47,7 +49,10 @@ export function mountApp(root, engine = new Engine()) {
   notice.hidden = true;
   notice.setAttribute('role', 'status');
   for (const k of KEYS) keys.append(makeKey(k));
-  calc.append(display, keys, notice);
+  const top = document.createElement('div');
+  top.className = 'top';
+  top.append(display);
+  calc.append(top, keys, notice);
   root.append(calc);
 
   let timer;
@@ -58,7 +63,7 @@ export function mountApp(root, engine = new Engine()) {
     timer = setTimeout(() => (notice.hidden = true), NOTICE_MS);
   };
 
-  const ctx = { root, calc, display, keys, notice, engine, showNotice, listeners: [], vibrate: false };
+  const ctx = { root, calc, top, display, keys, notice, engine, showNotice, listeners: [], vibrate: false };
   ctx.render = () => {
     const s = engine.state;
     renderDisplay(display, s);
@@ -83,9 +88,11 @@ export function mountApp(root, engine = new Engine()) {
     ctx.render();
   });
   bindKeyboard(engine, ctx.render);
+  ctx.drawer = mountDrawer(ctx);
+  ctx.listeners.push(() => saveState(engine)); // salvamento automático
   ctx.render();
   return ctx;
 }
 
 const root = document.getElementById('app');
-if (root) window.calc12c = mountApp(root, new Engine());
+if (root) window.calc12c = mountApp(root, loadState());
