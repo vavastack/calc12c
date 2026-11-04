@@ -18,7 +18,7 @@ export const KEYS = [
   k('pct', '%', 'DB', 'INTG', 1, 4),
   // linha 2
   k('rs', 'R/S', 'P/R', 'PSE', 2, 0, { enabled: false }),
-  k('sst', 'SST', 'CLEAR Σ', 'BST', 2, 1, { enabled: false }),
+  k('sst', 'SST', 'CLEAR Σ', 'BST', 2, 1),
   k('rdown', 'R↓', 'CLEAR PRGM', 'GTO', 2, 2),
   k('xy', 'x≷y', 'CLEAR FIN', 'x≤y', 2, 3),
   k('clx', 'CLx', 'CLEAR REG', 'x=0', 2, 4),
@@ -48,7 +48,7 @@ export const KEYS = [
   k('minus', '−', null, null, 6, 4),
   k('0', '0', null, 'x̄', 7, 1),
   k('dot', '.', null, 's', 7, 2),
-  k('sigma', 'Σ+', null, 'Σ−', 7, 3, { enabled: false }),
+  k('sigma', 'Σ+', null, 'Σ−', 7, 3),
   k('plus', '+', null, null, 7, 4),
 ];
 

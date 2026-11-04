@@ -4,6 +4,8 @@ import { Registers } from './registers.js';
 import { applyOp } from './math.js';
 import { solve, simpleInterest } from './tvm.js';
 import { CalcError } from './errors.js';
+import { addDays, daysBetween, formatDate } from './dates.js';
+import { accumulate, means, deviations, weightedMean, estimateX, estimateY } from './stats.js';
 import { round10, formatNumber } from './number.js';
 
 const VERSION = 1;
@@ -11,6 +13,7 @@ const MAX_TAPE = 500;
 const FIN = ['n', 'i', 'pv', 'pmt', 'fv'];
 const FIN_LABEL = { n: 'n', i: 'i', pv: 'PV', pmt: 'PMT', fv: 'FV' };
 const PRIMARY_OPS = ['plus', 'minus', 'times', 'divide', 'yx', 'recip', 'pctT', 'dpct', 'pct'];
+const STAT_G = { '0': 'mean', dot: 'sd', '6': 'wmean', '1': 'estx', '2': 'esty', sigma: 'sigmaminus' };
 const G_OPS = { yx: 'sqrt', recip: 'expx', pctT: 'ln', dpct: 'frac', pct: 'intg' };
 const isDigit = (id) => /^[0-9]$/.test(id);
 const zeroFin = () => ({ n: 0, i: 0, pv: 0, pmt: 0, fv: 0 });
@@ -21,6 +24,8 @@ export class Engine {
     this.regs = new Registers();
     this.fin = zeroFin();
     this.begin = false;
+    this.dmy = false; // indicador D.MY: datas no formato dia-mês-ano
+    this.dateText = null; // resultado de g DATE exibido como "11,09,2004 6" até a próxima tecla
     this.compound = false; // indicador C: juros compostos no período fracionário (STO EEX)
     this.shift = null; // null | 'f' | 'g'
     this.pending = null; // null | 'sto' | 'rcl' (aguardando o registrador)
@@ -42,6 +47,7 @@ export class Engine {
       fin: { ...this.fin },
       begin: this.begin,
       compound: this.compound,
+      dmy: this.dmy,
       shift: this.shift,
       decimals: this.decimals,
       locale: this.locale,
@@ -60,6 +66,7 @@ export class Engine {
   press(id) {
     const key = KEY_BY_ID.get(id);
     if (!key) throw new Error('tecla desconhecida: ' + id);
+    if (id !== 'f' && id !== 'g') this.dateText = null;
     if (this.error) {
       // Qualquer tecla limpa o erro e não é executada (como na HP).
       this.error = null;
@@ -167,6 +174,8 @@ export class Engine {
         s.clx();
         this.tokens.push('CLx');
         return;
+      case 'sigma':
+        return this._stat('sigmaplus');
       case 'sto':
         s.commit();
         this.pending = 'sto';
@@ -213,6 +222,14 @@ export class Engine {
       this.tokens.push('LSTx');
       return;
     }
+    if (id === '4' || id === '5') {
+      this.dmy = id === '4'; // g D.MY / g M.DY
+      this.justStored = wasStored;
+      return;
+    }
+    if (id === 'chs') return this._date();
+    if (id === 'eex') return this._deltaDays();
+    if (STAT_G[id]) return this._stat(STAT_G[id]);
     if (G_OPS[id]) {
       applyOp(s, G_OPS[id]);
       return this._record(key.g);
@@ -238,6 +255,11 @@ export class Engine {
         s.commit();
         this.fin = zeroFin();
         return;
+      case 'sst': // CLEAR Σ: zera R1..R6, a pilha e o visor
+        for (let n = 1; n <= 6; n++) this.regs.store(n, 0);
+        s.clearAll();
+        this.tokens = [];
+        return;
       case 'clx': // CLEAR REG
         this.regs.clear();
         this.fin = zeroFin();
@@ -245,6 +267,77 @@ export class Engine {
         this.tokens = [];
         return;
       // 'enter' (PREFIX) só cancela o prefixo; demais funções f: ignoradas
+    }
+  }
+
+  // g DATE: data (Y) + número de dias (X) → data em X, com o dia da semana (1 = segunda … 7 = domingo)
+  _date() {
+    const s = this.stack;
+    s.commit();
+    const r = addDays(s.y, s.x, this.dmy);
+    s.applyBinary(() => r.value);
+    this.dateText = formatDate(r.parts, r.weekday, this.dmy, this.locale);
+    this._record('DATE');
+    this.tape[this.tape.length - 1].text = this.dateText;
+  }
+
+  // g ΔDYS: datas em Y (mais antiga) e X → dias exatos em X e dias na base 30/360 em Y
+  _deltaDays() {
+    const s = this.stack;
+    s.commit();
+    const r = daysBetween(s.y, s.x, this.dmy);
+    const { x, z } = s;
+    s.loadXYZ(r.actual, r.commercial, z);
+    s.lastX = x;
+    this._record('ΔDYS');
+  }
+
+  // Σ+, Σ−, x̄, s, x̄w, ŷ,r, x̂,r — registros estatísticos R1..R6
+  _stat(op) {
+    const s = this.stack;
+    s.commit();
+    const r = [1, 2, 3, 4, 5, 6].map((n) => this.regs.recall(n));
+    const save = (v) => v.forEach((x, k) => this.regs.store(k + 1, x));
+    const push2 = (top, below) => {
+      s.liftEnabled = true;
+      s.recall(round10(below));
+      s.liftEnabled = true;
+      s.recall(round10(top));
+    };
+    switch (op) {
+      case 'sigmaplus':
+      case 'sigmaminus': {
+        const x = s.x;
+        save(accumulate(r, x, s.y, op === 'sigmaplus' ? 1 : -1));
+        s.lastX = x;
+        s.x = this.regs.recall(1);
+        s.entering = false;
+        s.liftEnabled = false;
+        return this._record(op === 'sigmaplus' ? 'Σ+' : 'Σ−');
+      }
+      case 'mean': {
+        const m = means(r);
+        push2(m.x, m.y);
+        return this._record('x̄');
+      }
+      case 'sd': {
+        const d = deviations(r);
+        push2(d.x, d.y);
+        return this._record('s');
+      }
+      case 'wmean': {
+        s.recall(round10(weightedMean(r)));
+        return this._record('x̄w');
+      }
+      case 'esty':
+      case 'estx': {
+        const input = s.x;
+        const e = op === 'esty' ? estimateY(r, input) : estimateX(r, input);
+        const { y: oy } = s;
+        s.lastX = input;
+        s.loadXYZ(round10(e.value), round10(e.r), oy);
+        return this._record(op === 'esty' ? 'ŷ' : 'x̂');
+      }
     }
   }
 
@@ -308,6 +401,7 @@ export class Engine {
 
   _display() {
     if (this.error) return 'Error ' + this.error.code;
+    if (this.dateText && !this.stack.entering) return this.dateText;
     return this.stack.entering ? this._fmtEntry() : this._fmt(this.stack.x);
   }
 
@@ -320,6 +414,7 @@ export class Engine {
       fin: this.fin,
       begin: this.begin,
       compound: this.compound,
+      dmy: this.dmy,
       shift: this.shift,
       pending: this.pending,
       justStored: this.justStored,
@@ -355,7 +450,7 @@ export class Engine {
     o.regs.forEach((v, n) => e.regs.store(n, v));
     e.fin = { n: o.fin.n, i: o.fin.i, pv: o.fin.pv, pmt: o.fin.pmt, fv: o.fin.fv };
     Object.assign(e, {
-      begin: o.begin, compound: o.compound === true, shift: o.shift, pending: o.pending, justStored: o.justStored, decimals: o.decimals,
+      begin: o.begin, compound: o.compound === true, dmy: o.dmy === true, shift: o.shift, pending: o.pending, justStored: o.justStored, decimals: o.decimals,
       error: o.error ? { code: o.error.code, message: o.error.message } : null,
       tape: o.tape.map((l) => ({ keys: l.keys, label: l.label, value: l.value, text: l.text })),
       tokens: [...o.tokens],

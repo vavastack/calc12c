@@ -47,7 +47,7 @@ test('KEYS: rótulos f e g oficiais das teclas financeiras', () => {
 });
 
 test('KEYS: teclas de programação e estatística vêm desativadas', () => {
-  for (const id of ['rs', 'sst', 'sigma']) assert.equal(KEYS.find((k) => k.id === id).enabled, false);
+  for (const id of ['rs']) assert.equal(KEYS.find((k) => k.id === id).enabled, false);
   assert.equal(KEYS.find((k) => k.id === 'n').enabled, true);
 });
 
@@ -114,7 +114,7 @@ test('erro de juros compostos mostra Error 5', () => {
 test('teclas desativadas (R/S, SST, Σ+) são ignoradas sem erro e limpam o prefixo', () => {
   const e = run(new Engine(), '5 enter 3');
   const antes = JSON.stringify(e.state.stack);
-  for (const id of ['rs', 'sst', 'sigma']) e.press(id);
+  for (const id of ['rs']) e.press(id);
   e.press('g');
   e.press('rs');
   assert.equal(e.state.error, null);
