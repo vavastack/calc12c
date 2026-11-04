@@ -253,3 +253,12 @@ for (const ex of exemplos) {
     }
   });
 }
+
+test('backspace do Engine apaga a digitação e limpa erro sem executar', () => {
+  const e = run(new Engine(), '1 2 3');
+  e.backspace();
+  assert.equal(e.state.display, '12');
+  const e2 = run(new Engine(), '1 enter 0 divide');
+  e2.backspace();
+  assert.equal(e2.state.error, null);
+});

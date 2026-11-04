@@ -102,6 +102,19 @@ export class Stack {
     }
   }
 
+  // ⌫ do teclado do PC: apaga o último caractere digitado; fora da digitação, age como CLx.
+  backspace() {
+    if (!this.entering) return this.clx();
+    if (this._exp) {
+      if (this._exp.digits) this._exp.digits = this._exp.digits.slice(0, -1);
+      else this._exp = null;
+    } else {
+      this._mant = this._mant.slice(0, -1);
+      if (this._mant === '' || this._mant === '-') return this.clx();
+    }
+    this.x = this._parseEntry();
+  }
+
   enter() {
     this.commit();
     this.t = this.z;

@@ -138,3 +138,36 @@ test('applyUnary guarda lastX e reativa a elevação', () => {
   assert.equal(s.x, 8);
   assert.equal(s.lastX, 4);
 });
+
+test('backspace remove o último caractere digitado (123 ⌫ → 12)', () => {
+  const s = keys(new Stack(), '1 2 3');
+  s.backspace();
+  assert.equal(s.entryText(), '12');
+  assert.equal(s.x, 12);
+});
+
+test('backspace no último dígito zera X e encerra a digitação', () => {
+  const s = keys(new Stack(), '7');
+  s.backspace();
+  assert.equal(s.x, 0);
+  assert.equal(s.entering, false);
+});
+
+test('backspace remove o ponto decimal e o expoente por partes', () => {
+  const s = keys(new Stack(), '1 . 5');
+  s.backspace();
+  assert.equal(s.entryText(), '1.');
+  s.backspace();
+  assert.equal(s.entryText(), '1');
+  keys(s, 'eex 3');
+  s.backspace();
+  assert.equal(s.entryText(), '1e');
+  s.backspace();
+  assert.equal(s.entryText(), '1');
+});
+
+test('backspace fora da digitação equivale a CLx', () => {
+  const s = keys(new Stack(), '3 enter 4 +');
+  s.backspace();
+  assert.equal(s.x, 0);
+});

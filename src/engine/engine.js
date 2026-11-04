@@ -86,6 +86,19 @@ export class Engine {
     }
   }
 
+  // ⌫ (só no teclado do PC): apaga o último dígito; limpa erro ou prefixo pendente.
+  backspace() {
+    if (this.error) {
+      this.error = null;
+      this.shift = null;
+      this.pending = null;
+      return;
+    }
+    this.shift = null;
+    this.pending = null;
+    this.stack.backspace();
+  }
+
   _dispatch(key) {
     const shift = this.shift;
     this.shift = null;
