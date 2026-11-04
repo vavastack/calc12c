@@ -3,6 +3,7 @@ import { Engine } from '../engine/engine.js';
 import { renderDisplay, bindKeyboard } from './display.js';
 import { mountDrawer } from './tape.js';
 import { loadState, saveState } from './storage.js';
+import { mountSettings } from './settings.js';
 
 const NOTICE_MS = 2200;
 
@@ -89,6 +90,7 @@ export function mountApp(root, engine = new Engine()) {
   });
   bindKeyboard(engine, ctx.render);
   ctx.drawer = mountDrawer(ctx);
+  ctx.settings = mountSettings(ctx);
   ctx.listeners.push(() => saveState(engine)); // salvamento automático
   ctx.render();
   return ctx;

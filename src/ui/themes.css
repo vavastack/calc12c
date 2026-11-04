@@ -1,5 +1,55 @@
-/* Variáveis de cor; os temas completos entram na Tarefa 10. */
-:root {
-  --bg: #111; --body: #1b1b1b; --key: #2a2a2a; --key-text: #f2f2f2;
-  --gold: #e8b84a; --blue: #5aa9e6; --display-bg: #cdd5bd; --display-text: #1c2214;
+/* Temas: só variáveis de cor, material e sombra. O teclado e o motor nunca mudam.
+   Cores originais da HP 12C: preto, dourado (f), azul (g) e champanhe do metal. */
+
+/* Retro: preto e dourado, teclas com relevo, visor luminoso (padrão) */
+:root, [data-theme="retro"] {
+  --bg: #0b0b0b;
+  --body: #151515; --body-solid: #151515;
+  --edge: #b9a77a;                         /* champanhe do metal */
+  --key-flat: #242424;
+  --key-bg: linear-gradient(#2e2e2e, #1e1e1e);
+  --key-shadow: inset 0 1px 0 #ffffff26, inset 0 -2px 0 #00000080, 0 2px 3px #000a;
+  --key-text: #f3eee0; --gold: #f0b43c; --blue: #7fbaf0;
+  --display-bg: #140d02; --display-solid: #140d02; --display-text: #ffb347;
+  --display-glow: 0 0 6px #ff9a1f99;
+  --glass: none;
+  --reflex: linear-gradient(115deg, transparent 30%, #ffffff14 50%, transparent 70%);
+}
+
+/* Moderno escuro: vidro translúcido e fosco em grafite, bordas finas com brilho */
+[data-theme="moderno-escuro"] {
+  --bg: #0d0f12;
+  --body: rgba(32, 36, 43, .72); --body-solid: #20242b;
+  --edge: #ffffff24;
+  --key-flat: #2d333c;
+  --key-bg: linear-gradient(160deg, rgba(255,255,255,.14), rgba(255,255,255,.05));
+  --key-shadow: inset 0 0 0 1px #ffffff1f, 0 1px 2px #0006;
+  --key-text: #f2f4f7; --gold: #f2c35f; --blue: #86c3ff;
+  --display-bg: rgba(8, 10, 14, .6); --display-solid: #0a0c10; --display-text: #e8f0ff;
+  --display-glow: none;
+  --glass: blur(14px) saturate(1.2);
+  --reflex: linear-gradient(115deg, transparent 30%, #ffffff1c 50%, transparent 70%);
+}
+
+/* Moderno claro: vidro claro em champanhe e marfim, com as mesmas cores de f e g */
+[data-theme="moderno-claro"] {
+  --bg: #efe9dc;
+  --body: rgba(250, 245, 232, .72); --body-solid: #faf5e8;
+  --edge: #8a7a5224;
+  --key-flat: #ece3cf;
+  --key-bg: linear-gradient(160deg, rgba(255,255,255,.75), rgba(255,255,255,.3));
+  --key-shadow: inset 0 0 0 1px #8a7a5233, 0 1px 2px #8a7a5240;
+  --key-text: #2a2518; --gold: #7a4f00; --blue: #0a4a85;
+  --display-bg: rgba(255, 252, 244, .7); --display-solid: #fffcf4; --display-text: #2a2518;
+  --display-glow: none;
+  --glass: blur(14px) saturate(1.1);
+  --reflex: linear-gradient(115deg, transparent 30%, #ffffffb0 50%, transparent 70%);
+}
+
+/* Reduzir efeitos: vidro sólido, sem reflexo (liga sozinho em aparelhos simples) */
+[data-reduce="true"] {
+  --glass: none;
+  --body: var(--body-solid);
+  --display-bg: var(--display-solid);
+  --key-bg: var(--key-flat);
 }
