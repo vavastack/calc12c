@@ -54,7 +54,8 @@ const manifestUrl = 'data:application/manifest+json;base64,' + Buffer.from(JSON.
 
 // ---- HTML ----
 let html = read(UI + 'index.html');
-const css = read(UI + 'themes.css') + '\n' + read(UI + 'layout.css');
+const font64 = readFileSync(UI + 'fonts/share-tech-mono.woff2').toString('base64'); // fonte embutida: funciona offline
+const css = (read(UI + 'themes.css') + '\n' + read(UI + 'layout.css')).replace('url("./fonts/share-tech-mono.woff2")', `url(data:font/woff2;base64,${font64})`);
 html = html
   .replace(/<link rel="manifest"[^>]*>/, `<link rel="manifest" href="${manifestUrl}">`)
   .replace(/<link rel="icon"[^>]*>/, `<link rel="icon" href="${icon192}">`)

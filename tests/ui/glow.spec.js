@@ -73,3 +73,12 @@ test('cabeçalho Calc 12C, dica da gaveta e teclas f e g coloridas', async () =>
   assert.deepEqual(await p.evaluate(() => [...document.querySelectorAll('.top, .keys')].map((e) => getComputedStyle(e).zIndex)), ['1', '1']);
   await app.close();
 });
+
+test('o visor usa a fonte Share Tech Mono embutida (carrega sem rede)', async () => {
+  const app = await openApp(browser, server.url);
+  const p = app.page;
+  const ok = await p.evaluate(async () => { await document.fonts.load('44px "Share Tech Mono"'); return document.fonts.check('44px "Share Tech Mono"'); });
+  assert.equal(ok, true);
+  assert.match(await p.locator('.digits').evaluate((e) => getComputedStyle(e).fontFamily), /Share Tech Mono/);
+  await app.close();
+});

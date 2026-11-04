@@ -1,3 +1,4 @@
+@font-face { font-family: "Share Tech Mono"; src: url("./fonts/share-tech-mono.woff2") format("woff2"); font-weight: 400; font-display: swap; }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-text);
   font-family: system-ui, sans-serif; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
@@ -24,7 +25,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
 .indicators [data-ind].on { color: var(--ind-on); }
 .fmt-toggle { margin-left: auto; font: inherit; font-size: 11px; border: 1px solid currentColor; background: transparent;
   color: inherit; border-radius: 8px; padding: 1px 8px; opacity: .7; }
-.digits { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 44px; text-align: right; white-space: nowrap;
+.digits { font-family: "Share Tech Mono", ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 1px; font-size: 44px; text-align: right; white-space: nowrap;
   overflow: hidden; line-height: 1.1; text-shadow: var(--display-glow); }
 .msg { min-height: 1.2em; font-size: 12px; text-align: right; }
 
