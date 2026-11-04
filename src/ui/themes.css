@@ -1,0 +1,5 @@
+/* Variáveis de cor; os temas completos entram na Tarefa 10. */
+:root {
+  --bg: #111; --body: #1b1b1b; --key: #2a2a2a; --key-text: #f2f2f2;
+  --gold: #e8b84a; --blue: #5aa9e6; --display-bg: #cdd5bd; --display-text: #1c2214;
+}
