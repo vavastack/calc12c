@@ -63,7 +63,7 @@ export function mountApp(root, engine = new Engine()) {
     if (!b) return;
     const k = KEYS.find((x) => x.id === b.dataset.id);
     if (!k.enabled) {
-      showNotice('Modo de programação e estatística não disponíveis nesta versão.');
+      showNotice('Programação e estatística: não disponível nesta versão.');
       return;
     }
     engine.press(k.id);
