@@ -43,7 +43,7 @@
   --display-bg: rgba(255, 252, 244, .7); --display-solid: #fffcf4; --display-text: #2a2518;
   --display-glow: none;
   --glass: blur(14px) saturate(1.1);
-  --reflex: linear-gradient(115deg, transparent 30%, #ffffffb0 50%, transparent 70%);
+  --reflex: linear-gradient(115deg, transparent 30%, #ffffff40 50%, transparent 70%);
 }
 
 /* Reduzir efeitos: vidro sólido, sem reflexo (liga sozinho em aparelhos simples) */
