@@ -22,6 +22,10 @@ function makeKey(k) {
   const b = document.createElement('button');
   b.type = 'button';
   b.className = 'key';
+  const g = k.label.length;
+  if (/^[0-9.]$/.test(k.label) || ['÷', '×', '−', '+'].includes(k.label)) b.classList.add('big');
+  else if (k.id === 'enter') b.classList.add('small');
+  else if (g > 3 && k.id !== 'f' && k.id !== 'g') b.classList.add('small');
   b.dataset.id = k.id;
   if (k.id === 'f' || k.id === 'g') b.classList.add('prefix-' + k.id);
   const h = hpos(k);
@@ -53,7 +57,10 @@ export function mountApp(root, engine = new Engine()) {
   for (const k of KEYS) keys.append(makeKey(k));
   const top = document.createElement('div');
   top.className = 'top';
-  top.append(display);
+  const brand = document.createElement('div');
+  brand.className = 'brand';
+  brand.innerHTML = '<span class="name">Calc 12C</span><span class="sub">RPN · 4 casas</span>';
+  top.append(brand, display);
   calc.append(top, keys, notice);
   root.append(calc);
 
@@ -86,6 +93,13 @@ export function mountApp(root, engine = new Engine()) {
       return;
     }
     if (ctx.vibrate && navigator.vibrate) navigator.vibrate(8);
+    if (k.id === 'f' || k.id === 'g') {
+      // brilho curto da tecla f/g; reinicia a animação a cada toque
+      b.classList.remove('flash');
+      void b.offsetWidth;
+      b.classList.add('flash');
+      b.addEventListener('animationend', () => b.classList.remove('flash'), { once: true });
+    }
     engine.press(k.id);
     ctx.render();
   });

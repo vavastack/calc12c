@@ -18,12 +18,12 @@ export const KEYS = [
   k('pct', '%', 'DB', 'INTG', 1, 4),
   // linha 2
   k('rs', 'R/S', 'P/R', 'PSE', 2, 0, { enabled: false }),
-  k('sst', 'SST', 'Σ', 'BST', 2, 1, { enabled: false }),
-  k('rdown', 'R↓', 'PRGM', 'GTO', 2, 2),
-  k('xy', 'x≷y', 'FIN', 'x≤y', 2, 3),
-  k('clx', 'CLx', 'REG', 'x=0', 2, 4),
+  k('sst', 'SST', 'CLEAR Σ', 'BST', 2, 1, { enabled: false }),
+  k('rdown', 'R↓', 'CLEAR PRGM', 'GTO', 2, 2),
+  k('xy', 'x≷y', 'CLEAR FIN', 'x≤y', 2, 3),
+  k('clx', 'CLx', 'CLEAR REG', 'x=0', 2, 4),
   // linha 3
-  k('on', 'ON', null, null, 3, 0),
+  k('on', 'ON', 'OFF', null, 3, 0),
   k('f', 'f', null, null, 3, 1),
   k('g', 'g', null, null, 3, 2),
   k('sto', 'STO', null, null, 3, 3),
@@ -42,8 +42,8 @@ export const KEYS = [
   k('times', '×', null, null, 5, 4),
   // linhas 6-7 (ENTER ocupa as duas)
   k('enter', 'ENTER', 'PREFIX', 'LSTx', 6, 0, { rowSpan: 2 }),
-  k('1', '1', null, 'ŷ,r', 6, 1),
-  k('2', '2', null, 'x̂,r', 6, 2),
+  k('1', '1', null, 'x̂,r', 6, 1),
+  k('2', '2', null, 'ŷ,r', 6, 2),
   k('3', '3', null, 'n!', 6, 3),
   k('minus', '−', null, null, 6, 4),
   k('0', '0', null, 'x̄', 7, 1),

@@ -60,11 +60,11 @@ test('f acende os rótulos dourados e apaga os azuis; g faz o contrário', async
   const op = (sel) => app.page.locator(`button.key[data-id="n"] ${sel}`).evaluate((e) => Number(getComputedStyle(e).opacity));
   const base = [await op('.lf'), await op('.lg')];
   await tap(app.page, 'f');
-  await app.page.waitForTimeout(350); // fim da transição
+  await app.page.waitForTimeout(700); // fim da transição
   const f = [await op('.lf'), await op('.lg')];
   assert.ok(f[0] >= 1 && f[1] < 0.5, `f: ${f}`);
   await tap(app.page, 'g');
-  await app.page.waitForTimeout(350); // fim da transição
+  await app.page.waitForTimeout(700); // fim da transição
   const g = [await op('.lf'), await op('.lg')];
   assert.ok(g[1] >= 1 && g[0] < 0.5, `g: ${g}`);
   assert.ok(base[0] > 0.5 && base[1] > 0.5, `repouso: ${base}`);

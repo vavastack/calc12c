@@ -1,49 +1,75 @@
-/* Temas: só variáveis de cor, material e sombra. O teclado e o motor nunca mudam.
-   Cores da calculadora financeira clássica: preto, dourado (f), azul (g) e champanhe do metal. */
+/* Temas: só variáveis de cor, material, sombra e brilho. O teclado e o motor nunca mudam.
+   Paleta da tela "demonstração dos temas": preto, dourado (f), azul (g) e champanhe do metal. */
 
-/* Retro: preto e dourado, teclas com relevo, visor luminoso (padrão) */
+/* Retro: preto e dourado, teclas com relevo, visor luminoso ciano (padrão) */
 :root, [data-theme="retro"] {
-  --bg: #0b0b0b;
-  --body: #151515; --body-solid: #151515;
-  --edge: #b9a77a;                         /* champanhe do metal */
-  --key-flat: #242424;
-  --key-bg: linear-gradient(#2e2e2e, #1e1e1e);
-  --key-shadow: inset 0 1px 0 #ffffff26, inset 0 -2px 0 #00000080, 0 2px 3px #000a;
-  --key-text: #f3eee0; --gold: #f0b43c; --blue: #7fbaf0;
-  --display-bg: #140d02; --display-solid: #140d02; --display-text: #ffb347;
-  --display-glow: 0 0 6px #ff9a1f99;
+  --bg: #0b0b0c;
+  --body: #0b0b0c; --body-solid: #0b0b0c;
+  --edge: #8a6a2c; --edge-w: 2px;
+  --brand: #d9a63a; --sub: #8d8d92; --hint: #8d8d92;
+  --key-flat: #232326;
+  --key-bg: linear-gradient(#2c2c2f, #19191b); --key-border: #3d3d41;
+  --key-shadow: 0 2px 0 #050505, inset 0 1px 0 #ffffff14;
+  --key-text: #f2f2f2; --gold: #f0b429; --blue: #4aa8ff;
+  --keyf-bg: linear-gradient(#f6c764, #c8922a); --keyf-border: #e3b04a; --keyf-text: #1a1205;
+  --keyf-shadow: 0 2px 0 #5c4210, inset 0 1px 0 #ffffff66; --flash-f: #ffd978e6;
+  --keyg-bg: linear-gradient(#3b97ff, #1b63d1); --keyg-border: #5aa8ff; --keyg-text: #ffffff;
+  --keyg-shadow: 0 2px 0 #0b2f6b, inset 0 1px 0 #ffffff59; --flash-g: #7dbdffe6;
+  --display-bg: #050607; --display-solid: #050607; --display-border: #6b5420;
+  --display-shadow: inset 0 0 18px #000c; --display-text: #aef2ff;
+  --display-glow: 0 0 12px #78dcff8c;
+  --ind-on: #f0b429; --ind-off: #55555a; --handle: #3a3a3e;
   --glass: none;
-  --reflex: linear-gradient(115deg, transparent 30%, #ffffff14 50%, transparent 70%);
+  --glow: none;
+  --reflex: none;
 }
 
-/* Moderno escuro: vidro translúcido e fosco em grafite, bordas finas com brilho */
+/* Moderno escuro: vidro translúcido em grafite, halos dourado e azul nos cantos, reflexo suave */
 [data-theme="moderno-escuro"] {
-  --bg: #0d0f12;
-  --body: rgba(32, 36, 43, .72); --body-solid: #20242b;
-  --edge: #ffffff24;
-  --key-flat: #2d333c;
-  --key-bg: linear-gradient(160deg, rgba(255,255,255,.14), rgba(255,255,255,.05));
-  --key-shadow: inset 0 0 0 1px #ffffff1f, 0 1px 2px #0006;
-  --key-text: #f2f4f7; --gold: #f2c35f; --blue: #86c3ff;
-  --display-bg: rgba(8, 10, 14, .6); --display-solid: #0a0c10; --display-text: #e8f0ff;
-  --display-glow: none;
+  --bg: #0a0b0e;
+  --body: linear-gradient(160deg, #171a21 0%, #0c0d11 60%, #0a0b0e 100%); --body-solid: #101217;
+  --edge: #e8d6aa8c; --edge-w: 1.5px;
+  --brand: #f2cf7a; --sub: #a4a9b4; --hint: #a4a9b4;
+  --key-flat: #2a2e36;
+  --key-bg: linear-gradient(#ffffff26, #ffffff0d); --key-border: #ffffff2b;
+  --key-shadow: inset 0 1px 0 #ffffff47, 0 4px 10px #00000059;
+  --key-text: #f4f5f7; --gold: #f5c451; --blue: #7dc0ff;
+  --keyf-bg: linear-gradient(#ffd064a0, #d6961e66); --keyf-border: #ffdc8c8c; --keyf-text: #fff8e6;
+  --keyf-shadow: inset 0 1px 0 #ffffff66, 0 4px 12px #d6961e4d; --flash-f: #ffd978e6;
+  --keyg-bg: linear-gradient(#64afffad, #286ee673); --keyg-border: #96c8ff99; --keyg-text: #ffffff;
+  --keyg-shadow: inset 0 1px 0 #ffffff66, 0 4px 12px #286ee659; --flash-g: #7dbdffe6;
+  --display-bg: linear-gradient(#ffffff1a, #ffffff08); --display-solid: #14171d; --display-border: #ffffff29;
+  --display-shadow: inset 0 1px 0 #ffffff38; --display-text: #eafcff;
+  --display-glow: 0 0 10px #96dcff59;
+  --ind-on: #f5c451; --ind-off: #5d626d; --handle: #ffffff47;
   --glass: blur(14px) saturate(1.2);
-  --reflex: linear-gradient(115deg, transparent 30%, #ffffff1c 50%, transparent 70%);
+  --glow: radial-gradient(260px 220px at 8% 6%, #f0b42947, transparent 70%),
+          radial-gradient(300px 260px at 95% 92%, #3a8cff4d, transparent 70%);
+  --reflex: linear-gradient(115deg, transparent 28%, #ffffff30 44%, #ffffff0f 52%, transparent 66%);
 }
 
 /* Moderno claro: vidro claro em champanhe e marfim, com as mesmas cores de f e g */
 [data-theme="moderno-claro"] {
-  --bg: #efe9dc;
-  --body: rgba(250, 245, 232, .72); --body-solid: #faf5e8;
-  --edge: #8a7a5224;
-  --key-flat: #ece3cf;
-  --key-bg: linear-gradient(160deg, rgba(255,255,255,.75), rgba(255,255,255,.3));
-  --key-shadow: inset 0 0 0 1px #8a7a5233, 0 1px 2px #8a7a5240;
-  --key-text: #2a2518; --gold: #7a4f00; --blue: #0a4a85;
-  --display-bg: rgba(255, 252, 244, .7); --display-solid: #fffcf4; --display-text: #2a2518;
+  --bg: #efe5d2;
+  --body: linear-gradient(160deg, #f6efe2 0%, #eadfca 100%); --body-solid: #f1e8d6;
+  --edge: #96733288; --edge-w: 1.5px;
+  --brand: #8a5d00; --sub: #6b5f48; --hint: #6b5f48;
+  --key-flat: #f4eddc;
+  --key-bg: linear-gradient(#ffffffe0, #ffffff75); --key-border: #78613238;
+  --key-shadow: inset 0 1px 0 #fff, 0 3px 8px #6e55282e;
+  --key-text: #241d10; --gold: #8a5d00; --blue: #0a5fd0;
+  --keyf-bg: linear-gradient(#ffd064fa, #e6a52dcc); --keyf-border: #c89632b3; --keyf-text: #2a1d00;
+  --keyf-shadow: inset 0 1px 0 #ffffffb3, 0 3px 8px #c88c1e4d; --flash-f: #fff0b8f2;
+  --keyg-bg: linear-gradient(#82beffFa, #3c82ebd1); --keyg-border: #3c78dc99; --keyg-text: #06203f;
+  --keyg-shadow: inset 0 1px 0 #ffffffb3, 0 3px 8px #2864dc47; --flash-g: #cfe5fff2;
+  --display-bg: linear-gradient(#ffffffcc, #ffffff6b); --display-solid: #fffcf4; --display-border: #785f3240;
+  --display-shadow: inset 0 1px 0 #fff; --display-text: #0f2231;
   --display-glow: none;
+  --ind-on: #8a5d00; --ind-off: #b8a98a; --handle: #cbbd9d;
   --glass: blur(14px) saturate(1.1);
-  --reflex: linear-gradient(115deg, transparent 30%, #ffffff40 50%, transparent 70%);
+  --glow: radial-gradient(260px 220px at 8% 6%, #f0b42961, transparent 70%),
+          radial-gradient(300px 260px at 95% 92%, #3a8cff3d, transparent 70%);
+  --reflex: linear-gradient(115deg, transparent 26%, #ffffff66 44%, #ffffff1f 54%, transparent 68%);
 }
 
 /* Reduzir efeitos: vidro sólido, sem reflexo (liga sozinho em aparelhos simples) */
@@ -52,4 +78,5 @@
   --body: var(--body-solid);
   --display-bg: var(--display-solid);
   --key-bg: var(--key-flat);
+  --glow: none;
 }
