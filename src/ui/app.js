@@ -112,5 +112,13 @@ export function mountApp(root, engine = new Engine()) {
   return ctx;
 }
 
+function registerServiceWorker() {
+  if (!('serviceWorker' in navigator) || !/^https?:$/.test(location.protocol)) return; // file:// não tem service worker
+  navigator.serviceWorker.register('./sw.js').catch(() => {}); // sem SW o app segue funcionando
+}
+
 const root = document.getElementById('app');
-if (root) window.calc12c = mountApp(root, loadState());
+if (root) {
+  window.calc12c = mountApp(root, loadState());
+  registerServiceWorker();
+}

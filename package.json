@@ -7,6 +7,7 @@
   "scripts": {
     "test": "node --test",
     "test:ui": "node --test tests/ui/*.spec.js",
-    "test:all": "node --test && node --test tests/ui/*.spec.js"
+    "test:all": "node --test && node --test tests/ui/*.spec.js",
+    "build": "node scripts/build.js"
   }
 }

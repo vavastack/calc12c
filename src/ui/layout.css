@@ -3,7 +3,9 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
   font-family: system-ui, sans-serif; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 
 /* ---- corpo da calculadora (o vidro fica só aqui e no visor) ---- */
-.calc { height: 100dvh; max-width: 560px; margin: 0 auto; padding: 8px; display: grid;
+.calc { height: 100dvh; max-width: 560px; margin: 0 auto; display: grid;
+  /* a borda da calculadora acompanha a área segura (notch, cantos, barra inferior) */
+  padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
   grid-template-rows: auto 1fr; gap: 8px; background: var(--body); border: 1px solid var(--edge); position: relative;
   -webkit-backdrop-filter: var(--glass); backdrop-filter: var(--glass);
   user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
