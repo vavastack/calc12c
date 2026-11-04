@@ -22,7 +22,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
 .msg { min-height: 1.2em; font-size: 12px; text-align: right; }
 
 /* ---- teclado ---- */
-.keys { display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(8, 1fr); gap: 6px; min-height: 0; position: relative; }
+.keys { display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(8, 1fr); gap: 6px; min-height: 0; position: relative; overflow: clip; }
 .key { grid-column: calc(var(--c) + 1); grid-row: calc(var(--r) + 1) / span var(--rs, 1);
   display: flex; flex-direction: column; justify-content: space-between; align-items: center;
   background: var(--key-bg); box-shadow: var(--key-shadow); color: var(--key-text); border: 0; border-radius: 6px;
@@ -39,7 +39,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
 .calc[data-shift="f"] .key.prefix-f, .calc[data-shift="g"] .key.prefix-g { outline: 2px solid currentColor; }
 
 /* reflexo: uma única camada de brilho sobre o teclado (a animação entra na Tarefa 11) */
-.reflex { position: absolute; inset: 0; pointer-events: none; background: var(--reflex); opacity: .6;
+.reflex { position: absolute; inset: -30%; pointer-events: none; background: var(--reflex); opacity: .6;
   transform: translate3d(0, 0, 0); will-change: transform, opacity; border-radius: 6px; }
 
 .notice { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); background: #000c; color: #fff;

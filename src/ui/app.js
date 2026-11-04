@@ -4,6 +4,7 @@ import { renderDisplay, bindKeyboard } from './display.js';
 import { mountDrawer } from './tape.js';
 import { loadState, saveState } from './storage.js';
 import { mountSettings } from './settings.js';
+import { startReflex } from './reflex.js';
 
 const NOTICE_MS = 2200;
 
@@ -90,6 +91,21 @@ export function mountApp(root, engine = new Engine()) {
   });
   bindKeyboard(engine, ctx.render);
   ctx.drawer = mountDrawer(ctx);
+  // o reflexo liga e desliga junto com "reduzir efeitos"
+  let motion = false;
+  document.addEventListener('calc12c:effects', (e) => {
+    ctx.reflex?.stop();
+    ctx.reflex = null;
+    const layer = keys.querySelector('.reflex');
+    if (!e.detail.reduce && layer) {
+      ctx.reflex = startReflex(layer);
+      if (motion) ctx.reflex.enableMotion();
+    }
+  });
+  ctx.enableMotion = async () => {
+    motion = (await ctx.reflex?.enableMotion()) ?? false;
+    return motion;
+  };
   ctx.settings = mountSettings(ctx);
   ctx.listeners.push(() => saveState(engine)); // salvamento automático
   ctx.render();

@@ -87,7 +87,8 @@ export function mountSettings(ctx) {
     '<label>Tema <select name="theme"><option value="retro">Retro</option><option value="moderno">Moderno</option></select></label>' +
     '<label>Modo <select name="mode"><option value="auto">Automático</option><option value="escuro">Escuro</option><option value="claro">Claro</option></select></label>' +
     '<label>Reduzir efeitos <input type="checkbox" name="reduce"></label>' +
-    '<label>Vibração leve ao tocar <input type="checkbox" name="vibrate"></label>';
+    '<label>Vibração leve ao tocar <input type="checkbox" name="vibrate"></label>' +
+    '<button type="button" class="motion">Ativar movimento do aparelho (brilho)</button>';
   ctx.top.append(btn);
   ctx.calc.append(panel);
   const sync = () => {
@@ -96,6 +97,7 @@ export function mountSettings(ctx) {
     panel.querySelector('[name=reduce]').checked = effectiveReduce(s);
     panel.querySelector('[name=vibrate]').checked = s.vibrate;
   };
+  panel.querySelector('.motion').addEventListener('click', () => ctx.enableMotion?.());
   btn.addEventListener('click', () => {
     panel.hidden = !panel.hidden;
     sync();
