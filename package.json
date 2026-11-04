@@ -1,0 +1,10 @@
+{
+  "name": "calc12c",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Calc 12C — calculadora financeira inspirada na HP 12C",
+  "scripts": {
+    "test": "node --test tests/engine/"
+  }
+}
