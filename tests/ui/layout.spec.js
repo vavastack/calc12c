@@ -75,20 +75,24 @@ test('cada botão tem aria-label com a tecla e as funções f e g', async () => 
   await app.close();
 });
 
-test('teclas desativadas têm aria-disabled="true"; as outras não', async () => {
+test('todas as teclas estão ativas: nenhuma tem aria-disabled', async () => {
   const app = await openApp(browser, server.url);
-  for (const id of ['rs', 'sst', 'sigma']) {
-    assert.equal(await app.page.locator(`button.key[data-id="${id}"]`).getAttribute('aria-disabled'), 'true');
-  }
-  assert.equal(await app.page.locator('button.key[data-id="n"]').getAttribute('aria-disabled'), null);
+  assert.equal(await app.page.locator('button.key[aria-disabled="true"]').count(), 0);
   await app.close();
 });
 
-test('tocar numa tecla desativada mostra um aviso discreto e não gera erro', async () => {
+test('programa pela tela: f P/R, gravar, executar com R/S e PRGM aceso só no modo de programação', async () => {
   const app = await openApp(browser, server.url);
-  await app.page.locator('button.key[data-id="rs"]').click({ force: true }); // o dedo toca mesmo com aria-disabled
-  await app.page.waitForSelector('.notice:not([hidden])');
-  assert.match(await app.page.locator('.notice').innerText(), /não disponível/i);
+  const p = app.page;
+  const tap = async (...ids) => { for (const id of ids) await p.locator(`button.key[data-id="${id}"]`).click(); };
+  await tap('f', 'rs');
+  assert.equal(await p.locator('.display [data-ind="PRGM"]').evaluate((e) => e.classList.contains('on')), true);
+  await tap('f', 'rdown', 'enter', '2', '5', 'pct', 'minus', '5', 'plus');
+  assert.match(await p.locator('.digits').innerText(), /^07/);
+  await tap('f', 'rs');
+  assert.equal(await p.locator('.display [data-ind="PRGM"]').evaluate((e) => e.classList.contains('on')), false);
+  await tap('6', '2', '5', 'rs');
+  assert.equal(await p.locator('.digits').innerText(), '473,75');
   assert.deepEqual(app.errors, []);
   await app.close();
 });

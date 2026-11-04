@@ -4,6 +4,7 @@ import { Registers } from './registers.js';
 import { applyOp } from './math.js';
 import { solve, simpleInterest } from './tvm.js';
 import { CalcError } from './errors.js';
+import { MAX_LINES, lineText, memoryText, validLine } from './program.js';
 import { addDays, daysBetween, formatDate } from './dates.js';
 import { accumulate, means, deviations, weightedMean, estimateX, estimateY } from './stats.js';
 import { round10, formatNumber } from './number.js';
@@ -13,6 +14,7 @@ const MAX_TAPE = 500;
 const FIN = ['n', 'i', 'pv', 'pmt', 'fv'];
 const FIN_LABEL = { n: 'n', i: 'i', pv: 'PV', pmt: 'PMT', fv: 'FV' };
 const PRIMARY_OPS = ['plus', 'minus', 'times', 'divide', 'yx', 'recip', 'pctT', 'dpct', 'pct'];
+const OPKEYS = ['plus', 'minus', 'times', 'divide'];
 const STAT_G = { '0': 'mean', dot: 'sd', '6': 'wmean', '1': 'estx', '2': 'esty', sigma: 'sigmaminus' };
 const G_OPS = { yx: 'sqrt', recip: 'expx', pctT: 'ln', dpct: 'frac', pct: 'intg' };
 const isDigit = (id) => /^[0-9]$/.test(id);
@@ -24,6 +26,13 @@ export class Engine {
     this.regs = new Registers();
     this.fin = zeroFin();
     this.begin = false;
+    this.prgm = false; // modo de programação (indicador PRGM)
+    this.prog = []; // linhas de programa (índice 0 = linha 01); null = linha vazia (GTO 00)
+    this.pc = 0; // linha atual (0 = início)
+    this.stoOp = null; // operador de STO aritmético em andamento
+    this.gtoDigits = ''; // dígitos de GTO em andamento
+    this.running = false;
+    this.pauses = []; // resultados mostrados por PSE durante a última execução
     this.dmy = false; // indicador D.MY: datas no formato dia-mês-ano
     this.dateText = null; // resultado de g DATE exibido como "11,09,2004 6" até a próxima tecla
     this.compound = false; // indicador C: juros compostos no período fracionário (STO EEX)
@@ -48,6 +57,8 @@ export class Engine {
       begin: this.begin,
       compound: this.compound,
       dmy: this.dmy,
+      prgm: this.prgm,
+      pc: this.pc,
       shift: this.shift,
       decimals: this.decimals,
       locale: this.locale,
@@ -126,6 +137,8 @@ export class Engine {
   _dispatch(key) {
     const shift = this.shift;
     this.shift = null;
+    if (shift === 'f' && key.id === 'rs' && !this.pending) return this._togglePrgm(); // f P/R
+    if (this.prgm) return this._prgmKey(key, shift);
     if (this.pending) return this._finishPending(key);
     if (key.id === 'on') return;
     const s = this.stack;
@@ -176,6 +189,10 @@ export class Engine {
         return;
       case 'sigma':
         return this._stat('sigmaplus');
+      case 'rs':
+        return this._run();
+      case 'sst':
+        return this._singleStep();
       case 'sto':
         s.commit();
         this.pending = 'sto';
@@ -227,6 +244,24 @@ export class Engine {
       this.justStored = wasStored;
       return;
     }
+    if (id === 'sst') {
+      this.pc = Math.max(0, this.pc - 1); // g BST
+      this.dateText = lineText(this.pc, this.prog[this.pc - 1]);
+      return;
+    }
+    if (id === 'rdown') {
+      this.pending = 'gto';
+      this.gtoDigits = '';
+      return;
+    }
+    if (id === '9') {
+      this.dateText = memoryText(this.prog.length); // g MEM
+      return;
+    }
+    if (id === 'rs') {
+      this.pauses.push(this._fmt(this.stack.x)); // g PSE fora de um programa: só mostra
+      return;
+    }
     if (id === 'chs') return this._date();
     if (id === 'eex') return this._deltaDays();
     if (STAT_G[id]) return this._stat(STAT_G[id]);
@@ -255,6 +290,9 @@ export class Engine {
         s.commit();
         this.fin = zeroFin();
         return;
+      case 'rdown': // CLEAR PRGM (no modo de execução só volta à linha 00)
+        this.pc = 0;
+        return;
       case 'sst': // CLEAR Σ: zera R1..R6, a pilha e o visor
         for (let n = 1; n <= 6; n++) this.regs.store(n, 0);
         s.clearAll();
@@ -268,6 +306,185 @@ export class Engine {
         return;
       // 'enter' (PREFIX) só cancela o prefixo; demais funções f: ignoradas
     }
+  }
+
+  // ---------- programação ----------
+  _togglePrgm() {
+    this.stack.commit();
+    this.prgm = !this.prgm;
+    this.pending = null;
+    if (!this.prgm) this.pc = 0; // voltar ao modo de execução leva à linha 00
+  }
+
+  _gotoLine(nn) {
+    if (nn > MAX_LINES) throw new CalcError(4);
+    this.pc = nn;
+  }
+
+  _stoArith(opId, n) {
+    const x = this.stack.x;
+    const cur = this.regs.recall(n);
+    const v = { plus: cur + x, minus: cur - x, times: cur * x, divide: cur / x }[opId];
+    if (!Number.isFinite(v)) throw new CalcError(opId === 'divide' ? 0 : 1);
+    this.regs.store(n, round10(v));
+    this._record(`STO ${{ plus: '+', minus: '−', times: '×', divide: '÷' }[opId]} ${n}`);
+  }
+
+  // Grava uma instrução na linha seguinte à atual (sobrescreve a linha: a memória é de tamanho fixo, como na HP).
+  _storeLine(line) {
+    if (this.pc >= MAX_LINES) throw new CalcError(4);
+    while (this.prog.length < this.pc) this.prog.push(null);
+    this.prog[this.pc] = line;
+    this.pc += 1;
+  }
+
+  // Tecla pressionada no modo de programação: é gravada em vez de executada.
+  _prgmKey(key, shift) {
+    const id = key.id;
+    const isD = isDigit(id);
+    if (this.pending) {
+      const mode = this.pending;
+      this.pending = null;
+      if (mode === 'sto' && OPKEYS.includes(id)) {
+        this.pending = 'stoop';
+        this.stoOp = id;
+      } else if (mode === 'stoop' && isD) this._storeLine({ s: null, id: 'sto', op: this.stoOp, arg: id });
+      else if (mode === 'sto' && (isD || id === 'eex')) this._storeLine({ s: null, id: 'sto', arg: id });
+      else if (mode === 'rcl' && (isD || FIN.includes(id))) this._storeLine({ s: null, id: 'rcl', arg: id });
+      else if (mode === 'gto' && id === 'dot' && this.gtoDigits === '') {
+        this.pending = 'gotoline'; // GTO . nn: só vai até a linha, sem gravar
+      } else if (mode === 'gotoline' && isD) {
+        this.gtoDigits += id;
+        if (this.gtoDigits.length < 2) this.pending = 'gotoline';
+        else this._gotoLine(Number(this.gtoDigits));
+      } else if (mode === 'gto' && isD) {
+        this.gtoDigits += id;
+        if (this.gtoDigits.length < 2) this.pending = 'gto';
+        else this._storeLine({ s: 'g', id: 'rdown', arg: this.gtoDigits });
+      }
+      this.dateText = null;
+      return;
+    }
+    if (id === 'on') return;
+    if (shift === 'f' && id === 'rdown') {
+      this.prog = []; // CLEAR PRGM
+      this.pc = 0;
+      return;
+    }
+    if (shift === null && id === 'sst') {
+      this.pc = Math.min(MAX_LINES, this.pc + 1);
+      return;
+    }
+    if (shift === 'g' && id === 'sst') {
+      this.pc = Math.max(0, this.pc - 1);
+      return;
+    }
+    if (shift === 'g' && id === 'rdown') {
+      this.pending = 'gto';
+      this.gtoDigits = '';
+      return;
+    }
+    if (shift === null && (id === 'sto' || id === 'rcl')) {
+      this.pending = id;
+      return;
+    }
+    this._storeLine({ s: shift, id });
+  }
+
+  // Executa uma linha como se as teclas fossem apertadas. Devolve 'halt', 'skip' ou { goto }.
+  _execLine(line) {
+    const { s, id } = line;
+    if (id === 'rs' && s === null) return 'halt';
+    if (id === 'rs' && s === 'g') {
+      this.pauses.push(this._fmt(this.stack.x)); // PSE
+      return null;
+    }
+    if (s === 'g' && id === 'rdown') {
+      const nn = Number(line.arg);
+      if (nn > MAX_LINES) throw new CalcError(4);
+      return { goto: nn };
+    }
+    if (s === 'g' && id === 'xy') {
+      this.stack.commit();
+      return this.stack.x <= this.stack.y ? null : 'skip'; // x≤y
+    }
+    if (s === 'g' && id === 'clx') {
+      this.stack.commit();
+      return this.stack.x === 0 ? null : 'skip'; // x=0
+    }
+    if (id === 'sto' || id === 'rcl') {
+      this.stack.commit();
+      this.pending = id;
+      this.shift = null;
+      if (line.op) {
+        this._finishPending(KEY_BY_ID.get(line.op));
+        this._finishPending(KEY_BY_ID.get(line.arg));
+      } else this._finishPending(KEY_BY_ID.get(line.arg));
+      return null;
+    }
+    if (id === 'sst' || id === 'on' || id === 'f' || id === 'g') return null;
+    this.shift = s;
+    this._dispatch(KEY_BY_ID.get(id));
+    return null;
+  }
+
+  // Passo de execução: avança uma linha, trata desvios e testes.
+  _step() {
+    this.pc += 1;
+    const line = this.pc <= this.prog.length ? this.prog[this.pc - 1] : null;
+    if (!line || this.pc > MAX_LINES) {
+      this.pc = 0; // linha vazia = GTO 00: volta ao início e para
+      return 'halt';
+    }
+    const r = this._execLine(line);
+    if (r === 'skip') {
+      this.pc += 1;
+      return null;
+    }
+    if (r && r.goto !== undefined) {
+      if (r.goto === 0) {
+        this.pc = 0;
+        return 'halt';
+      }
+      this.pc = r.goto - 1; // a execução continua NA linha pedida
+      return null;
+    }
+    return r;
+  }
+
+  // R/S: executa a partir da linha seguinte à atual até um R/S, o fim do programa ou um erro.
+  _run(maxSteps = 100000) {
+    const s = this.stack;
+    s.commit();
+    this.running = true;
+    this.pauses = [];
+    try {
+      for (let n = 0; n < maxSteps; n++) if (this._step() === 'halt') break;
+    } finally {
+      this.running = false;
+      this.tokens = [];
+    }
+    this.dateText = null;
+    this._record('R/S');
+  }
+
+  // SST no modo de execução: executa só a próxima linha.
+  _singleStep() {
+    this.stack.commit();
+    this.running = true;
+    this.pauses = [];
+    try {
+      this._step();
+    } finally {
+      this.running = false;
+      this.tokens = [];
+    }
+  }
+
+  takePauses() {
+    const p = this.pauses;
+    this.pauses = [];
+    return p;
   }
 
   // g DATE: data (Y) + número de dias (X) → data em X, com o dia da semana (1 = segunda … 7 = domingo)
@@ -346,7 +563,13 @@ export class Engine {
     this.pending = null;
     const s = this.stack;
     const id = key.id;
-    if (isDigit(id)) {
+    if (mode === 'stoop' && isDigit(id)) {
+      this._stoArith(this.stoOp, Number(id));
+    } else if (mode === 'gto' && isDigit(id)) {
+      this.gtoDigits += id;
+      if (this.gtoDigits.length < 2) this.pending = 'gto';
+      else this._gotoLine(Number(this.gtoDigits));
+    } else if (isDigit(id)) {
       const n = Number(id);
       if (mode === 'sto') {
         s.commit();
@@ -357,6 +580,9 @@ export class Engine {
         s.recall(this.regs.recall(n));
         this._record(`RCL ${n}`);
       }
+    } else if (mode === 'sto' && OPKEYS.includes(id)) {
+      this.pending = 'stoop'; // STO + − × ÷ n
+      this.stoOp = id;
     } else if (mode === 'sto' && id === 'eex') {
       this.compound = !this.compound; // STO EEX liga/desliga o indicador C
       this._record(this.compound ? 'STO EEX (C ligado)' : 'STO EEX (C desligado)');
@@ -368,6 +594,7 @@ export class Engine {
   }
 
   _record(label) {
+    if (this.running) return;
     this.tokens.push(label);
     const x = this.stack.x;
     this.tape.push({ keys: this.tokens.join(' '), label, value: x, text: this._fmt(x) });
@@ -401,6 +628,7 @@ export class Engine {
 
   _display() {
     if (this.error) return 'Error ' + this.error.code;
+    if (this.prgm) return this.dateText ?? lineText(this.pc, this.prog[this.pc - 1]);
     if (this.dateText && !this.stack.entering) return this.dateText;
     return this.stack.entering ? this._fmtEntry() : this._fmt(this.stack.x);
   }
@@ -415,6 +643,9 @@ export class Engine {
       begin: this.begin,
       compound: this.compound,
       dmy: this.dmy,
+      prgm: this.prgm,
+      prog: this.prog,
+      pc: this.pc,
       shift: this.shift,
       pending: this.pending,
       justStored: this.justStored,
@@ -435,12 +666,13 @@ export class Engine {
     if (!Array.isArray(o.regs) || o.regs.length !== 10 || !o.regs.every(num)) throw bad();
     if (!o.fin || !FIN.every((k) => num(o.fin[k]))) throw bad();
     if (typeof o.begin !== 'boolean' || typeof o.justStored !== 'boolean') throw bad();
-    if (![null, 'f', 'g'].includes(o.shift) || ![null, 'sto', 'rcl'].includes(o.pending)) throw bad();
+    if (![null, 'f', 'g'].includes(o.shift) || ![null, 'sto', 'rcl', 'stoop', 'gto', 'gotoline'].includes(o.pending)) throw bad();
     if (!Number.isInteger(o.decimals) || o.decimals < 0 || o.decimals > 9) throw bad();
     if (o.locale !== 'br' && o.locale !== 'us') throw bad();
     if (o.error !== null && !(o.error && Number.isInteger(o.error.code) && o.error.code >= 0 && o.error.code <= 9 && str(o.error.message))) throw bad();
     if (!Array.isArray(o.tape) || !o.tape.every((l) => l && str(l.keys) && str(l.label) && num(l.value) && str(l.text))) throw bad();
     if (!Array.isArray(o.tokens) || !o.tokens.every(str)) throw bad();
+    if (o.prog !== undefined && !(Array.isArray(o.prog) && o.prog.length <= MAX_LINES && o.prog.every(validLine))) throw bad();
     const e = new Engine({ locale: o.locale });
     try {
       e.stack = Stack.fromJSON(o.stack);
@@ -450,7 +682,7 @@ export class Engine {
     o.regs.forEach((v, n) => e.regs.store(n, v));
     e.fin = { n: o.fin.n, i: o.fin.i, pv: o.fin.pv, pmt: o.fin.pmt, fv: o.fin.fv };
     Object.assign(e, {
-      begin: o.begin, compound: o.compound === true, dmy: o.dmy === true, shift: o.shift, pending: o.pending, justStored: o.justStored, decimals: o.decimals,
+      begin: o.begin, compound: o.compound === true, dmy: o.dmy === true, prgm: o.prgm === true, prog: Array.isArray(o.prog) ? o.prog : [], pc: Number.isInteger(o.pc) && o.pc >= 0 && o.pc <= MAX_LINES ? o.pc : 0, shift: o.shift, pending: o.pending, justStored: o.justStored, decimals: o.decimals,
       error: o.error ? { code: o.error.code, message: o.error.message } : null,
       tape: o.tape.map((l) => ({ keys: l.keys, label: l.label, value: l.value, text: l.text })),
       tokens: [...o.tokens],

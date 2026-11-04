@@ -46,9 +46,8 @@ test('KEYS: rótulos f e g oficiais das teclas financeiras', () => {
   assert.deepEqual([k('7').g, k('8').g], ['BEG', 'END']);
 });
 
-test('KEYS: teclas de programação e estatística vêm desativadas', () => {
-  for (const id of ['rs']) assert.equal(KEYS.find((k) => k.id === id).enabled, false);
-  assert.equal(KEYS.find((k) => k.id === 'n').enabled, true);
+test('KEYS: todas as 39 teclas estão ativas (programação e estatística incluídas)', () => {
+  assert.ok(KEYS.every((k) => k.enabled));
 });
 
 // ---------- cenário do plano: Financiamento ----------

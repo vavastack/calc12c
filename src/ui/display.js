@@ -21,7 +21,7 @@ function fit(digits) {
 
 export function renderDisplay(el, s) {
   ensureStructure(el);
-  const lit = { f: s.shift === 'f', g: s.shift === 'g', BEGIN: s.begin, C: s.compound, 'D.MY': s.dmy };
+  const lit = { f: s.shift === 'f', g: s.shift === 'g', BEGIN: s.begin, C: s.compound, 'D.MY': s.dmy, PRGM: s.prgm };
   for (const span of el.querySelectorAll('[data-ind]')) {
     span.classList.toggle('on', !!lit[span.dataset.ind]);
   }

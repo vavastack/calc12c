@@ -100,8 +100,21 @@ export function mountApp(root, engine = new Engine()) {
       b.classList.add('flash');
       b.addEventListener('animationend', () => b.classList.remove('flash'), { once: true });
     }
+    clearTimeout(ctx.pauseTimer); // qualquer tecla interrompe as pausas (PSE) em andamento
     engine.press(k.id);
     ctx.render();
+    const pauses = engine.takePauses();
+    if (pauses.length) {
+      // PSE: mostra cada resultado intermediário por cerca de 1 segundo antes do resultado final
+      let i = 0;
+      const step = () => {
+        if (i < pauses.length) {
+          display.querySelector('.digits').textContent = pauses[i++];
+          ctx.pauseTimer = setTimeout(step, 1000);
+        } else ctx.render();
+      };
+      step();
+    }
   });
   bindKeyboard(engine, ctx.render);
   ctx.drawer = mountDrawer(ctx);

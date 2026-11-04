@@ -255,8 +255,8 @@ const KEYS = [
   k('dpct', 'Δ%', 'SOYD', 'FRAC', 1, 3),
   k('pct', '%', 'DB', 'INTG', 1, 4),
   // linha 2
-  k('rs', 'R/S', 'P/R', 'PSE', 2, 0, { enabled: false }),
-  k('sst', 'SST', 'CLEAR Σ', 'BST', 2, 1, { enabled: false }),
+  k('rs', 'R/S', 'P/R', 'PSE', 2, 0),
+  k('sst', 'SST', 'CLEAR Σ', 'BST', 2, 1),
   k('rdown', 'R↓', 'CLEAR PRGM', 'GTO', 2, 2),
   k('xy', 'x≷y', 'CLEAR FIN', 'x≤y', 2, 3),
   k('clx', 'CLx', 'CLEAR REG', 'x=0', 2, 4),
@@ -286,7 +286,7 @@ const KEYS = [
   k('minus', '−', null, null, 6, 4),
   k('0', '0', null, 'x̄', 7, 1),
   k('dot', '.', null, 's', 7, 2),
-  k('sigma', 'Σ+', null, 'Σ−', 7, 3, { enabled: false }),
+  k('sigma', 'Σ+', null, 'Σ−', 7, 3),
   k('plus', '+', null, null, 7, 4),
 ];
 
@@ -818,6 +818,215 @@ function simpleInterest(days, rate, pv) {
 return { solve, simpleInterest };
 })();
 
+const __m_program = (() => {
+const { KEY_BY_ID } = __m_keymap;
+
+// Códigos de tecla da HP 12C: linha (1 a 4, de cima) e posição na linha (1 a 9; 0 = décima), como no manual.
+// Dígitos têm como código o próprio dígito. O teclado vertical (5×8) é a HP original (4×10) dobrada ao meio.
+const MAX_LINES = 99;
+
+function keyCode(id) {
+  if (/^[0-9]$/.test(id)) return Number(id);
+  const k = KEY_BY_ID.get(id);
+  const r = k.row < 4 ? k.row : k.row - 4;
+  const c = k.row < 4 ? k.col : k.col + 5;
+  return (r + 1) * 10 + ((c + 1) % 10);
+}
+
+const OP_CODE = { plus: 40, minus: 30, times: 20, divide: 10 };
+
+// Linha de programa: { s: null|'f'|'g', id, arg?, op? }
+function lineCodes(line) {
+  if (!line) return ['43', '33', '00']; // linha vazia = GTO 00
+  if (line.id === 'sto' || line.id === 'rcl') {
+    const out = [line.id === 'sto' ? 44 : 45];
+    if (line.op) out.push(OP_CODE[line.op]);
+    out.push(/^[0-9]$/.test(line.arg) ? line.arg : keyCode(line.arg));
+    return out.map(String);
+  }
+  if (line.s === 'g' && line.id === 'rdown') return ['43', '33', String(line.arg ?? '00')];
+  const out = [];
+  if (line.s === 'f') out.push(42);
+  if (line.s === 'g') out.push(43);
+  out.push(keyCode(line.id));
+  return out.map(String);
+}
+
+function lineText(n, line) {
+  const nn = String(n).padStart(2, '0');
+  if (n === 0) return nn + '–';
+  const c = lineCodes(line);
+  const body = c[0] === '43' && c[1] === '33' ? `43, 33 ${c[2]}` : c.join(' ');
+  return `${nn}–  ${body}`;
+}
+
+// Linhas e registradores mostrados por g MEM: a memória cresce de 7 em 7 linhas (cada 7 linhas = 1 registrador).
+function memoryText(count) {
+  const lines = count <= 8 ? 8 : 8 + 7 * Math.ceil((count - 8) / 7);
+  const regs = 20 - (lines - 8) / 7;
+  return `P-${String(lines).padStart(2, '0')} r-${String(regs).padStart(2, '0')}`;
+}
+
+function validLine(l) {
+  if (l === null) return true;
+  if (!l || typeof l !== 'object' || !KEY_BY_ID.has(l.id)) return false;
+  if (![null, 'f', 'g'].includes(l.s ?? null)) return false;
+  if (l.op !== undefined && !(l.op in OP_CODE)) return false;
+  if (l.arg !== undefined && typeof l.arg !== 'string') return false;
+  return true;
+}
+
+return { MAX_LINES, keyCode, lineCodes, lineText, memoryText, validLine };
+})();
+
+const __m_dates = (() => {
+const { CalcError } = __m_errors;
+
+// Funções de calendário da HP 12C: datas de 15/10/1582 a 25/11/4046 (calendário gregoriano).
+// Uma data é um número: M.DDAAAA (formato mês-dia-ano) ou DD.MMAAAA (dia-mês-ano).
+
+const MIN = 2299161; // 15/10/1582
+const MAX = 2299161 + (jdn(4046, 11, 25) - 2299161);
+
+function jdn(y, m, d) {
+  const a = Math.floor((14 - m) / 12);
+  const yy = y + 4800 - a;
+  const mm = m + 12 * a - 3;
+  return d + Math.floor((153 * mm + 2) / 5) + 365 * yy + Math.floor(yy / 4) - Math.floor(yy / 100) + Math.floor(yy / 400) - 32045;
+}
+
+function fromJdn(j) {
+  const a = j + 32044;
+  const b = Math.floor((4 * a + 3) / 146097);
+  const c = a - Math.floor((146097 * b) / 4);
+  const d = Math.floor((4 * c + 3) / 1461);
+  const e = c - Math.floor((1461 * d) / 4);
+  const m = Math.floor((5 * e + 2) / 153);
+  return {
+    d: e - Math.floor((153 * m + 2) / 5) + 1,
+    m: m + 3 - 12 * Math.floor(m / 10),
+    y: 100 * b + d - 4800 + Math.floor(m / 10),
+  };
+}
+
+const daysIn = (y, m) => [31, (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0 ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m - 1];
+
+// Número digitado → data. Erro 8 se for inválida ou fora do intervalo.
+function parseDate(x, dmy) {
+  const lead = Math.floor(x + 1e-9);
+  const rest = Math.round((x - lead) * 1e6);
+  const mid = Math.floor(rest / 10000);
+  const y = rest % 10000;
+  const m = dmy ? mid : lead;
+  const d = dmy ? lead : mid;
+  if (!(m >= 1 && m <= 12 && d >= 1 && y >= 1582) || d > daysIn(y, m)) throw new CalcError(8);
+  const j = jdn(y, m, d);
+  if (j < MIN || j > MAX) throw new CalcError(8);
+  return { y, m, d, j };
+}
+
+function encodeDate({ y, m, d }, dmy) {
+  const [a, b] = dmy ? [d, m] : [m, d];
+  return Math.round((a + b / 100 + y / 1e6) * 1e6) / 1e6;
+}
+
+// 1 = segunda-feira … 7 = domingo.
+const weekday = (j) => (j % 7) + 1;
+
+function addDays(x, days, dmy) {
+  const a = parseDate(x, dmy);
+  const j = a.j + Math.trunc(days);
+  if (j < MIN || j > MAX) throw new CalcError(8);
+  const r = fromJdn(j);
+  return { value: encodeDate(r, dmy), parts: r, weekday: weekday(j) };
+}
+
+// Dias exatos e dias na base 30/360 entre duas datas (a mais antiga primeiro).
+function daysBetween(x1, x2, dmy) {
+  const a = parseDate(x1, dmy);
+  const b = parseDate(x2, dmy);
+  const z1 = a.d === 31 ? 30 : a.d;
+  const z2 = b.d === 31 && (a.d === 30 || a.d === 31) ? 30 : b.d;
+  const f = (p, z) => 360 * p.y + 30 * p.m + z;
+  return { actual: b.j - a.j, commercial: f(b, z2) - f(a, z1) };
+}
+
+// "11,09,2004 6": campos separados por vírgula (pt-BR) ou hífen (en-US) e o dia da semana no fim.
+function formatDate({ y, m, d }, wd, dmy, locale) {
+  const sep = locale === 'br' ? ',' : '-';
+  const two = (n) => String(n).padStart(2, '0');
+  const [a, b] = dmy ? [two(d), two(m)] : [two(m), two(d)];
+  return `${a}${sep}${b}${sep}${y} ${wd}`;
+}
+
+return { parseDate, encodeDate, weekday, addDays, daysBetween, formatDate };
+})();
+
+const __m_stats = (() => {
+const { CalcError } = __m_errors;
+const { round10 } = __m_number;
+
+// Estatística da HP 12C. Os registros estatísticos são R1..R6:
+//   R1 = n, R2 = Σx, R3 = Σx², R4 = Σy, R5 = Σy², R6 = Σxy.
+// `r` é o vetor [n, Σx, Σx², Σy, Σy², Σxy] (índices 0..5).
+
+function accumulate(r, x, y, sign = 1) {
+  const next = [r[0] + sign, r[1] + sign * x, r[2] + sign * x * x, r[3] + sign * y, r[4] + sign * y * y, r[5] + sign * x * y];
+  if (!next.every(Number.isFinite)) throw new CalcError(1);
+  return next;
+}
+
+function means(r) {
+  if (r[0] === 0) throw new CalcError(2);
+  return { x: r[1] / r[0], y: r[3] / r[0] };
+}
+
+// Desvio padrão da amostra (divisor n−1).
+function deviations(r) {
+  const [n, sx, sxx, sy, syy] = r;
+  if (n < 2) throw new CalcError(2);
+  const sd = (s, ss) => Math.sqrt(Math.max(0, (n * ss - s * s) / (n * (n - 1))));
+  return { x: sd(sx, sxx), y: sd(sy, syy) };
+}
+
+// Média ponderada: itens em Y (\), pesos em X (Σ+) → Σxy / Σx.
+function weightedMean(r) {
+  if (r[1] === 0) throw new CalcError(0);
+  return r[5] / r[1];
+}
+
+// Reta y = A + B·x e coeficiente de correlação r.
+function regression(r) {
+  const [n, sx, sxx, sy, syy, sxy] = r;
+  if (n < 2) throw new CalcError(2);
+  const dx = n * sxx - sx * sx;
+  if (dx === 0) throw new CalcError(2);
+  const B = (n * sxy - sx * sy) / dx;
+  const A = (sy - B * sx) / n;
+  const dy = n * syy - sy * sy;
+  const den = Math.sqrt(dx * dy);
+  const corr = den === 0 ? (dy === 0 ? 1 : 0) : (n * sxy - sx * sy) / den;
+  return { A, B, r: Math.max(-1, Math.min(1, corr)) };
+}
+
+// ŷ dado x  (g 2).
+function estimateY(r, x) {
+  const g = regression(r);
+  return { value: g.A + g.B * x, r: g.r };
+}
+
+// x̂ dado y  (g 1).
+function estimateX(r, y) {
+  const g = regression(r);
+  if (g.B === 0) throw new CalcError(2);
+  return { value: (y - g.A) / g.B, r: g.r };
+}
+
+const rnd = round10;
+
+return { accumulate, means, deviations, weightedMean, estimateY, estimateX, rnd };
+})();
+
 const __m_engine = (() => {
 const { KEY_BY_ID } = __m_keymap;
 const { Stack } = __m_stack;
@@ -825,6 +1034,9 @@ const { Registers } = __m_registers;
 const { applyOp } = __m_math;
 const { solve, simpleInterest } = __m_tvm;
 const { CalcError } = __m_errors;
+const { MAX_LINES, lineText, memoryText, validLine } = __m_program;
+const { addDays, daysBetween, formatDate } = __m_dates;
+const { accumulate, means, deviations, weightedMean, estimateX, estimateY } = __m_stats;
 const { round10, formatNumber } = __m_number;
 
 const VERSION = 1;
@@ -832,6 +1044,8 @@ const MAX_TAPE = 500;
 const FIN = ['n', 'i', 'pv', 'pmt', 'fv'];
 const FIN_LABEL = { n: 'n', i: 'i', pv: 'PV', pmt: 'PMT', fv: 'FV' };
 const PRIMARY_OPS = ['plus', 'minus', 'times', 'divide', 'yx', 'recip', 'pctT', 'dpct', 'pct'];
+const OPKEYS = ['plus', 'minus', 'times', 'divide'];
+const STAT_G = { '0': 'mean', dot: 'sd', '6': 'wmean', '1': 'estx', '2': 'esty', sigma: 'sigmaminus' };
 const G_OPS = { yx: 'sqrt', recip: 'expx', pctT: 'ln', dpct: 'frac', pct: 'intg' };
 const isDigit = (id) => /^[0-9]$/.test(id);
 const zeroFin = () => ({ n: 0, i: 0, pv: 0, pmt: 0, fv: 0 });
@@ -842,6 +1056,15 @@ class Engine {
     this.regs = new Registers();
     this.fin = zeroFin();
     this.begin = false;
+    this.prgm = false; // modo de programação (indicador PRGM)
+    this.prog = []; // linhas de programa (índice 0 = linha 01); null = linha vazia (GTO 00)
+    this.pc = 0; // linha atual (0 = início)
+    this.stoOp = null; // operador de STO aritmético em andamento
+    this.gtoDigits = ''; // dígitos de GTO em andamento
+    this.running = false;
+    this.pauses = []; // resultados mostrados por PSE durante a última execução
+    this.dmy = false; // indicador D.MY: datas no formato dia-mês-ano
+    this.dateText = null; // resultado de g DATE exibido como "11,09,2004 6" até a próxima tecla
     this.compound = false; // indicador C: juros compostos no período fracionário (STO EEX)
     this.shift = null; // null | 'f' | 'g'
     this.pending = null; // null | 'sto' | 'rcl' (aguardando o registrador)
@@ -863,6 +1086,9 @@ class Engine {
       fin: { ...this.fin },
       begin: this.begin,
       compound: this.compound,
+      dmy: this.dmy,
+      prgm: this.prgm,
+      pc: this.pc,
       shift: this.shift,
       decimals: this.decimals,
       locale: this.locale,
@@ -881,6 +1107,7 @@ class Engine {
   press(id) {
     const key = KEY_BY_ID.get(id);
     if (!key) throw new Error('tecla desconhecida: ' + id);
+    if (id !== 'f' && id !== 'g') this.dateText = null;
     if (this.error) {
       // Qualquer tecla limpa o erro e não é executada (como na HP).
       this.error = null;
@@ -940,6 +1167,8 @@ class Engine {
   _dispatch(key) {
     const shift = this.shift;
     this.shift = null;
+    if (shift === 'f' && key.id === 'rs' && !this.pending) return this._togglePrgm(); // f P/R
+    if (this.prgm) return this._prgmKey(key, shift);
     if (this.pending) return this._finishPending(key);
     if (key.id === 'on') return;
     const s = this.stack;
@@ -988,6 +1217,12 @@ class Engine {
         s.clx();
         this.tokens.push('CLx');
         return;
+      case 'sigma':
+        return this._stat('sigmaplus');
+      case 'rs':
+        return this._run();
+      case 'sst':
+        return this._singleStep();
       case 'sto':
         s.commit();
         this.pending = 'sto';
@@ -1034,6 +1269,32 @@ class Engine {
       this.tokens.push('LSTx');
       return;
     }
+    if (id === '4' || id === '5') {
+      this.dmy = id === '4'; // g D.MY / g M.DY
+      this.justStored = wasStored;
+      return;
+    }
+    if (id === 'sst') {
+      this.pc = Math.max(0, this.pc - 1); // g BST
+      this.dateText = lineText(this.pc, this.prog[this.pc - 1]);
+      return;
+    }
+    if (id === 'rdown') {
+      this.pending = 'gto';
+      this.gtoDigits = '';
+      return;
+    }
+    if (id === '9') {
+      this.dateText = memoryText(this.prog.length); // g MEM
+      return;
+    }
+    if (id === 'rs') {
+      this.pauses.push(this._fmt(this.stack.x)); // g PSE fora de um programa: só mostra
+      return;
+    }
+    if (id === 'chs') return this._date();
+    if (id === 'eex') return this._deltaDays();
+    if (STAT_G[id]) return this._stat(STAT_G[id]);
     if (G_OPS[id]) {
       applyOp(s, G_OPS[id]);
       return this._record(key.g);
@@ -1059,6 +1320,14 @@ class Engine {
         s.commit();
         this.fin = zeroFin();
         return;
+      case 'rdown': // CLEAR PRGM (no modo de execução só volta à linha 00)
+        this.pc = 0;
+        return;
+      case 'sst': // CLEAR Σ: zera R1..R6, a pilha e o visor
+        for (let n = 1; n <= 6; n++) this.regs.store(n, 0);
+        s.clearAll();
+        this.tokens = [];
+        return;
       case 'clx': // CLEAR REG
         this.regs.clear();
         this.fin = zeroFin();
@@ -1069,12 +1338,268 @@ class Engine {
     }
   }
 
+  // ---------- programação ----------
+  _togglePrgm() {
+    this.stack.commit();
+    this.prgm = !this.prgm;
+    this.pending = null;
+    if (!this.prgm) this.pc = 0; // voltar ao modo de execução leva à linha 00
+  }
+
+  _gotoLine(nn) {
+    if (nn > MAX_LINES) throw new CalcError(4);
+    this.pc = nn;
+  }
+
+  _stoArith(opId, n) {
+    const x = this.stack.x;
+    const cur = this.regs.recall(n);
+    const v = { plus: cur + x, minus: cur - x, times: cur * x, divide: cur / x }[opId];
+    if (!Number.isFinite(v)) throw new CalcError(opId === 'divide' ? 0 : 1);
+    this.regs.store(n, round10(v));
+    this._record(`STO ${{ plus: '+', minus: '−', times: '×', divide: '÷' }[opId]} ${n}`);
+  }
+
+  // Grava uma instrução na linha seguinte à atual (sobrescreve a linha: a memória é de tamanho fixo, como na HP).
+  _storeLine(line) {
+    if (this.pc >= MAX_LINES) throw new CalcError(4);
+    while (this.prog.length < this.pc) this.prog.push(null);
+    this.prog[this.pc] = line;
+    this.pc += 1;
+  }
+
+  // Tecla pressionada no modo de programação: é gravada em vez de executada.
+  _prgmKey(key, shift) {
+    const id = key.id;
+    const isD = isDigit(id);
+    if (this.pending) {
+      const mode = this.pending;
+      this.pending = null;
+      if (mode === 'sto' && OPKEYS.includes(id)) {
+        this.pending = 'stoop';
+        this.stoOp = id;
+      } else if (mode === 'stoop' && isD) this._storeLine({ s: null, id: 'sto', op: this.stoOp, arg: id });
+      else if (mode === 'sto' && (isD || id === 'eex')) this._storeLine({ s: null, id: 'sto', arg: id });
+      else if (mode === 'rcl' && (isD || FIN.includes(id))) this._storeLine({ s: null, id: 'rcl', arg: id });
+      else if (mode === 'gto' && id === 'dot' && this.gtoDigits === '') {
+        this.pending = 'gotoline'; // GTO . nn: só vai até a linha, sem gravar
+      } else if (mode === 'gotoline' && isD) {
+        this.gtoDigits += id;
+        if (this.gtoDigits.length < 2) this.pending = 'gotoline';
+        else this._gotoLine(Number(this.gtoDigits));
+      } else if (mode === 'gto' && isD) {
+        this.gtoDigits += id;
+        if (this.gtoDigits.length < 2) this.pending = 'gto';
+        else this._storeLine({ s: 'g', id: 'rdown', arg: this.gtoDigits });
+      }
+      this.dateText = null;
+      return;
+    }
+    if (id === 'on') return;
+    if (shift === 'f' && id === 'rdown') {
+      this.prog = []; // CLEAR PRGM
+      this.pc = 0;
+      return;
+    }
+    if (shift === null && id === 'sst') {
+      this.pc = Math.min(MAX_LINES, this.pc + 1);
+      return;
+    }
+    if (shift === 'g' && id === 'sst') {
+      this.pc = Math.max(0, this.pc - 1);
+      return;
+    }
+    if (shift === 'g' && id === 'rdown') {
+      this.pending = 'gto';
+      this.gtoDigits = '';
+      return;
+    }
+    if (shift === null && (id === 'sto' || id === 'rcl')) {
+      this.pending = id;
+      return;
+    }
+    this._storeLine({ s: shift, id });
+  }
+
+  // Executa uma linha como se as teclas fossem apertadas. Devolve 'halt', 'skip' ou { goto }.
+  _execLine(line) {
+    const { s, id } = line;
+    if (id === 'rs' && s === null) return 'halt';
+    if (id === 'rs' && s === 'g') {
+      this.pauses.push(this._fmt(this.stack.x)); // PSE
+      return null;
+    }
+    if (s === 'g' && id === 'rdown') {
+      const nn = Number(line.arg);
+      if (nn > MAX_LINES) throw new CalcError(4);
+      return { goto: nn };
+    }
+    if (s === 'g' && id === 'xy') {
+      this.stack.commit();
+      return this.stack.x <= this.stack.y ? null : 'skip'; // x≤y
+    }
+    if (s === 'g' && id === 'clx') {
+      this.stack.commit();
+      return this.stack.x === 0 ? null : 'skip'; // x=0
+    }
+    if (id === 'sto' || id === 'rcl') {
+      this.stack.commit();
+      this.pending = id;
+      this.shift = null;
+      if (line.op) {
+        this._finishPending(KEY_BY_ID.get(line.op));
+        this._finishPending(KEY_BY_ID.get(line.arg));
+      } else this._finishPending(KEY_BY_ID.get(line.arg));
+      return null;
+    }
+    if (id === 'sst' || id === 'on' || id === 'f' || id === 'g') return null;
+    this.shift = s;
+    this._dispatch(KEY_BY_ID.get(id));
+    return null;
+  }
+
+  // Passo de execução: avança uma linha, trata desvios e testes.
+  _step() {
+    this.pc += 1;
+    const line = this.pc <= this.prog.length ? this.prog[this.pc - 1] : null;
+    if (!line || this.pc > MAX_LINES) {
+      this.pc = 0; // linha vazia = GTO 00: volta ao início e para
+      return 'halt';
+    }
+    const r = this._execLine(line);
+    if (r === 'skip') {
+      this.pc += 1;
+      return null;
+    }
+    if (r && r.goto !== undefined) {
+      if (r.goto === 0) {
+        this.pc = 0;
+        return 'halt';
+      }
+      this.pc = r.goto - 1; // a execução continua NA linha pedida
+      return null;
+    }
+    return r;
+  }
+
+  // R/S: executa a partir da linha seguinte à atual até um R/S, o fim do programa ou um erro.
+  _run(maxSteps = 100000) {
+    const s = this.stack;
+    s.commit();
+    this.running = true;
+    this.pauses = [];
+    try {
+      for (let n = 0; n < maxSteps; n++) if (this._step() === 'halt') break;
+    } finally {
+      this.running = false;
+      this.tokens = [];
+    }
+    this.dateText = null;
+    this._record('R/S');
+  }
+
+  // SST no modo de execução: executa só a próxima linha.
+  _singleStep() {
+    this.stack.commit();
+    this.running = true;
+    this.pauses = [];
+    try {
+      this._step();
+    } finally {
+      this.running = false;
+      this.tokens = [];
+    }
+  }
+
+  takePauses() {
+    const p = this.pauses;
+    this.pauses = [];
+    return p;
+  }
+
+  // g DATE: data (Y) + número de dias (X) → data em X, com o dia da semana (1 = segunda … 7 = domingo)
+  _date() {
+    const s = this.stack;
+    s.commit();
+    const r = addDays(s.y, s.x, this.dmy);
+    s.applyBinary(() => r.value);
+    this.dateText = formatDate(r.parts, r.weekday, this.dmy, this.locale);
+    this._record('DATE');
+    this.tape[this.tape.length - 1].text = this.dateText;
+  }
+
+  // g ΔDYS: datas em Y (mais antiga) e X → dias exatos em X e dias na base 30/360 em Y
+  _deltaDays() {
+    const s = this.stack;
+    s.commit();
+    const r = daysBetween(s.y, s.x, this.dmy);
+    const { x, z } = s;
+    s.loadXYZ(r.actual, r.commercial, z);
+    s.lastX = x;
+    this._record('ΔDYS');
+  }
+
+  // Σ+, Σ−, x̄, s, x̄w, ŷ,r, x̂,r — registros estatísticos R1..R6
+  _stat(op) {
+    const s = this.stack;
+    s.commit();
+    const r = [1, 2, 3, 4, 5, 6].map((n) => this.regs.recall(n));
+    const save = (v) => v.forEach((x, k) => this.regs.store(k + 1, x));
+    const push2 = (top, below) => {
+      s.liftEnabled = true;
+      s.recall(round10(below));
+      s.liftEnabled = true;
+      s.recall(round10(top));
+    };
+    switch (op) {
+      case 'sigmaplus':
+      case 'sigmaminus': {
+        const x = s.x;
+        save(accumulate(r, x, s.y, op === 'sigmaplus' ? 1 : -1));
+        s.lastX = x;
+        s.x = this.regs.recall(1);
+        s.entering = false;
+        s.liftEnabled = false;
+        return this._record(op === 'sigmaplus' ? 'Σ+' : 'Σ−');
+      }
+      case 'mean': {
+        const m = means(r);
+        push2(m.x, m.y);
+        return this._record('x̄');
+      }
+      case 'sd': {
+        const d = deviations(r);
+        push2(d.x, d.y);
+        return this._record('s');
+      }
+      case 'wmean': {
+        s.recall(round10(weightedMean(r)));
+        return this._record('x̄w');
+      }
+      case 'esty':
+      case 'estx': {
+        const input = s.x;
+        const e = op === 'esty' ? estimateY(r, input) : estimateX(r, input);
+        const { y: oy } = s;
+        s.lastX = input;
+        s.loadXYZ(round10(e.value), round10(e.r), oy);
+        return this._record(op === 'esty' ? 'ŷ' : 'x̂');
+      }
+    }
+  }
+
   _finishPending(key) {
     const mode = this.pending;
     this.pending = null;
     const s = this.stack;
     const id = key.id;
-    if (isDigit(id)) {
+    if (mode === 'stoop' && isDigit(id)) {
+      this._stoArith(this.stoOp, Number(id));
+    } else if (mode === 'gto' && isDigit(id)) {
+      this.gtoDigits += id;
+      if (this.gtoDigits.length < 2) this.pending = 'gto';
+      else this._gotoLine(Number(this.gtoDigits));
+    } else if (isDigit(id)) {
       const n = Number(id);
       if (mode === 'sto') {
         s.commit();
@@ -1085,6 +1610,9 @@ class Engine {
         s.recall(this.regs.recall(n));
         this._record(`RCL ${n}`);
       }
+    } else if (mode === 'sto' && OPKEYS.includes(id)) {
+      this.pending = 'stoop'; // STO + − × ÷ n
+      this.stoOp = id;
     } else if (mode === 'sto' && id === 'eex') {
       this.compound = !this.compound; // STO EEX liga/desliga o indicador C
       this._record(this.compound ? 'STO EEX (C ligado)' : 'STO EEX (C desligado)');
@@ -1096,6 +1624,7 @@ class Engine {
   }
 
   _record(label) {
+    if (this.running) return;
     this.tokens.push(label);
     const x = this.stack.x;
     this.tape.push({ keys: this.tokens.join(' '), label, value: x, text: this._fmt(x) });
@@ -1129,6 +1658,8 @@ class Engine {
 
   _display() {
     if (this.error) return 'Error ' + this.error.code;
+    if (this.prgm) return this.dateText ?? lineText(this.pc, this.prog[this.pc - 1]);
+    if (this.dateText && !this.stack.entering) return this.dateText;
     return this.stack.entering ? this._fmtEntry() : this._fmt(this.stack.x);
   }
 
@@ -1141,6 +1672,10 @@ class Engine {
       fin: this.fin,
       begin: this.begin,
       compound: this.compound,
+      dmy: this.dmy,
+      prgm: this.prgm,
+      prog: this.prog,
+      pc: this.pc,
       shift: this.shift,
       pending: this.pending,
       justStored: this.justStored,
@@ -1161,12 +1696,13 @@ class Engine {
     if (!Array.isArray(o.regs) || o.regs.length !== 10 || !o.regs.every(num)) throw bad();
     if (!o.fin || !FIN.every((k) => num(o.fin[k]))) throw bad();
     if (typeof o.begin !== 'boolean' || typeof o.justStored !== 'boolean') throw bad();
-    if (![null, 'f', 'g'].includes(o.shift) || ![null, 'sto', 'rcl'].includes(o.pending)) throw bad();
+    if (![null, 'f', 'g'].includes(o.shift) || ![null, 'sto', 'rcl', 'stoop', 'gto', 'gotoline'].includes(o.pending)) throw bad();
     if (!Number.isInteger(o.decimals) || o.decimals < 0 || o.decimals > 9) throw bad();
     if (o.locale !== 'br' && o.locale !== 'us') throw bad();
     if (o.error !== null && !(o.error && Number.isInteger(o.error.code) && o.error.code >= 0 && o.error.code <= 9 && str(o.error.message))) throw bad();
     if (!Array.isArray(o.tape) || !o.tape.every((l) => l && str(l.keys) && str(l.label) && num(l.value) && str(l.text))) throw bad();
     if (!Array.isArray(o.tokens) || !o.tokens.every(str)) throw bad();
+    if (o.prog !== undefined && !(Array.isArray(o.prog) && o.prog.length <= MAX_LINES && o.prog.every(validLine))) throw bad();
     const e = new Engine({ locale: o.locale });
     try {
       e.stack = Stack.fromJSON(o.stack);
@@ -1176,7 +1712,7 @@ class Engine {
     o.regs.forEach((v, n) => e.regs.store(n, v));
     e.fin = { n: o.fin.n, i: o.fin.i, pv: o.fin.pv, pmt: o.fin.pmt, fv: o.fin.fv };
     Object.assign(e, {
-      begin: o.begin, compound: o.compound === true, shift: o.shift, pending: o.pending, justStored: o.justStored, decimals: o.decimals,
+      begin: o.begin, compound: o.compound === true, dmy: o.dmy === true, prgm: o.prgm === true, prog: Array.isArray(o.prog) ? o.prog : [], pc: Number.isInteger(o.pc) && o.pc >= 0 && o.pc <= MAX_LINES ? o.pc : 0, shift: o.shift, pending: o.pending, justStored: o.justStored, decimals: o.decimals,
       error: o.error ? { code: o.error.code, message: o.error.message } : null,
       tape: o.tape.map((l) => ({ keys: l.keys, label: l.label, value: l.value, text: l.text })),
       tokens: [...o.tokens],
@@ -1212,7 +1748,7 @@ function fit(digits) {
 
 function renderDisplay(el, s) {
   ensureStructure(el);
-  const lit = { f: s.shift === 'f', g: s.shift === 'g', BEGIN: s.begin, C: s.compound };
+  const lit = { f: s.shift === 'f', g: s.shift === 'g', BEGIN: s.begin, C: s.compound, 'D.MY': s.dmy, PRGM: s.prgm };
   for (const span of el.querySelectorAll('[data-ind]')) {
     span.classList.toggle('on', !!lit[span.dataset.ind]);
   }
@@ -1705,8 +2241,21 @@ function mountApp(root, engine = new Engine()) {
       b.classList.add('flash');
       b.addEventListener('animationend', () => b.classList.remove('flash'), { once: true });
     }
+    clearTimeout(ctx.pauseTimer); // qualquer tecla interrompe as pausas (PSE) em andamento
     engine.press(k.id);
     ctx.render();
+    const pauses = engine.takePauses();
+    if (pauses.length) {
+      // PSE: mostra cada resultado intermediário por cerca de 1 segundo antes do resultado final
+      let i = 0;
+      const step = () => {
+        if (i < pauses.length) {
+          display.querySelector('.digits').textContent = pauses[i++];
+          ctx.pauseTimer = setTimeout(step, 1000);
+        } else ctx.render();
+      };
+      step();
+    }
   });
   bindKeyboard(engine, ctx.render);
   ctx.drawer = mountDrawer(ctx);
