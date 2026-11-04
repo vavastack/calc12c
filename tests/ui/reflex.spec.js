@@ -186,3 +186,23 @@ test('o sensor de inclinação liga sozinho (ou no primeiro toque, se o sistema 
   assert.notEqual(t, 'translate3d(0.00px, 0.00px, 0)');
   await app.close();
 });
+
+for (const [t, m] of [['retro', 'auto'], ['moderno', 'escuro'], ['moderno', 'claro']]) {
+  test(`o reflexo é visível e nunca fica parado, sem sensor nem toque — ${t}/${m}`, async () => {
+    const app = await openApp(browser, server.url);
+    const p = app.page;
+    await p.evaluate(async ([a, b]) => (await import('/src/ui/settings.js')).applyTheme(a, b, false), [t, m]);
+    const r = await p.locator('.reflex').evaluate((e) => {
+      const cs = getComputedStyle(e, '::before');
+      return { bg: cs.backgroundImage, anim: cs.animationName, estado: e.getAnimations({ subtree: true }).map((a) => a.playState) };
+    });
+    assert.match(r.bg, /linear-gradient/);
+    assert.equal(r.anim, 'reflex-drift');
+    assert.ok(r.estado.includes('running'));
+    const antes = await p.locator('.reflex').evaluate((e) => getComputedStyle(e, '::before').transform);
+    await p.waitForTimeout(1500);
+    const depois = await p.locator('.reflex').evaluate((e) => getComputedStyle(e, '::before').transform);
+    assert.notEqual(antes, depois);
+    await app.close();
+  });
+}

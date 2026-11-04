@@ -66,8 +66,14 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
 @media (prefers-reduced-motion: reduce) { .key.flash::after, .key.flash::before, .calc .key .lf, .calc .key .lg { animation: none !important; } }
 
 /* reflexo: uma única camada de brilho sobre o teclado (a animação entra na Tarefa 11) */
-.reflex { position: absolute; inset: -30%; pointer-events: none; background: var(--reflex); opacity: .6;
+.reflex { position: absolute; inset: -30%; pointer-events: none; opacity: .7;
   transform: translate3d(0, 0, 0); will-change: transform, opacity; border-radius: 6px; }
+/* o brilho em si fica numa camada interna que vai e volta devagar (só transform, no compositor):
+   o reflexo nunca fica parado, mesmo sem sensor de movimento nem toque; a camada externa segue a inclinação/dedo */
+.reflex::before { content: ""; position: absolute; inset: 0; background: var(--reflex); will-change: transform;
+  animation: reflex-drift 7s ease-in-out infinite alternate; }
+@keyframes reflex-drift { from { transform: translate3d(-9%, -4%, 0); } to { transform: translate3d(9%, 4%, 0); } }
+@media (prefers-reduced-motion: reduce) { .reflex::before { animation: none; } }
 
 .notice { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); background: #000c; color: #fff;
   padding: 6px 12px; border-radius: 14px; font-size: 13px; max-width: 90%; text-align: center; z-index: 8; }

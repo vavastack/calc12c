@@ -21,7 +21,7 @@
   --ind-on: #f0b429; --ind-off: #55555a; --handle: #3a3a3e;
   --glass: none;
   --glow: none;
-  --reflex: none;
+  --reflex: linear-gradient(115deg, transparent 28%, #ffd98a2e 44%, #ffffff12 52%, transparent 66%);
 }
 
 /* Moderno escuro: vidro translúcido em grafite, halos dourado e azul nos cantos, reflexo suave */
