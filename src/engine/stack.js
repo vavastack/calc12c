@@ -43,7 +43,7 @@ export class Stack {
     return Number(m);
   }
 
-  _commit() {
+  commit() {
     if (this.entering) {
       this.x = this._parseEntry();
       this.entering = false;
@@ -103,7 +103,7 @@ export class Stack {
   }
 
   enter() {
-    this._commit();
+    this.commit();
     this.t = this.z;
     this.z = this.y;
     this.y = this.x;
@@ -111,13 +111,13 @@ export class Stack {
   }
 
   swap() {
-    this._commit();
+    this.commit();
     [this.x, this.y] = [this.y, this.x];
     this.liftEnabled = true;
   }
 
   rollDown() {
-    this._commit();
+    this.commit();
     const x = this.x;
     this.x = this.y;
     this.y = this.z;
@@ -135,7 +135,7 @@ export class Stack {
   }
 
   applyBinary(fn) {
-    this._commit();
+    this.commit();
     const r = fn(this.y, this.x); // pode lançar: o estado só muda depois
     this.lastX = this.x;
     this.x = r;
@@ -145,7 +145,7 @@ export class Stack {
   }
 
   applyUnary(fn) {
-    this._commit();
+    this.commit();
     const r = fn(this.x);
     this.lastX = this.x;
     this.x = r;
@@ -154,11 +154,52 @@ export class Stack {
 
   // %, Δ%, %T: o resultado vai para X e Y é mantido.
   applyKeepY(fn) {
-    this._commit();
+    this.commit();
     const r = fn(this.y, this.x);
     this.lastX = this.x;
     this.x = r;
     this.liftEnabled = true;
+  }
+
+  // Coloca X, Y e Z de uma vez (usado por f INT); T e LastX ficam como estão.
+  loadXYZ(x, y, z) {
+    this.x = x;
+    this.y = y;
+    this.z = z;
+    this.entering = false;
+    this.liftEnabled = true;
+  }
+
+  // Zera pilha, LastX e digitação (f CLEAR REG e f CLEAR Σ).
+  clearAll() {
+    this.x = this.y = this.z = this.t = this.lastX = 0;
+    this.entering = false;
+    this._mant = '';
+    this._exp = null;
+    this.liftEnabled = true;
+  }
+
+  toJSON() {
+    const { x, y, z, t, lastX, entering, liftEnabled, _mant, _exp } = this;
+    return { x, y, z, t, lastX, entering, liftEnabled, mant: _mant, exp: _exp ? { ..._exp } : null };
+  }
+
+  static fromJSON(o) {
+    const num = (v) => typeof v === 'number' && Number.isFinite(v);
+    if (!o || typeof o !== 'object') throw new Error('pilha inválida');
+    for (const k of ['x', 'y', 'z', 't', 'lastX']) if (!num(o[k])) throw new Error('pilha inválida');
+    if (typeof o.entering !== 'boolean' || typeof o.liftEnabled !== 'boolean') throw new Error('pilha inválida');
+    if (typeof o.mant !== 'string' || !/^-?[0-9.]*$/.test(o.mant)) throw new Error('pilha inválida');
+    if (o.exp !== null && !(o.exp && /^-?$/.test(o.exp.sign) && /^[0-9]{0,2}$/.test(o.exp.digits))) {
+      throw new Error('pilha inválida');
+    }
+    const s = new Stack();
+    Object.assign(s, { x: o.x, y: o.y, z: o.z, t: o.t, lastX: o.lastX });
+    s.entering = o.entering;
+    s.liftEnabled = o.liftEnabled;
+    s._mant = o.mant;
+    s._exp = o.exp ? { sign: o.exp.sign, digits: o.exp.digits } : null;
+    return s;
   }
 
   // Coloca um resultado (ex.: cálculo financeiro) em X, sem mexer em Y, Z, T.
@@ -170,7 +211,7 @@ export class Stack {
 
   // RCL: obedece à regra de elevação como um número digitado.
   recall(v) {
-    this._commit();
+    this.commit();
     if (this.liftEnabled) this._lift();
     this.x = v;
     this.liftEnabled = true;

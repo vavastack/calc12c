@@ -1,0 +1,561 @@
+{
+ "descricao": "Exemplos do manual da HP 12C (pt-BR) e do plano; display em formato pt-BR com 2 casas.",
+ "examples": [
+  {
+   "id": "juros-simples-ordinarios",
+   "source": "manual p.34-35",
+   "steps": [
+    {
+     "keys": "60 n",
+     "display": "60,00"
+    },
+    {
+     "keys": "7 i",
+     "display": "7,00"
+    },
+    {
+     "keys": "450 chs pv",
+     "display": "-450,00"
+    },
+    {
+     "keys": "f i",
+     "display": "5,25"
+    },
+    {
+     "keys": "plus",
+     "display": "455,25"
+    }
+   ]
+  },
+  {
+   "id": "juros-simples-exatos",
+   "source": "manual p.35",
+   "steps": [
+    {
+     "keys": "60 n",
+     "display": "60,00"
+    },
+    {
+     "keys": "7 i",
+     "display": "7,00"
+    },
+    {
+     "keys": "450 chs pv",
+     "display": "-450,00"
+    },
+    {
+     "keys": "f i",
+     "display": "5,25"
+    },
+    {
+     "keys": "rdown xy",
+     "display": "5,18"
+    },
+    {
+     "keys": "plus",
+     "display": "455,18"
+    }
+   ]
+  },
+  {
+   "id": "percentagem",
+   "source": "manual p.26",
+   "steps": [
+    {
+     "keys": "300 enter 14 pct",
+     "display": "42,00"
+    }
+   ]
+  },
+  {
+   "id": "valor-liquido-carro",
+   "source": "manual p.27",
+   "steps": [
+    {
+     "keys": "13250 enter 8 pct",
+     "display": "1.060,00"
+    },
+    {
+     "keys": "minus",
+     "display": "12.190,00"
+    },
+    {
+     "keys": "6 pct",
+     "display": "731,40"
+    },
+    {
+     "keys": "plus",
+     "display": "12.921,40"
+    }
+   ]
+  },
+  {
+   "id": "diferenca-percentual",
+   "source": "manual p.27",
+   "steps": [
+    {
+     "keys": "58.5 enter 53.25 dpct",
+     "display": "-8,97"
+    }
+   ]
+  },
+  {
+   "id": "saldo-conta-registrador",
+   "source": "manual p.25 (adaptado: sem aritmética direta em registrador; resultado final 1.064,54 igual ao manual)",
+   "steps": [
+    {
+     "keys": "58.33 sto 0",
+     "display": "58,33"
+    },
+    {
+     "keys": "rcl 0 22.95 minus sto 0",
+     "display": "35,38"
+    },
+    {
+     "keys": "rcl 0 13.7 minus sto 0",
+     "display": "21,68"
+    },
+    {
+     "keys": "rcl 0 10.14 minus sto 0",
+     "display": "11,54"
+    },
+    {
+     "keys": "rcl 0 1053 plus sto 0",
+     "display": "1.064,54"
+    }
+   ]
+  },
+  {
+   "id": "n-emprestimo-casa-campo",
+   "source": "manual p.40-43",
+   "steps": [
+    {
+     "keys": "f xy",
+     "display": null
+    },
+    {
+     "keys": "10.5 g i",
+     "display": "0,88"
+    },
+    {
+     "keys": "35000 pv",
+     "display": "35.000,00"
+    },
+    {
+     "keys": "325 chs pmt",
+     "display": "-325,00"
+    },
+    {
+     "keys": "g 8",
+     "display": "-325,00"
+    },
+    {
+     "keys": "n",
+     "display": "328,00"
+    },
+    {
+     "keys": "12 divide",
+     "display": "27,33"
+    },
+    {
+     "keys": "328 n",
+     "display": "328,00"
+    },
+    {
+     "keys": "fv",
+     "display": "181,89"
+    },
+    {
+     "keys": "rcl pmt",
+     "display": "-325,00"
+    },
+    {
+     "keys": "plus",
+     "display": "-143,11"
+    },
+    {
+     "keys": "327 n",
+     "display": "327,00"
+    },
+    {
+     "keys": "fv",
+     "display": "-141,87"
+    },
+    {
+     "keys": "rcl pmt",
+     "display": "-325,00"
+    },
+    {
+     "keys": "plus",
+     "display": "-466,87"
+    }
+   ]
+  },
+  {
+   "id": "n-poupanca-quinzenal",
+   "source": "manual p.43-44",
+   "steps": [
+    {
+     "keys": "f xy",
+     "display": null
+    },
+    {
+     "keys": "6.25 enter 24 divide i",
+     "display": "0,26"
+    },
+    {
+     "keys": "775 chs pv",
+     "display": "-775,00"
+    },
+    {
+     "keys": "50 chs pmt",
+     "display": "-50,00"
+    },
+    {
+     "keys": "4000 fv",
+     "display": "4.000,00"
+    },
+    {
+     "keys": "g 8",
+     "display": "4.000,00"
+    },
+    {
+     "keys": "n",
+     "display": "58,00"
+    },
+    {
+     "keys": "2 divide",
+     "display": "29,00"
+    },
+    {
+     "keys": "fv fv",
+     "display": "4.027,27"
+    },
+    {
+     "keys": "rcl pmt",
+     "display": "-50,00"
+    },
+    {
+     "keys": "plus",
+     "display": "3.977,27"
+    },
+    {
+     "keys": "4000 minus",
+     "display": "-22,73"
+    }
+   ]
+  },
+  {
+   "id": "taxa-anual-investimento",
+   "source": "manual p.45",
+   "steps": [
+    {
+     "keys": "f xy",
+     "display": null
+    },
+    {
+     "keys": "8 enter 4 times n",
+     "display": "32,00"
+    },
+    {
+     "keys": "6000 chs pv",
+     "display": "-6.000,00"
+    },
+    {
+     "keys": "10000 fv",
+     "display": "10.000,00"
+    },
+    {
+     "keys": "i",
+     "display": "1,61"
+    },
+    {
+     "keys": "4 times",
+     "display": "6,44"
+    }
+   ]
+  },
+  {
+   "id": "pv-carro-novo",
+   "source": "manual p.45-46",
+   "steps": [
+    {
+     "keys": "f xy",
+     "display": null
+    },
+    {
+     "keys": "4 g n",
+     "display": "48,00"
+    },
+    {
+     "keys": "15 g i",
+     "display": "1,25"
+    },
+    {
+     "keys": "150 chs pmt",
+     "display": "-150,00"
+    },
+    {
+     "keys": "g 8",
+     "display": "-150,00"
+    },
+    {
+     "keys": "pv",
+     "display": "5.389,72"
+    },
+    {
+     "keys": "1500 plus",
+     "display": "6.889,72"
+    }
+   ]
+  },
+  {
+   "id": "pv-condominios",
+   "source": "manual p.46-47",
+   "steps": [
+    {
+     "keys": "f xy",
+     "display": null
+    },
+    {
+     "keys": "5 n",
+     "display": "5,00"
+    },
+    {
+     "keys": "12 i",
+     "display": "12,00"
+    },
+    {
+     "keys": "17500 pmt",
+     "display": "17.500,00"
+    },
+    {
+     "keys": "540000 fv",
+     "display": "540.000,00"
+    },
+    {
+     "keys": "g 8",
+     "display": "540.000,00"
+    },
+    {
+     "keys": "pv",
+     "display": "-369.494,09"
+    }
+   ]
+  },
+  {
+   "id": "pmt-hipoteca",
+   "source": "manual p.47-48",
+   "steps": [
+    {
+     "keys": "f xy",
+     "display": null
+    },
+    {
+     "keys": "29 g n",
+     "display": "348,00"
+    },
+    {
+     "keys": "14.25 g i",
+     "display": "1,19"
+    },
+    {
+     "keys": "43400 pv",
+     "display": "43.400,00"
+    },
+    {
+     "keys": "g 8",
+     "display": "43.400,00"
+    },
+    {
+     "keys": "pmt",
+     "display": "-523,99"
+    }
+   ]
+  },
+  {
+   "id": "pmt-aposentadoria",
+   "source": "manual p.48",
+   "steps": [
+    {
+     "keys": "f xy",
+     "display": null
+    },
+    {
+     "keys": "15 enter 2 times n",
+     "display": "30,00"
+    },
+    {
+     "keys": "9.75 enter 2 divide i",
+     "display": "4,88"
+    },
+    {
+     "keys": "3200 chs pv",
+     "display": "-3.200,00"
+    },
+    {
+     "keys": "60000 fv",
+     "display": "60.000,00"
+    },
+    {
+     "keys": "g 8",
+     "display": "60.000,00"
+    },
+    {
+     "keys": "pmt",
+     "display": "-717,44"
+    }
+   ]
+  },
+  {
+   "id": "fv-saldo-hipoteca",
+   "source": "manual p.49",
+   "steps": [
+    {
+     "keys": "f xy",
+     "display": null
+    },
+    {
+     "keys": "5 g n",
+     "display": "60,00"
+    },
+    {
+     "keys": "14.25 g i",
+     "display": "1,19"
+    },
+    {
+     "keys": "43400 pv",
+     "display": "43.400,00"
+    },
+    {
+     "keys": "523.99 chs pmt",
+     "display": "-523,99"
+    },
+    {
+     "keys": "g 8",
+     "display": "-523,99"
+    },
+    {
+     "keys": "fv",
+     "display": "-42.652,37"
+    }
+   ]
+  },
+  {
+   "id": "fv-depositos-inicio-mes",
+   "source": "manual p.50",
+   "steps": [
+    {
+     "keys": "f xy",
+     "display": null
+    },
+    {
+     "keys": "2 g n",
+     "display": "24,00"
+    },
+    {
+     "keys": "6.25 g i",
+     "display": "0,52"
+    },
+    {
+     "keys": "50 chs pmt",
+     "display": "-50,00"
+    },
+    {
+     "keys": "g 7",
+     "display": "-50,00"
+    },
+    {
+     "keys": "fv",
+     "display": "1.281,34"
+    }
+   ]
+  },
+  {
+   "id": "fv-taxa-negativa",
+   "source": "manual p.50-51",
+   "steps": [
+    {
+     "keys": "f xy",
+     "display": null
+    },
+    {
+     "keys": "6 n",
+     "display": "6,00"
+    },
+    {
+     "keys": "2 chs i",
+     "display": "-2,00"
+    },
+    {
+     "keys": "32000 chs pv",
+     "display": "-32.000,00"
+    },
+    {
+     "keys": "fv",
+     "display": "28.346,96"
+    }
+   ]
+  },
+  {
+   "id": "financiamento-plano-end",
+   "source": "plano",
+   "steps": [
+    {
+     "keys": "f xy",
+     "display": null
+    },
+    {
+     "keys": "g 8",
+     "display": null
+    },
+    {
+     "keys": "30 g n",
+     "display": "360,00"
+    },
+    {
+     "keys": "6 g i",
+     "display": "0,50"
+    },
+    {
+     "keys": "200000 pv",
+     "display": "200.000,00"
+    },
+    {
+     "keys": "pmt",
+     "display": "-1.199,10"
+    }
+   ]
+  },
+  {
+   "id": "financiamento-plano-begin",
+   "source": "plano",
+   "steps": [
+    {
+     "keys": "f xy",
+     "display": null
+    },
+    {
+     "keys": "g 7",
+     "display": null
+    },
+    {
+     "keys": "30 g n",
+     "display": "360,00"
+    },
+    {
+     "keys": "6 g i",
+     "display": "0,50"
+    },
+    {
+     "keys": "200000 pv",
+     "display": "200.000,00"
+    },
+    {
+     "keys": "pmt",
+     "display": "-1.193,14"
+    }
+   ]
+  }
+ ]
+}
