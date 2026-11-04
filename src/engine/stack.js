@@ -152,6 +152,15 @@ export class Stack {
     this.liftEnabled = true;
   }
 
+  // %, Δ%, %T: o resultado vai para X e Y é mantido.
+  applyKeepY(fn) {
+    this._commit();
+    const r = fn(this.y, this.x);
+    this.lastX = this.x;
+    this.x = r;
+    this.liftEnabled = true;
+  }
+
   // Coloca um resultado (ex.: cálculo financeiro) em X, sem mexer em Y, Z, T.
   setResult(v) {
     this.x = v;
