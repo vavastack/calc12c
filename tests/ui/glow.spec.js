@@ -43,7 +43,7 @@ test('tocar em g faz o brilho azul: tecla g e rótulos azuis; f continua sem bri
   await app.close();
 });
 
-test('o brilho usa só opacidade (sem transform) e respeita "reduzir efeitos"', async () => {
+test('o brilho usa só opacidade (sem transform) e continua com "reduzir efeitos"; o sistema com movimento reduzido o desliga', async () => {
   const app = await openApp(browser, server.url);
   const p = app.page;
   await full(p);
@@ -51,9 +51,14 @@ test('o brilho usa só opacidade (sem transform) e respeita "reduzir efeitos"', 
   assert.ok(css.includes('opacity') && !/transform|filter|box-shadow/.test(css), css);
   await reduce(p, true);
   await key(p, 'f').click();
-  assert.equal(await anim(key(p, 'f'), '::after'), 'none');
-  assert.equal(await anim(key(p, 'n').locator('.lf')), 'none');
+  assert.equal(await anim(key(p, 'f'), '::before'), 'glow-key');
+  assert.equal(await anim(key(p, 'n').locator('.lf')), 'glow-label');
   await app.close();
+  const sem = await openApp(browser, server.url, undefined, { reducedMotion: 'reduce' });
+  await key(sem.page, 'f').click();
+  assert.equal(await anim(key(sem.page, 'f'), '::after'), 'none');
+  assert.equal(await anim(key(sem.page, 'n').locator('.lf')), 'none');
+  await sem.close();
 });
 
 test('cabeçalho Calc 12C, dica da gaveta e teclas f e g coloridas', async () => {

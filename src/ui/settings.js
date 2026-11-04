@@ -3,7 +3,8 @@ const KEY = 'calc12c.settings';
 const THEMES = ['retro', 'moderno'];
 const MODES = ['auto', 'escuro', 'claro'];
 
-const lowEnd = () => (navigator.hardwareConcurrency ?? 8) <= 4;
+const lowEnd = () => (navigator.hardwareConcurrency ?? 8) <= 2 || (navigator.deviceMemory ?? 8) <= 2 ||
+  matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 export function defaultSettings() {
   // reduce: null = automático (liga sozinho em aparelhos simples); true/false = escolha do usuário

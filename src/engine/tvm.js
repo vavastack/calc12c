@@ -61,15 +61,27 @@ function roundN(n) {
   return n - fl < 0.005 ? fl : fl + 1;
 }
 
-export function solve(target, fin, begin) {
-  const { n, i, pv, pmt, fv } = fin;
+// Período fracionário (manual p.52): n = m + f, com m períodos inteiros e f < 1 antes do primeiro.
+// Os cálculos usam o PV no fim do período fracionário: PV·(1+i)^f (juros compostos, indicador C)
+// ou PV·(1+i·f) (juros simples). Ao calcular PV, o resultado é o valor no início do período fracionário.
+function splitN(n) {
+  const m = Math.floor(n + 1e-9);
+  const f = n - m;
+  return { m, f: f < 1e-9 ? 0 : f };
+}
+
+export function solve(target, fin, begin, compound = false) {
+  const { m, f } = target === 'n' ? { m: fin.n, f: 0 } : splitN(fin.n);
+  const frac = (x) => (f === 0 ? 1 : compound ? Math.pow(1 + x, f) : 1 + x * f);
+  const { i, pv, pmt, fv } = fin;
+  const n = m;
   const ii = i / 100;
   if (target !== 'i' && ii <= -1) throw err5();
   const k = 1 + (begin ? ii : 0);
 
   if (target === 'i') {
-    if (!(n > 0)) throw err5();
-    const fn = (x) => residual(x, fin, begin);
+    if (!(fin.n > 0)) throw err5();
+    const fn = (x) => residual(x, { n, pv: pv * frac(x), pmt, fv }, begin);
     const pos = firstRoot(fn, POS);
     const neg = firstRoot(fn, NEG);
     const cands = [pos, neg].filter((r) => r !== null);
@@ -77,6 +89,8 @@ export function solve(target, fin, begin) {
     const root = cands.reduce((a, b) => (Math.abs(a) <= Math.abs(b) ? a : b));
     return root * 100;
   }
+
+  const pvEnd = pv * frac(ii); // PV no fim do período fracionário
 
   if (ii === 0) {
     switch (target) {
@@ -86,22 +100,22 @@ export function solve(target, fin, begin) {
       case 'pv':
         return -(fv + pmt * n);
       case 'fv':
-        return -(pv + pmt * n);
+        return -(pvEnd + pmt * n);
       case 'pmt':
         if (n === 0) throw err5();
-        return -(pv + fv) / n;
+        return -(pvEnd + fv) / n;
     }
   }
 
   const g = Math.pow(1 + ii, n);
   switch (target) {
     case 'fv':
-      return -(pv * g + pmt * k * ((g - 1) / ii));
+      return -(pvEnd * g + pmt * k * ((g - 1) / ii));
     case 'pv':
-      return -(pmt * k * ((1 - 1 / g) / ii) + fv / g);
+      return -(pmt * k * ((1 - 1 / g) / ii) + fv / g) / frac(ii);
     case 'pmt':
       if (n === 0) throw err5();
-      return -(pv + fv / g) / (k * ((1 - 1 / g) / ii));
+      return -(pvEnd + fv / g) / (k * ((1 - 1 / g) / ii));
     case 'n': {
       const a = (pmt * k) / ii;
       const ratio = (a - fv) / (pv + a);

@@ -114,6 +114,11 @@ export function mountApp(root, engine = new Engine()) {
     if (!e.detail.reduce && layer) {
       ctx.reflex = startReflex(layer);
       if (motion) ctx.reflex.enableMotion();
+      else if (!ctx.reflex.needsPermission) ctx.enableMotion(); // Android e PC: sensor liga sozinho
+      else {
+        // iPhone: o sensor pede permissão, e ela só pode ser pedida num toque do usuário
+        document.addEventListener('pointerup', () => ctx.enableMotion(), { once: true });
+      }
     }
   });
   ctx.enableMotion = async () => {

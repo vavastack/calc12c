@@ -21,6 +21,7 @@ export class Engine {
     this.regs = new Registers();
     this.fin = zeroFin();
     this.begin = false;
+    this.compound = false; // indicador C: juros compostos no período fracionário (STO EEX)
     this.shift = null; // null | 'f' | 'g'
     this.pending = null; // null | 'sto' | 'rcl' (aguardando o registrador)
     this.justStored = false; // última operação guardou em n, i, PV, PMT ou FV?
@@ -40,6 +41,7 @@ export class Engine {
       regs: this.regs.values(),
       fin: { ...this.fin },
       begin: this.begin,
+      compound: this.compound,
       shift: this.shift,
       decimals: this.decimals,
       locale: this.locale,
@@ -180,7 +182,7 @@ export class Engine {
   _finKey(id, wasStored) {
     const s = this.stack;
     if (wasStored) {
-      const v = round10(solve(id, this.fin, this.begin));
+      const v = round10(solve(id, this.fin, this.begin, this.compound));
       this.fin[id] = v;
       s.setResult(v);
     } else {
@@ -262,6 +264,9 @@ export class Engine {
         s.recall(this.regs.recall(n));
         this._record(`RCL ${n}`);
       }
+    } else if (mode === 'sto' && id === 'eex') {
+      this.compound = !this.compound; // STO EEX liga/desliga o indicador C
+      this._record(this.compound ? 'STO EEX (C ligado)' : 'STO EEX (C desligado)');
     } else if (mode === 'rcl' && FIN.includes(id)) {
       s.recall(this.fin[id]);
       this._record(`RCL ${FIN_LABEL[id]}`);
@@ -314,6 +319,7 @@ export class Engine {
       regs: this.regs.values(),
       fin: this.fin,
       begin: this.begin,
+      compound: this.compound,
       shift: this.shift,
       pending: this.pending,
       justStored: this.justStored,
@@ -349,7 +355,7 @@ export class Engine {
     o.regs.forEach((v, n) => e.regs.store(n, v));
     e.fin = { n: o.fin.n, i: o.fin.i, pv: o.fin.pv, pmt: o.fin.pmt, fv: o.fin.fv };
     Object.assign(e, {
-      begin: o.begin, shift: o.shift, pending: o.pending, justStored: o.justStored, decimals: o.decimals,
+      begin: o.begin, compound: o.compound === true, shift: o.shift, pending: o.pending, justStored: o.justStored, decimals: o.decimals,
       error: o.error ? { code: o.error.code, message: o.error.message } : null,
       tape: o.tape.map((l) => ({ keys: l.keys, label: l.label, value: l.value, text: l.text })),
       tokens: [...o.tokens],

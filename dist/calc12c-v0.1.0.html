@@ -147,13 +147,17 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
 /* brilho de f e g: realce curto, só com opacidade, na tecla e nos rótulos que acendem */
 .key::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0;
   background: radial-gradient(circle at 50% 38%, var(--flash, #ffffffcc), transparent 72%); }
-.key.flash::after { animation: glow-key .5s ease-out; }
+.key::before { content: ""; position: absolute; inset: -2px; border-radius: 15px; pointer-events: none; opacity: 0;
+  box-shadow: 0 0 14px 3px var(--flash, #ffffffcc); }
+.key.flash::before, .key.flash::after { animation: glow-key .6s ease-out; }
+/* enquanto f ou g está ativo, a tecla fica com um halo suave */
+.calc[data-shift="f"] .key.prefix-f::before, .calc[data-shift="g"] .key.prefix-g::before { opacity: .75; }
 .calc[data-shift="f"] .key .lf { animation: glow-label .55s ease-out; }
 .calc[data-shift="g"] .key .lg { animation: glow-label .55s ease-out; }
 @keyframes glow-key { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes glow-label { 0% { opacity: .2; } 35% { opacity: 1; } 55% { opacity: .55; } 100% { opacity: 1; } }
-[data-reduce="true"] .key::after, [data-reduce="true"] .key .lf, [data-reduce="true"] .key .lg { animation: none !important; }
-@media (prefers-reduced-motion: reduce) { .key.flash::after, .calc .key .lf, .calc .key .lg { animation: none !important; } }
+/* o brilho de f e g é só opacidade (barato): continua no modo "reduzir efeitos"; só o sistema com movimento reduzido o desliga */
+@media (prefers-reduced-motion: reduce) { .key.flash::after, .key.flash::before, .calc .key .lf, .calc .key .lg { animation: none !important; } }
 
 /* reflexo: uma única camada de brilho sobre o teclado (a animação entra na Tarefa 11) */
 .reflex { position: absolute; inset: -30%; pointer-events: none; background: var(--reflex); opacity: .6;
@@ -733,15 +737,27 @@ function roundN(n) {
   return n - fl < 0.005 ? fl : fl + 1;
 }
 
-function solve(target, fin, begin) {
-  const { n, i, pv, pmt, fv } = fin;
+// Período fracionário (manual p.52): n = m + f, com m períodos inteiros e f < 1 antes do primeiro.
+// Os cálculos usam o PV no fim do período fracionário: PV·(1+i)^f (juros compostos, indicador C)
+// ou PV·(1+i·f) (juros simples). Ao calcular PV, o resultado é o valor no início do período fracionário.
+function splitN(n) {
+  const m = Math.floor(n + 1e-9);
+  const f = n - m;
+  return { m, f: f < 1e-9 ? 0 : f };
+}
+
+function solve(target, fin, begin, compound = false) {
+  const { m, f } = target === 'n' ? { m: fin.n, f: 0 } : splitN(fin.n);
+  const frac = (x) => (f === 0 ? 1 : compound ? Math.pow(1 + x, f) : 1 + x * f);
+  const { i, pv, pmt, fv } = fin;
+  const n = m;
   const ii = i / 100;
   if (target !== 'i' && ii <= -1) throw err5();
   const k = 1 + (begin ? ii : 0);
 
   if (target === 'i') {
-    if (!(n > 0)) throw err5();
-    const fn = (x) => residual(x, fin, begin);
+    if (!(fin.n > 0)) throw err5();
+    const fn = (x) => residual(x, { n, pv: pv * frac(x), pmt, fv }, begin);
     const pos = firstRoot(fn, POS);
     const neg = firstRoot(fn, NEG);
     const cands = [pos, neg].filter((r) => r !== null);
@@ -749,6 +765,8 @@ function solve(target, fin, begin) {
     const root = cands.reduce((a, b) => (Math.abs(a) <= Math.abs(b) ? a : b));
     return root * 100;
   }
+
+  const pvEnd = pv * frac(ii); // PV no fim do período fracionário
 
   if (ii === 0) {
     switch (target) {
@@ -758,22 +776,22 @@ function solve(target, fin, begin) {
       case 'pv':
         return -(fv + pmt * n);
       case 'fv':
-        return -(pv + pmt * n);
+        return -(pvEnd + pmt * n);
       case 'pmt':
         if (n === 0) throw err5();
-        return -(pv + fv) / n;
+        return -(pvEnd + fv) / n;
     }
   }
 
   const g = Math.pow(1 + ii, n);
   switch (target) {
     case 'fv':
-      return -(pv * g + pmt * k * ((g - 1) / ii));
+      return -(pvEnd * g + pmt * k * ((g - 1) / ii));
     case 'pv':
-      return -(pmt * k * ((1 - 1 / g) / ii) + fv / g);
+      return -(pmt * k * ((1 - 1 / g) / ii) + fv / g) / frac(ii);
     case 'pmt':
       if (n === 0) throw err5();
-      return -(pv + fv / g) / (k * ((1 - 1 / g) / ii));
+      return -(pvEnd + fv / g) / (k * ((1 - 1 / g) / ii));
     case 'n': {
       const a = (pmt * k) / ii;
       const ratio = (a - fv) / (pv + a);
@@ -817,6 +835,7 @@ class Engine {
     this.regs = new Registers();
     this.fin = zeroFin();
     this.begin = false;
+    this.compound = false; // indicador C: juros compostos no período fracionário (STO EEX)
     this.shift = null; // null | 'f' | 'g'
     this.pending = null; // null | 'sto' | 'rcl' (aguardando o registrador)
     this.justStored = false; // última operação guardou em n, i, PV, PMT ou FV?
@@ -836,6 +855,7 @@ class Engine {
       regs: this.regs.values(),
       fin: { ...this.fin },
       begin: this.begin,
+      compound: this.compound,
       shift: this.shift,
       decimals: this.decimals,
       locale: this.locale,
@@ -976,7 +996,7 @@ class Engine {
   _finKey(id, wasStored) {
     const s = this.stack;
     if (wasStored) {
-      const v = round10(solve(id, this.fin, this.begin));
+      const v = round10(solve(id, this.fin, this.begin, this.compound));
       this.fin[id] = v;
       s.setResult(v);
     } else {
@@ -1058,6 +1078,9 @@ class Engine {
         s.recall(this.regs.recall(n));
         this._record(`RCL ${n}`);
       }
+    } else if (mode === 'sto' && id === 'eex') {
+      this.compound = !this.compound; // STO EEX liga/desliga o indicador C
+      this._record(this.compound ? 'STO EEX (C ligado)' : 'STO EEX (C desligado)');
     } else if (mode === 'rcl' && FIN.includes(id)) {
       s.recall(this.fin[id]);
       this._record(`RCL ${FIN_LABEL[id]}`);
@@ -1110,6 +1133,7 @@ class Engine {
       regs: this.regs.values(),
       fin: this.fin,
       begin: this.begin,
+      compound: this.compound,
       shift: this.shift,
       pending: this.pending,
       justStored: this.justStored,
@@ -1145,7 +1169,7 @@ class Engine {
     o.regs.forEach((v, n) => e.regs.store(n, v));
     e.fin = { n: o.fin.n, i: o.fin.i, pv: o.fin.pv, pmt: o.fin.pmt, fv: o.fin.fv };
     Object.assign(e, {
-      begin: o.begin, shift: o.shift, pending: o.pending, justStored: o.justStored, decimals: o.decimals,
+      begin: o.begin, compound: o.compound === true, shift: o.shift, pending: o.pending, justStored: o.justStored, decimals: o.decimals,
       error: o.error ? { code: o.error.code, message: o.error.message } : null,
       tape: o.tape.map((l) => ({ keys: l.keys, label: l.label, value: l.value, text: l.text })),
       tokens: [...o.tokens],
@@ -1181,7 +1205,7 @@ function fit(digits) {
 
 function renderDisplay(el, s) {
   ensureStructure(el);
-  const lit = { f: s.shift === 'f', g: s.shift === 'g', BEGIN: s.begin };
+  const lit = { f: s.shift === 'f', g: s.shift === 'g', BEGIN: s.begin, C: s.compound };
   for (const span of el.querySelectorAll('[data-ind]')) {
     span.classList.toggle('on', !!lit[span.dataset.ind]);
   }
@@ -1370,7 +1394,8 @@ const KEY = 'calc12c.settings';
 const THEMES = ['retro', 'moderno'];
 const MODES = ['auto', 'escuro', 'claro'];
 
-const lowEnd = () => (navigator.hardwareConcurrency ?? 8) <= 4;
+const lowEnd = () => (navigator.hardwareConcurrency ?? 8) <= 2 || (navigator.deviceMemory ?? 8) <= 2 ||
+  matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function defaultSettings() {
   // reduce: null = automático (liga sozinho em aparelhos simples); true/false = escolha do usuário
@@ -1486,8 +1511,8 @@ return { defaultSettings, loadSettings, saveSettings, applyTheme, mountSettings 
 const __m_reflex = (() => {
 // Reflexo leve: uma única camada de brilho que se desloca com o mouse (PC) ou a inclinação (celular).
 // Só `transform` e `opacity`; no máximo uma escrita por quadro; pausa em segundo plano.
-const RANGE_X = 60; // px de deslocamento máximo
-const RANGE_Y = 80;
+const RANGE_X = 90; // px de deslocamento máximo
+const RANGE_Y = 120;
 const SMOOTH = 0.18; // amortecimento por quadro
 const MIN_DELTA = 0.01; // variação mínima do alvo para valer a pena atualizar
 const EPS = 0.002;
@@ -1523,7 +1548,7 @@ function startReflex(layer) {
   const onMouse = (e) => aim((e.clientX / window.innerWidth) * 2 - 1, (e.clientY / window.innerHeight) * 2 - 1);
   const onTilt = (e) => {
     if (e.gamma == null && e.beta == null) return;
-    aim((e.gamma ?? 0) / 45, ((e.beta ?? 45) - 45) / 45);
+    aim((e.gamma ?? 0) / 25, ((e.beta ?? 50) - 50) / 25); // ~25° de inclinação já leva o reflexo ao limite
   };
   const onVisibility = () => {
     if (document.hidden && raf) {
@@ -1532,11 +1557,16 @@ function startReflex(layer) {
     }
   };
 
-  document.addEventListener('mousemove', onMouse);
+  // mouse no PC; dedo no celular (qualquer toque ou arraste move o reflexo, mesmo sem sensor de movimento)
+  document.addEventListener('pointermove', onMouse);
+  document.addEventListener('pointerdown', onMouse);
   document.addEventListener('visibilitychange', onVisibility);
 
   return {
     // No iPhone o sensor exige permissão, pedida num toque do usuário. Negada → brilho fixo.
+    get needsPermission() {
+      return typeof window.DeviceOrientationEvent?.requestPermission === 'function';
+    },
     async enableMotion() {
       if (motionOn || stopped) return false;
       const D = window.DeviceOrientationEvent;
@@ -1554,7 +1584,8 @@ function startReflex(layer) {
       stopped = true;
       if (raf) cancelAnimationFrame(raf);
       raf = 0;
-      document.removeEventListener('mousemove', onMouse);
+      document.removeEventListener('pointermove', onMouse);
+      document.removeEventListener('pointerdown', onMouse);
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('deviceorientation', onTilt);
     },
@@ -1681,6 +1712,11 @@ function mountApp(root, engine = new Engine()) {
     if (!e.detail.reduce && layer) {
       ctx.reflex = startReflex(layer);
       if (motion) ctx.reflex.enableMotion();
+      else if (!ctx.reflex.needsPermission) ctx.enableMotion(); // Android e PC: sensor liga sozinho
+      else {
+        // iPhone: o sensor pede permissão, e ela só pode ser pedida num toque do usuário
+        document.addEventListener('pointerup', () => ctx.enableMotion(), { once: true });
+      }
     }
   });
   ctx.enableMotion = async () => {

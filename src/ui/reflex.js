@@ -1,7 +1,7 @@
 // Reflexo leve: uma única camada de brilho que se desloca com o mouse (PC) ou a inclinação (celular).
 // Só `transform` e `opacity`; no máximo uma escrita por quadro; pausa em segundo plano.
-const RANGE_X = 60; // px de deslocamento máximo
-const RANGE_Y = 80;
+const RANGE_X = 90; // px de deslocamento máximo
+const RANGE_Y = 120;
 const SMOOTH = 0.18; // amortecimento por quadro
 const MIN_DELTA = 0.01; // variação mínima do alvo para valer a pena atualizar
 const EPS = 0.002;
@@ -37,7 +37,7 @@ export function startReflex(layer) {
   const onMouse = (e) => aim((e.clientX / window.innerWidth) * 2 - 1, (e.clientY / window.innerHeight) * 2 - 1);
   const onTilt = (e) => {
     if (e.gamma == null && e.beta == null) return;
-    aim((e.gamma ?? 0) / 45, ((e.beta ?? 45) - 45) / 45);
+    aim((e.gamma ?? 0) / 25, ((e.beta ?? 50) - 50) / 25); // ~25° de inclinação já leva o reflexo ao limite
   };
   const onVisibility = () => {
     if (document.hidden && raf) {
@@ -46,11 +46,16 @@ export function startReflex(layer) {
     }
   };
 
-  document.addEventListener('mousemove', onMouse);
+  // mouse no PC; dedo no celular (qualquer toque ou arraste move o reflexo, mesmo sem sensor de movimento)
+  document.addEventListener('pointermove', onMouse);
+  document.addEventListener('pointerdown', onMouse);
   document.addEventListener('visibilitychange', onVisibility);
 
   return {
     // No iPhone o sensor exige permissão, pedida num toque do usuário. Negada → brilho fixo.
+    get needsPermission() {
+      return typeof window.DeviceOrientationEvent?.requestPermission === 'function';
+    },
     async enableMotion() {
       if (motionOn || stopped) return false;
       const D = window.DeviceOrientationEvent;
@@ -68,7 +73,8 @@ export function startReflex(layer) {
       stopped = true;
       if (raf) cancelAnimationFrame(raf);
       raf = 0;
-      document.removeEventListener('mousemove', onMouse);
+      document.removeEventListener('pointermove', onMouse);
+      document.removeEventListener('pointerdown', onMouse);
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('deviceorientation', onTilt);
     },

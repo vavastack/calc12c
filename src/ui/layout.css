@@ -53,13 +53,17 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
 /* brilho de f e g: realce curto, só com opacidade, na tecla e nos rótulos que acendem */
 .key::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0;
   background: radial-gradient(circle at 50% 38%, var(--flash, #ffffffcc), transparent 72%); }
-.key.flash::after { animation: glow-key .5s ease-out; }
+.key::before { content: ""; position: absolute; inset: -2px; border-radius: 15px; pointer-events: none; opacity: 0;
+  box-shadow: 0 0 14px 3px var(--flash, #ffffffcc); }
+.key.flash::before, .key.flash::after { animation: glow-key .6s ease-out; }
+/* enquanto f ou g está ativo, a tecla fica com um halo suave */
+.calc[data-shift="f"] .key.prefix-f::before, .calc[data-shift="g"] .key.prefix-g::before { opacity: .75; }
 .calc[data-shift="f"] .key .lf { animation: glow-label .55s ease-out; }
 .calc[data-shift="g"] .key .lg { animation: glow-label .55s ease-out; }
 @keyframes glow-key { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes glow-label { 0% { opacity: .2; } 35% { opacity: 1; } 55% { opacity: .55; } 100% { opacity: 1; } }
-[data-reduce="true"] .key::after, [data-reduce="true"] .key .lf, [data-reduce="true"] .key .lg { animation: none !important; }
-@media (prefers-reduced-motion: reduce) { .key.flash::after, .calc .key .lf, .calc .key .lg { animation: none !important; } }
+/* o brilho de f e g é só opacidade (barato): continua no modo "reduzir efeitos"; só o sistema com movimento reduzido o desliga */
+@media (prefers-reduced-motion: reduce) { .key.flash::after, .key.flash::before, .calc .key .lf, .calc .key .lg { animation: none !important; } }
 
 /* reflexo: uma única camada de brilho sobre o teclado (a animação entra na Tarefa 11) */
 .reflex { position: absolute; inset: -30%; pointer-events: none; background: var(--reflex); opacity: .6;

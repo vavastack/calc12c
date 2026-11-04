@@ -54,7 +54,7 @@ test('no máximo uma atualização por quadro (requestAnimationFrame)', async ()
     const count = () => { frames++; requestAnimationFrame(count); };
     requestAnimationFrame(count);
     // 200 eventos de mouse sintéticos num mesmo instante
-    for (let i = 0; i < 200; i++) document.dispatchEvent(new MouseEvent('mousemove', { clientX: i * 2, clientY: 300 + i, bubbles: true }));
+    for (let i = 0; i < 200; i++) document.dispatchEvent(new PointerEvent('pointermove', { clientX: i * 2, clientY: 300 + i, bubbles: true }));
     await new Promise((ok) => setTimeout(ok, 120));
     return { writes, frames };
   });
@@ -158,5 +158,31 @@ test('ao ligar de novo os efeitos, o reflexo volta a reagir', async () => {
   await p.mouse.move(30, 280);
   await p.mouse.move(360, 760, { steps: 6 });
   await p.waitForFunction((a) => document.querySelector('.reflex').style.transform !== a, antes);
+  await app.close();
+});
+
+test('no celular o toque move o reflexo mesmo sem sensor de movimento', async () => {
+  const app = await openApp(browser, server.url, undefined, { hasTouch: true });
+  const p = app.page;
+  await modern(p);
+  const antes = await p.locator('.reflex').evaluate((e) => e.style.transform);
+  await p.locator('button.key[data-id="9"]').tap();
+  await p.waitForTimeout(700);
+  const depois = await p.locator('.reflex').evaluate((e) => e.style.transform);
+  assert.notEqual(antes, depois);
+  await app.close();
+});
+
+test('o sensor de inclinação liga sozinho (ou no primeiro toque, se o sistema exigir permissão) e move o reflexo', async () => {
+  const app = await openApp(browser, server.url);
+  const p = app.page;
+  await modern(p);
+  await p.locator('.brand').click(); // um toque basta para quem precisa de permissão
+  await p.waitForTimeout(150);
+  await p.evaluate(() => window.dispatchEvent(Object.assign(new Event('deviceorientation'), { gamma: 20, beta: 70 })));
+  await p.waitForTimeout(700);
+  const t = await p.locator('.reflex').evaluate((e) => e.style.transform);
+  assert.notEqual(t, '');
+  assert.notEqual(t, 'translate3d(0.00px, 0.00px, 0)');
   await app.close();
 });
