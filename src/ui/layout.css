@@ -20,3 +20,21 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
   .keys { grid-template-columns: repeat(10, 1fr); grid-template-rows: repeat(4, 1fr); }
   .key { grid-column: calc(var(--hc) + 1); grid-row: calc(var(--hr) + 1) / span var(--rs, 1); }
 }
+
+/* ---- visor ---- */
+.display { display: grid; grid-template-rows: auto 1fr auto; gap: 2px; }
+.indicators { display: flex; gap: 10px; font-size: 11px; font-weight: 700; align-items: center; }
+.indicators [data-ind] { opacity: .15; }
+.indicators [data-ind].on { opacity: 1; }
+.fmt-toggle { margin-left: auto; font: inherit; font-size: 11px; border: 1px solid currentColor; background: transparent;
+  color: inherit; border-radius: 8px; padding: 1px 8px; opacity: .7; }
+.digits { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 44px; text-align: right; white-space: nowrap;
+  overflow: hidden; line-height: 1.1; }
+.msg { min-height: 1.2em; font-size: 12px; text-align: right; }
+
+/* ---- destaque f / g ---- */
+.key .lf, .key .lg { transition: opacity .2s; }
+.calc[data-shift="f"] .key .lg { opacity: .2; }
+.calc[data-shift="g"] .key .lf { opacity: .2; }
+.calc[data-shift="f"] .key .lf, .calc[data-shift="g"] .key .lg { opacity: 1; font-weight: 700; }
+.calc[data-shift="f"] .key.prefix-f, .calc[data-shift="g"] .key.prefix-g { outline: 2px solid currentColor; }

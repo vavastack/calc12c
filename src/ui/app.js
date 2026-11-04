@@ -1,5 +1,6 @@
 import { KEYS } from '../engine/keymap.js';
 import { Engine } from '../engine/engine.js';
+import { renderDisplay, bindKeyboard } from './display.js';
 
 const NOTICE_MS = 2200;
 
@@ -57,7 +58,18 @@ export function mountApp(root, engine = new Engine()) {
     timer = setTimeout(() => (notice.hidden = true), NOTICE_MS);
   };
 
-  const ctx = { root, calc, display, keys, notice, engine, showNotice, listeners: [] };
+  const ctx = { root, calc, display, keys, notice, engine, showNotice, listeners: [], vibrate: false };
+  ctx.render = () => {
+    const s = engine.state;
+    renderDisplay(display, s);
+    calc.dataset.shift = s.shift ?? '';
+    ctx.listeners.forEach((fn) => fn(ctx, s));
+  };
+  display.addEventListener('click', (ev) => {
+    if (!ev.target.closest('.fmt-toggle')) return;
+    engine.setLocale(engine.locale === 'br' ? 'us' : 'br');
+    ctx.render();
+  });
   keys.addEventListener('click', (ev) => {
     const b = ev.target.closest('button.key');
     if (!b) return;
@@ -66,11 +78,14 @@ export function mountApp(root, engine = new Engine()) {
       showNotice('Programação e estatística: não disponível nesta versão.');
       return;
     }
+    if (ctx.vibrate && navigator.vibrate) navigator.vibrate(8);
     engine.press(k.id);
-    ctx.listeners.forEach((fn) => fn(ctx));
+    ctx.render();
   });
+  bindKeyboard(engine, ctx.render);
+  ctx.render();
   return ctx;
 }
 
 const root = document.getElementById('app');
-if (root) mountApp(root, new Engine());
+if (root) window.calc12c = mountApp(root, new Engine());
