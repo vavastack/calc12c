@@ -60,8 +60,8 @@ export function mountApp(root, engine = new Engine()) {
   const brand = document.createElement('div');
   brand.className = 'brand';
   brand.setAttribute('aria-label', 'Calc 12c, calculadora financeira RPN');
-  brand.innerHTML = '<span class="name"><b class="title">Calc 12c</b><span class="rpn">RPN</span></span><span class="rule" aria-hidden="true"></span>' +
-    '<span class="badge" aria-hidden="true"><span class="mw"><svg viewBox="0 0 44 28" preserveAspectRatio="xMidYMid meet" focusable="false"><defs><clipPath id="mwc"><circle cx="22" cy="14" r="10.6"/></clipPath><g id="mwl" transform="translate(1.8 0) skewX(-7)" fill="none" stroke-width="2.7" stroke-linejoin="miter" stroke-miterlimit="4"><polyline points="9.4,28 9.4,6.5 15.4,18.5 21.4,6.5 21.4,22"/><polyline points="24.4,6.5 27.7,21.5 30.9,11 34.1,21.5 38.6,0"/></g></defs><circle cx="22" cy="14" r="10.6" class="disc"/><use href="#mwl" class="ink"/><use href="#mwl" class="lit" clip-path="url(#mwc)"/></svg></span><span class="model">12C</span></span>';
+  brand.innerHTML = '<span class="name"><b class="title">Calc 12c</b></span><span class="rule" aria-hidden="true"></span>' +
+    '<span class="badge" aria-hidden="true"><span class="mw"><svg viewBox="0 0 44 28" preserveAspectRatio="xMidYMid meet" focusable="false"><circle cx="22" cy="14" r="11" class="disc"/><g transform="translate(2.6 0) skewX(-11)" fill="none" stroke-width="2.3" stroke-linejoin="miter" stroke-miterlimit="4" class="lit"><polyline points="14,19.4 14,8.6 17.6,15.4 21.2,8.6 21.2,19.4"/><polyline points="22.7,8.6 24.6,19.4 26.7,12.6 28.8,19.4 30.6,8.6"/></g></svg></span><span class="model">RPN</span></span>';
   top.append(brand, display);
   calc.append(top, keys, notice);
   root.append(calc);

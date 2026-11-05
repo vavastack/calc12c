@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { Engine } from '../../src/engine/engine.js';
 import { Stack } from '../../src/engine/stack.js';
 import { applyOp } from '../../src/engine/math.js';
 import { CalcError } from '../../src/engine/errors.js';
@@ -110,4 +111,13 @@ test('erro não altera a pilha', () => {
 
 test('operação desconhecida lança erro de programação', () => {
   assert.throws(() => applyOp(new Stack(), 'xyz'), /desconhecida/);
+});
+
+test('g 3 (n!): 5! = 120, 0! = 1, 69! cabe, e não inteiro/negativo/70 dá Erro 0', () => {
+  const seq = (s) => { const e = new Engine(); for (const t of s.split(' ')) { if (/^\d+(\.\d+)?$/.test(t)) for (const c of t) e.press(c === '.' ? 'dot' : c); else e.press(t); } return e.state.display; };
+  assert.equal(seq('5 g 3'), '120,00');
+  assert.equal(seq('0 g 3'), '1,00');
+  assert.match(seq('69 g 3'), /e|\d{3}/i);
+  for (const bad of ['3.5 g 3', '70 g 3']) assert.match(seq(bad), /Error 0/);
+  assert.match(seq('3 chs g 3'), /Error 0/);
 });

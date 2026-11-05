@@ -51,6 +51,13 @@ const UNARY = {
   },
   frac: (x) => x - Math.trunc(x),
   intg: (x) => Math.trunc(x),
+  // n!: inteiro de 0 a 69 (acima disso estoura 10^100); senão Erro 0
+  fact: (x) => {
+    if (!Number.isInteger(x) || x < 0 || x > 69) throw new CalcError(0);
+    let r = 1;
+    for (let k = 2; k <= x; k++) r *= k;
+    return r;
+  },
 };
 
 export function applyOp(stack, op) {
