@@ -12,11 +12,15 @@ Complementa o `HANDOFF.md`: aqui ficam o caminho percorrido, as decisões do Wan
 7. **V1.1.1:** movimento da tecla ao apertar e soltar, som discreto em dois momentos e vibração. Escolha dele: o som **mecânico** é o melhor, os dois ficaram bons, só mais baixos (já ajustado). Bug visual do contorno do g corrigido (agora só na face). Vibração: no S25 só funciona fora do modo silencioso.
 8. **Documentação e virada para a V2:** `CLAUDE.md` e `docs/HANDOFF.md` publicados no GitHub; a V2 continua em uma conversa nova.
 
+9. **V2 (05/11/2026):** fluxo de caixa, AMORT, depreciação, títulos, RND e verso liberado, tudo conferido por ele na HP real. Correção extra do `bisect` para taxas negativas. A V2 foi fechada.
+
 ## 2. Decisões do Wanderson (valem daqui para frente)
 - Seguir o nosso layout, não o do Touch RPN; copiar só as linhas de ligação das fórmulas.
 - Toque na ON = configurações; segurar = verso. ON sempre escrito "ON" por padrão.
 - Som padrão desligado; opções Suave e Mecânico (ele prefere o mecânico).
 - 12C completa é a V2. Depois: V1.2, perfis e outras calculadoras (V3).
+- ALG (modo algébrico) fica para a V3, como mais uma opção de cálculo; a V2 é só RPN.
+- Quer incluir a aprendizagem de programação da calculadora quando o app estiver estável (V2.1).
 - Responder sempre em português; autorização antes de instalar programas ou mexer no PC; chaves de API ele digita; não aceitar compartilhamento de dados.
 - Explicar direto, com o próximo passo prático; enviar o HTML a cada versão.
 
@@ -33,5 +37,5 @@ Complementa o `HANDOFF.md`: aqui ficam o caminho percorrido, as decisões do Wan
 - INT 30 dias, 7%, 450: 2,63 (360) / 452,63; 2,59 (365) / 452,59.
 - PV, n, i, FV: conferidos pelo Wanderson na HP real.
 
-## 5. Próximos passos (V2)
-Ver o plano em `docs/HANDOFF.md`. Primeiro bloco: CFo, CFj, Nj, NPV e IRR, com números de teste para ele comparar na HP.
+## 5. Próximos passos
+V2 fechada. Ver `docs/HANDOFF.md`: V2.1 (aprendizagem de programação), V1.2 e V3 (perfis e ALG).
