@@ -70,7 +70,7 @@ test('cabeçalho Calc 12C, dica da gaveta e teclas f e g coloridas', async () =>
   const bg = (id) => key(p, id).evaluate((e) => getComputedStyle(e).backgroundImage);
   assert.notEqual(await bg('f'), await bg('g'));
   assert.notEqual(await bg('f'), await bg('n'));
-  assert.deepEqual(await p.evaluate(() => [...document.querySelectorAll('.top, .keys')].map((e) => getComputedStyle(e).zIndex)), ['1', '1']);
+  assert.deepEqual(await p.evaluate(() => [...document.querySelectorAll('.top, .keys')].map((e) => getComputedStyle(e).zIndex)), ['auto', '1']); // o visor (z 4) e a placa (z 1) ficam por cima do vidro do corpo
   await app.close();
 });
 
