@@ -16,6 +16,8 @@ Complementa o `HANDOFF.md`: aqui ficam o caminho percorrido, as decisões do Wan
 
 10. **V2.1 e V1.2 (05/11/2026):** guia de programação no verso (5 lições executáveis) e, em seguida, memórias em arquivo, editor de cores e orientação. Pedido dele: fazer os dois em sequência depois de fechar a V2.
 
+11. **Plano da V3 (05/11/2026):** ele quer o app completo, com todos os modelos (10C, 11C, 15C, 16C, Black-Scholes e ALG), com ênfase agora em finanças. Integração com o Pista adiada. Manual próprio e guia do código (V3.5) ao final da V3, seguidos de uma conversa de estudos. A V3.0 será feita em uma conversa nova, ligada ao projeto pelo `docs/PROMPT-V3.0.md`.
+
 ## 2. Decisões do Wanderson (valem daqui para frente)
 - Seguir o nosso layout, não o do Touch RPN; copiar só as linhas de ligação das fórmulas.
 - Toque na ON = configurações; segurar = verso. ON sempre escrito "ON" por padrão.
@@ -23,6 +25,7 @@ Complementa o `HANDOFF.md`: aqui ficam o caminho percorrido, as decisões do Wan
 - 12C completa é a V2. Depois: V1.2, perfis e outras calculadoras (V3).
 - ALG (modo algébrico) fica para a V3, como mais uma opção de cálculo; a V2 é só RPN.
 - Quer incluir a aprendizagem de programação da calculadora quando o app estiver estável (V2.1).
+- App completo: todos os modelos da família, com ênfase no que importa agora (finanças). Integração com o Pista só mais à frente (link de acesso ou motor adaptado, a definir).
 - Responder sempre em português; autorização antes de instalar programas ou mexer no PC; chaves de API ele digita; não aceitar compartilhamento de dados.
 - Explicar direto, com o próximo passo prático; enviar o HTML a cada versão.
 
