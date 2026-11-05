@@ -60,7 +60,7 @@ export function mountApp(root, engine = new Engine()) {
   const brand = document.createElement('div');
   brand.className = 'brand';
   brand.setAttribute('aria-label', 'Calc 12c, calculadora financeira RPN');
-  brand.innerHTML = '<span class="sub">RPN</span><span class="rule" aria-hidden="true"></span>' +
+  brand.innerHTML = '<span class="name"><b class="title">Calc 12c</b><span class="rpn">RPN</span></span><span class="rule" aria-hidden="true"></span>' +
     '<span class="badge" aria-hidden="true"><span class="mw"><i>MW</i></span><span class="model">12C</span></span>';
   top.append(brand, display);
   calc.append(top, keys, notice);

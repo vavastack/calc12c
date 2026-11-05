@@ -64,9 +64,10 @@ test('o brilho usa só opacidade (sem transform) e continua com "reduzir efeitos
 test('cabeçalho Calc 12C, dica da gaveta e teclas f e g coloridas', async () => {
   const app = await openApp(browser, server.url);
   const p = app.page;
-  assert.equal(await p.locator('.brand .sub').innerText(), 'RPN'); // RPN à esquerda
+  assert.equal(await p.locator('.brand .title').innerText(), 'Calc 12c'); // nome à esquerda
+  assert.equal(await p.locator('.brand .rpn').innerText(), 'RPN'); // RPN discreto embaixo
   assert.equal((await p.locator('.brand .badge').innerText()).replace(/\s+/g, ''), 'MW12C'); // emblema à direita
-  const [xr, xb] = await p.evaluate(() => [document.querySelector('.brand .sub').getBoundingClientRect().x, document.querySelector('.brand .badge').getBoundingClientRect().x]);
+  const [xr, xb] = await p.evaluate(() => [document.querySelector('.brand .name').getBoundingClientRect().x, document.querySelector('.brand .badge').getBoundingClientRect().x]);
   assert.ok(xr < xb);
   const hint = await p.locator('.drawer-handle').evaluate((e) => getComputedStyle(e, '::before').content);
   assert.match(hint, /Puxe para ver a fita e a memória/);
