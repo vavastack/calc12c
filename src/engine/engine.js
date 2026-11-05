@@ -3,6 +3,7 @@ import { Stack } from './stack.js';
 import { Registers } from './registers.js';
 import { CashFlows } from './cashflow.js';
 import { amortize } from './amort.js';
+import { sl, soyd, db } from './depreciation.js';
 import { applyOp } from './math.js';
 import { solve, simpleInterest } from './tvm.js';
 import { CalcError } from './errors.js';
@@ -314,6 +315,16 @@ export class Engine {
         s.lastX = count;
         s.loadXYZ(r.interest, r.principal, count);
         return this._record('AMORT');
+      }
+      case 'pctT': // SL
+      case 'dpct': // SOYD
+      case 'pct': { // DB — X = ano; devolve depreciação (X) e valor depreciável restante (Y)
+        s.commit();
+        const year = s.x;
+        const r = { pctT: sl, dpct: soyd, pct: db }[id](this.fin, year);
+        s.lastX = year;
+        s.loadXYZ(r.dep, r.remaining, s.z);
+        return this._record({ pctT: 'SL', dpct: 'SOYD', pct: 'DB' }[id]);
       }
       case 'pv': // NPV
       case 'fv': { // IRR
