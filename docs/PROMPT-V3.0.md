@@ -12,12 +12,16 @@ Transformar a Calc 12c em um app com **perfis de calculadora** (hoje há só a 1
 
 ## Escopo da V3.0
 1. **Perfis.** Definir uma interface de perfil (por exemplo: id, nome, mapa de teclas, fábrica do motor, dados do verso, regras de layout). O perfil `12c` deve se comportar exatamente como hoje (nenhum resultado muda). Incluir: seletor de perfil nas Configurações, estado salvo por perfil (localStorage separado), perfil gravado nos arquivos de memórias (versão do arquivo sobe, arquivos antigos continuam abrindo como `12c`), verso por perfil. Temas e cores continuam globais.
-2. **Modo ALG na 12C.** Seguir a 12C Platinum: indicador RPN/ALG no visor, ENTER funcionando como "=", parênteses, funções financeiras iguais nos dois modos. Pesquisar o Apêndice B do manual da 12C Platinum antes de implementar (https://www.manualslib.com/manual/257000/Hp-12c.html) e usar seus exemplos como casos de teste. RPN continua sendo o padrão.
+2. **Modo ALG na 12C.** Seguir a 12C Platinum à risca, conforme o manual (decisão do Wanderson, 05/11/2026), sem trocar o comportamento por precedência matemática: indicador RPN/ALG no visor, ENTER funcionando como "=", parênteses, funções financeiras iguais nos dois modos. Pesquisar o Apêndice B do manual da 12C Platinum antes de implementar (https://www.manualslib.com/manual/257000/Hp-12c.html) e usar seus exemplos como casos de teste. RPN continua sendo o padrão.
 3. **Não quebrar nada.** Todos os testes atuais continuam passando, e os números de referência já conferidos na HP real não podem mudar.
 
-## Perguntas a fazer ao Wanderson no início (no máximo estas)
-1. O ALG deve seguir a Platinum à risca (cálculo em cadeia, da esquerda para a direita, segundo relatos de usuários; confirmar no manual) ou usar precedência matemática real (× e ÷ antes de + e −)?
-2. A HP 12C dele é a clássica ou a Platinum? Isso define se ele consegue conferir o ALG na máquina; se for a clássica, o critério de pronto do ALG são os exemplos do manual da Platinum.
+## Diferenciação entre modelos (já decidida)
+- Cada perfil tem mapa de teclas e legendas próprios; o nome do modelo aparece no topo da calculadora e troca conforme o perfil.
+- O indicador RPN/ALG só existe no perfil 12C. 10C, 11C, 15C e 16C são só RPN e não mostram indicador.
+- Cada perfil segue o manual oficial do modelo. Usar "inspirada", sem logotipos nem marcas da HP.
+
+## Pergunta a fazer ao Wanderson no início (só esta)
+A HP 12C dele é a clássica ou a Platinum? Se for a clássica, o critério de pronto do ALG são os exemplos do manual da Platinum, pois ele não consegue conferir o ALG na máquina.
 
 ## Critério de pronto
 - Testes novos para perfis (troca de perfil, estado separado, arquivo de memórias antigo abre como 12c) e para o ALG (exemplos do manual, parênteses, encadeamento, mistura com teclas financeiras e fita).
@@ -33,4 +37,4 @@ Transformar a Calc 12c em um app com **perfis de calculadora** (hoje há só a 1
 - Commits terminam com as duas linhas de atribuição da sessão.
 
 ## Depois da V3.0
-V3.1 Black-Scholes (perfil com formulário). Em seguida, no futuro próximo: V3.2 HP-10C e 11C, V3.3 HP-15C, V3.4 HP-16C, V3.5 manual próprio e guia do código, e só depois a integração com o Pista Financeira (a decidir). Ver `docs/HANDOFF.md`.
+Nova ordem: V3.1 HP-16C (independente das demais), V3.2 Black-Scholes (perfil com formulário), V3.3 HP-10C e 11C, V3.4 HP-15C, V3.5 manual próprio e guia do código, e só depois a integração com o Pista Financeira (a decidir). Ver `docs/HANDOFF.md`.

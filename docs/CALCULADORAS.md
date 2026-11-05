@@ -8,30 +8,30 @@ Cinco modelos quase idênticos por fora, cada um com um público: HP-10C (cient�
 ## HP-12C Platinum e o modo ALG (V3.0)
 - A Platinum tem 400 linhas de programa (a 12C clássica tem 99) e permite alternar entre RPN e ALG (algébrico).
 - Em ALG, a tecla ENTER funciona como "=". Há parênteses, acessados com g + STO e g + RCL (a confirmar no manual, Apêndice B).
-- Relatos de usuários dizem que o ALG da Platinum calcula em cadeia, da esquerda para a direita, sem hierarquia de operações (1 + 2 × 3 daria 9). **A confirmar no manual**; é uma decisão de projeto: seguir a Platinum à risca ou usar a precedência matemática real.
+- Relatos de usuários dizem que o ALG da Platinum calcula em cadeia, da esquerda para a direita, sem hierarquia de operações (1 + 2 × 3 daria 9). **Decidido:** seguir a Platinum à risca, conforme o manual (Apêndice B), inclusive nos casos em que difere da precedência matemática.
 - Cálculos financeiros (n, i, PV, PMT, FV, NPV, IRR etc.) seguem as mesmas teclas nos dois modos.
 
-## Black-Scholes (V3.1) — não é uma HP
+## Black-Scholes (V3.2) — não é uma HP
 Modelo de precificação de opções europeias (Black–Scholes–Merton). Entradas: preço do ativo (S), preço de exercício (K), prazo (T), taxa livre de risco (r), volatilidade (σ) e, opcionalmente, dividendos (q). Saídas: prêmio da call e da put, mais as "gregas" (delta, gama, vega, teta, rô). Não tem teclado RPN: seria um perfil com formulário, no mesmo app. Pode incluir paridade put-call e volatilidade implícita como extras.
 
-## HP-10C (V3.2)
+## HP-10C (V3.3)
 - Científica básica programável: 79 linhas de programa e até 10 registradores, que dividem a mesma memória (a memória começa com 9 linhas e os registradores do topo viram linhas de programa conforme o programa cresce).
 - Funções: trigonometria, logaritmos, estatística básica (Σ+), conversões polar/retangular, hora/graus.
 - Programação limitada: só desvios condicionais x≤y e x=0, sem subrotinas por rótulo avançadas.
 - No app: base comum com a 11C; quase tudo da 10C cabe na 11C.
 
-## HP-11C (V3.2)
+## HP-11C (V3.3)
 - Científica avançada para a época: 63 linhas permanentes e até 203 linhas; 20 registradores (+ registrador I) em memória compartilhada (cada registrador vale 7 linhas).
 - Programação de verdade: rótulos (A–E e 0–9), subrotinas, testes condicionais, laços com ISG/DSE, endereçamento indireto (registrador I).
 - Funções a mais que a 10C: hiperbólicas, fatorial/gama, gerador de números aleatórios, tecla de apagar dígito (backspace).
 - Não tem números complexos, matrizes, SOLVE nem integração (isso é da 15C).
 
-## HP-15C (V3.3, a maior)
+## HP-15C (V3.4, a maior)
 - Até 448 linhas e até 66 registradores numerados, com programação avançada.
 - Quatro recursos que a 11C não tem: **números complexos** (pilha complexa, em que cada nível guarda parte real e imaginária), **matrizes** (até cinco, A–E, com 64 elementos no total: inversa, transposta, determinante, resolver AX = B), **SOLVE** (acha raízes de uma equação) e **integração numérica**.
 - Por isso é a mais pesada de implementar. Como estende a 11C, deve vir depois dela, e pode ser dividida em duas partes: complexos + SOLVE + integração, e depois matrizes.
 
-## HP-16C (V3.4)
+## HP-16C (V3.1)
 - A "Computer Scientist": calculadora de programador, feita para depurar programas.
 - Bases hexadecimal, decimal, octal e binária, com conversão entre elas; tamanho de palavra configurável de 1 a 64 bits; aritmética inteira sem sinal, em complemento de 1 ou de 2.
 - Operações lógicas (AND, OR, XOR, NOT), deslocamentos e rotações de bits, máscaras; o display "rola" (janelas) para mostrar números longos.

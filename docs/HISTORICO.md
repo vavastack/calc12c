@@ -18,6 +18,8 @@ Complementa o `HANDOFF.md`: aqui ficam o caminho percorrido, as decisões do Wan
 
 11. **Plano da V3 (05/11/2026):** ele quer o app completo, com todos os modelos (10C, 11C, 15C, 16C, Black-Scholes e ALG), com ênfase agora em finanças. Integração com o Pista adiada. Manual próprio e guia do código (V3.5) ao final da V3, seguidos de uma conversa de estudos. A V3.0 será feita em uma conversa nova, ligada ao projeto pelo `docs/PROMPT-V3.0.md`.
 
+12. **Ordem e diferenciação (05/11/2026, 10:34):** a 16C sobe para V3.1; Black-Scholes V3.2; 10C/11C V3.3; 15C V3.4. Nome do modelo no topo; indicador RPN/ALG só na 12C; todos os perfis fiéis ao manual oficial, inclusive o ALG da Platinum.
+
 ## 2. Decisões do Wanderson (valem daqui para frente)
 - Seguir o nosso layout, não o do Touch RPN; copiar só as linhas de ligação das fórmulas.
 - Toque na ON = configurações; segurar = verso. ON sempre escrito "ON" por padrão.
