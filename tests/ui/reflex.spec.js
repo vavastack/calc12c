@@ -179,7 +179,8 @@ test('a placa metálica também recebe o brilho, na mesma posição do teclado',
   const app = await openApp(browser, server.url);
   const p = app.page;
   await modern(p);
-  assert.equal(await p.locator('.brand .sheen').count(), 1);
+  assert.equal(await p.locator('.sheen').count(), 1);
+  assert.equal(await p.locator('.calc > .reflex-clip').count(), 1); // uma camada só, cobrindo todo o vidro
   await p.mouse.move(40, 600);
   await p.mouse.move(350, 300);
   await p.waitForTimeout(700);

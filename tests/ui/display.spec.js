@@ -139,7 +139,7 @@ test('duplo toque não dá zoom (viewport travado e touch-action: manipulation)'
 
 test('vibração leve só quando ligada', async () => {
   const app = await openApp(browser, server.url);
-  await app.page.evaluate(() => { window.__vib = 0; navigator.vibrate = () => { window.__vib++; return true; }; });
+  await app.page.evaluate(() => { window.calc12c.vibrate = false; window.__vib = 0; navigator.vibrate = () => { window.__vib++; return true; }; });
   await tap(app.page, '5');
   assert.equal(await app.page.evaluate(() => window.__vib), 0);
   await app.page.evaluate(() => { window.calc12c.vibrate = true; });

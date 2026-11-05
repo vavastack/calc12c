@@ -135,7 +135,7 @@ export function mountApp(root, engine = new Engine()) {
   document.addEventListener('calc12c:effects', (e) => {
     ctx.reflex?.stop();
     ctx.reflex = null;
-    const layer = keys.querySelector('.reflex');
+    const layer = calc.querySelector('.reflex');
     if (!e.detail.reduce && layer) {
       ctx.reflex = startReflex(layer);
       if (motion) ctx.reflex.enableMotion();

@@ -25,6 +25,30 @@
   --reflex: linear-gradient(115deg, transparent 28%, #fff6e214 38%, #fff6e233 46%, #ffffff40 50%, #fff6e233 54%, #fff6e214 62%, transparent 72%);
 }
 
+/* Platinum: o mesmo estilo do Gold, em prata e monocromático */
+[data-theme="platinum"] {
+  --plate-a:#8f959d; --plate-b:#e6e9ee; --plate-c:#aeb4bc; --plate-edge:#555a62; --plate-ink:#1f2227; --engrave-hi:rgba(255,255,255,.8); --engrave-lo:rgba(10,12,16,.55);
+  --bg: #0c0d0f;
+  --body: #0c0d0f; --body-solid: #0c0d0f;
+  --edge: #8a9098; --edge-w: 2px;
+  --brand: #cfd3d9; --sub: #8c9097; --hint: #8c9097;
+  --key-flat: #25272a;
+  --key-bg: linear-gradient(#303236, #1b1c1f); --key-border: #40434a;
+  --key-shadow: 0 2px 0 #050505, inset 0 1px 0 #ffffff14;
+  --key-text: #f1f2f4; --gold: #e3e6ea; --blue: #93a6b8;
+  --keyf-bg: linear-gradient(#f2f4f7, #aeb4bc); --keyf-border: #d7dbe1; --keyf-text: #15171a;
+  --keyf-shadow: 0 2px 0 #4a4f57, inset 0 1px 0 #ffffff99; --flash-f: #ffffffe6;
+  --keyg-bg: linear-gradient(#707a86, #3d444d); --keyg-border: #8d97a3; --keyg-text: #ffffff;
+  --keyg-shadow: 0 2px 0 #1b1f24, inset 0 1px 0 #ffffff59; --flash-g: #d3dce6e6;
+  --display-bg: #050607; --display-solid: #050607; --display-border: #5d626a;
+  --display-shadow: inset 0 0 18px #000c; --display-text: #e9f2f8;
+  --display-glow: 0 0 12px #cfe4f28c;
+  --ind-on: #e3e6ea; --ind-off: #55575c; --handle: #3b3c40;
+  --glass: none;
+  --glow: none;
+  --reflex: linear-gradient(115deg, transparent 28%, #ffffff14 38%, #ffffff33 46%, #ffffff40 50%, #ffffff33 54%, #ffffff14 62%, transparent 72%);
+}
+
 /* Moderno escuro: vidro translúcido em grafite, halos dourado e azul nos cantos, reflexo suave */
 [data-theme="moderno-escuro"] {
   --plate-a:#a8895a; --plate-b:#dcc08a; --plate-c:#b99a66; --plate-edge:#6d5733; --plate-ink:#33260c; --engrave-hi:rgba(255,238,200,.65); --engrave-lo:rgba(50,34,6,.5);
@@ -52,6 +76,7 @@
 
 /* Moderno claro: vidro claro em champanhe e marfim, com as mesmas cores de f e g */
 [data-theme="moderno-claro"] {
+  --display-scan:#00000009; --display-vignette:#0000001a; --display-gloss:#ffffff33; --display-tint:transparent; --display-bezel:#d2c6aa;
   --plate-a:#d9b56a; --plate-b:#f3dba0; --plate-c:#dfbf79; --plate-edge:#a88642; --plate-ink:#4a3410; --engrave-hi:rgba(255,248,222,.85); --engrave-lo:rgba(90,60,10,.4);
   --bg: #efe5d2;
   --body: linear-gradient(160deg, #f6efe2 0%, #eadfca 100%); --body-solid: #f1e8d6;

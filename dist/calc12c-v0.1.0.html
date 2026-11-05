@@ -36,6 +36,30 @@
   --reflex: linear-gradient(115deg, transparent 28%, #fff6e214 38%, #fff6e233 46%, #ffffff40 50%, #fff6e233 54%, #fff6e214 62%, transparent 72%);
 }
 
+/* Platinum: o mesmo estilo do Gold, em prata e monocromático */
+[data-theme="platinum"] {
+  --plate-a:#8f959d; --plate-b:#e6e9ee; --plate-c:#aeb4bc; --plate-edge:#555a62; --plate-ink:#1f2227; --engrave-hi:rgba(255,255,255,.8); --engrave-lo:rgba(10,12,16,.55);
+  --bg: #0c0d0f;
+  --body: #0c0d0f; --body-solid: #0c0d0f;
+  --edge: #8a9098; --edge-w: 2px;
+  --brand: #cfd3d9; --sub: #8c9097; --hint: #8c9097;
+  --key-flat: #25272a;
+  --key-bg: linear-gradient(#303236, #1b1c1f); --key-border: #40434a;
+  --key-shadow: 0 2px 0 #050505, inset 0 1px 0 #ffffff14;
+  --key-text: #f1f2f4; --gold: #e3e6ea; --blue: #93a6b8;
+  --keyf-bg: linear-gradient(#f2f4f7, #aeb4bc); --keyf-border: #d7dbe1; --keyf-text: #15171a;
+  --keyf-shadow: 0 2px 0 #4a4f57, inset 0 1px 0 #ffffff99; --flash-f: #ffffffe6;
+  --keyg-bg: linear-gradient(#707a86, #3d444d); --keyg-border: #8d97a3; --keyg-text: #ffffff;
+  --keyg-shadow: 0 2px 0 #1b1f24, inset 0 1px 0 #ffffff59; --flash-g: #d3dce6e6;
+  --display-bg: #050607; --display-solid: #050607; --display-border: #5d626a;
+  --display-shadow: inset 0 0 18px #000c; --display-text: #e9f2f8;
+  --display-glow: 0 0 12px #cfe4f28c;
+  --ind-on: #e3e6ea; --ind-off: #55575c; --handle: #3b3c40;
+  --glass: none;
+  --glow: none;
+  --reflex: linear-gradient(115deg, transparent 28%, #ffffff14 38%, #ffffff33 46%, #ffffff40 50%, #ffffff33 54%, #ffffff14 62%, transparent 72%);
+}
+
 /* Moderno escuro: vidro translúcido em grafite, halos dourado e azul nos cantos, reflexo suave */
 [data-theme="moderno-escuro"] {
   --plate-a:#a8895a; --plate-b:#dcc08a; --plate-c:#b99a66; --plate-edge:#6d5733; --plate-ink:#33260c; --engrave-hi:rgba(255,238,200,.65); --engrave-lo:rgba(50,34,6,.5);
@@ -63,6 +87,7 @@
 
 /* Moderno claro: vidro claro em champanhe e marfim, com as mesmas cores de f e g */
 [data-theme="moderno-claro"] {
+  --display-scan:#00000009; --display-vignette:#0000001a; --display-gloss:#ffffff33; --display-tint:transparent; --display-bezel:#d2c6aa;
   --plate-a:#d9b56a; --plate-b:#f3dba0; --plate-c:#dfbf79; --plate-edge:#a88642; --plate-ink:#4a3410; --engrave-hi:rgba(255,248,222,.85); --engrave-lo:rgba(90,60,10,.4);
   --bg: #efe5d2;
   --body: linear-gradient(160deg, #f6efe2 0%, #eadfca 100%); --body-solid: #f1e8d6;
@@ -121,10 +146,6 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
   /* divisória fixa entre o metal e o vidro: fio escuro + fio de luz */
   border-bottom: 1px solid var(--plate-edge);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 1px 0 var(--engrave-hi), 0 3px 6px rgba(0,0,0,.28); }
-.reflex-clip.plate { z-index: 0; -webkit-mask-image: none; mask-image: none; border-radius: 0; }
-.reflex-clip .sheen { inset: -220px -70%; mix-blend-mode: screen; }
-.reflex-clip .sheen::before { background: linear-gradient(115deg, transparent 28%, #ffffff33 38%, #ffffff80 46%, #fffbe8e6 50%, #ffffff80 54%, #ffffff33 62%, transparent 72%); }
-.brand > :not(.reflex-clip) { position: relative; z-index: 1; }
 .brand .name { font-size: 24px; font-weight: 700; letter-spacing: .01em; color: var(--plate-ink); white-space: nowrap;
   text-shadow: 0 1px 0 var(--engrave-hi), 0 -1px 0 var(--engrave-lo); }
 .brand .name i { font-style: italic; font-weight: 800; }
@@ -134,16 +155,29 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
   text-shadow: 0 1px 0 var(--engrave-hi), 0 -1px 0 var(--engrave-lo); }
 
 /* ---- visor ---- */
-.display { min-height: 88px; background: var(--display-bg); color: var(--display-text); border-radius: 18px; padding: 8px 16px;
-  border: 1px solid var(--display-border); box-shadow: var(--display-shadow);
+.display { position: relative; isolation: isolate; min-height: 88px; color: var(--display-text); border-radius: 14px; padding: 8px 16px;
+  background: var(--display-bg);
+  border: 1px solid var(--display-border);
+  /* moldura escura em volta e sombra por dentro, como um vidro afundado no corpo */
+  box-shadow: var(--display-shadow), inset 0 10px 24px #000a, 0 0 0 3px var(--display-bezel, #000), 0 0 0 4px #ffffff14;
   display: grid; grid-template-rows: auto 1fr auto; gap: 2px; -webkit-backdrop-filter: var(--glass); backdrop-filter: var(--glass); }
+/* linhas finas de varredura + vinheta nas bordas */
+.display::before { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: -1;
+  background: repeating-linear-gradient(0deg, var(--display-scan, #ffffff0b) 0 1px, transparent 1px 3px),
+    radial-gradient(130% 150% at 50% 0%, var(--display-tint, #7aa4c026) 0%, transparent 62%),
+    radial-gradient(120% 140% at 50% 50%, transparent 55%, var(--display-vignette, #0000008c) 100%); }
+/* brilho do vidro: faixa clara suave no alto da tela */
+.display::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(172deg, var(--display-gloss, #ffffff1c) 0%, #ffffff08 26%, transparent 44%); }
 .indicators { display: flex; gap: 10px; font-size: 11px; font-weight: 700; align-items: center; }
 .indicators [data-ind] { color: var(--ind-off); }
 .indicators [data-ind].on { color: var(--ind-on); }
 .fmt-toggle { margin-left: auto; font: inherit; font-size: 11px; border: 1px solid currentColor; background: transparent;
   color: inherit; border-radius: 8px; padding: 1px 8px; opacity: .7; }
 .digits { font-family: "Share Tech Mono", ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 1px; font-size: 44px; text-align: right; white-space: nowrap;
-  overflow: hidden; line-height: 1.1; text-shadow: var(--display-glow); }
+  overflow: hidden; line-height: 1.1; text-shadow: var(--display-glow);
+  /* folga em volta para o brilho do número não ser cortado em retângulo */
+  padding: 14px 18px; margin: -14px -18px; }
 .msg { min-height: 1.2em; font-size: 12px; text-align: right; }
 
 /* ---- teclado ---- */
@@ -186,12 +220,12 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
 /* o brilho de f e g é só opacidade (barato): continua no modo "reduzir efeitos"; só o sistema com movimento reduzido o desliga */
 @media (prefers-reduced-motion: reduce) { .key.touch::after, .key.flash::after, .key.flash::before, .calc .key .lf, .calc .key .lg { animation: none !important; } }
 
-/* recorte do reflexo: as bordas esmaecem, sem corte seco onde o teclado termina */
-.reflex-clip { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 2;
-  border-radius: 24px;
-  -webkit-mask-image: linear-gradient(180deg, transparent, #000 56px, #000 calc(100% - 56px), transparent), linear-gradient(90deg, transparent, #000 44px, #000 calc(100% - 44px), transparent);
-  mask-image: linear-gradient(180deg, transparent, #000 56px, #000 calc(100% - 56px), transparent), linear-gradient(90deg, transparent, #000 44px, #000 calc(100% - 44px), transparent);
-  -webkit-mask-composite: source-in; mask-composite: intersect; }
+/* o reflexo cobre todo o vidro (placa, visor e teclado); a .sheen reforça só a placa, na mesma direção */
+.reflex-clip { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 3; }
+.sheen-clip { position: absolute; inset: 0; overflow: hidden;
+  -webkit-mask-image: linear-gradient(180deg, #000 var(--plate-h, 60px), transparent var(--plate-h, 60px));
+  mask-image: linear-gradient(180deg, #000 var(--plate-h, 60px), transparent var(--plate-h, 60px)); }
+.reflex-clip .sheen::before { background: linear-gradient(115deg, transparent 28%, #ffffff33 38%, #ffffff80 46%, #fffbe8e6 50%, #ffffff80 54%, #ffffff33 62%, transparent 72%); }
 /* reflexo: uma única camada de brilho sobre o teclado (a animação entra na Tarefa 11) */
 .reflex, .sheen { position: absolute; inset: -220px -70%; pointer-events: none; opacity: .7;
   transform: translate3d(0, 0, 0); will-change: transform, opacity; }
@@ -2008,7 +2042,8 @@ return { mountDrawer };
 const __m_settings = (() => {
 // Temas e configurações. Só variáveis de cor mudam; o teclado e o motor nunca.
 const KEY = 'calc12c.settings';
-const THEMES = ['retro', 'moderno'];
+const THEMES = ['retro', 'platinum', 'moderno']; // 'retro' = Gold (padrão), 'platinum' = prata, 'moderno' = Retro (vidro)
+const VERSION = 2; // v2: a vibração ao tocar passou a vir ligada
 const MODES = ['auto', 'escuro', 'claro'];
 
 const lowEnd = () => (navigator.hardwareConcurrency ?? 8) <= 2 || (navigator.deviceMemory ?? 8) <= 2 ||
@@ -2016,7 +2051,7 @@ const lowEnd = () => (navigator.hardwareConcurrency ?? 8) <= 2 || (navigator.dev
 
 function defaultSettings() {
   // reduce: null = automático (liga sozinho em aparelhos simples); true/false = escolha do usuário
-  return { theme: 'retro', mode: 'auto', reduce: null, vibrate: false };
+  return { v: VERSION, theme: 'retro', mode: 'auto', reduce: null, vibrate: true };
 }
 
 function loadSettings() {
@@ -2025,10 +2060,12 @@ function loadSettings() {
     const o = JSON.parse(window.localStorage.getItem(KEY) ?? 'null');
     if (!o || typeof o !== 'object') return d;
     return {
+      v: VERSION,
       theme: THEMES.includes(o.theme) ? o.theme : d.theme,
       mode: MODES.includes(o.mode) ? o.mode : d.mode,
       reduce: typeof o.reduce === 'boolean' ? o.reduce : null,
-      vibrate: o.vibrate === true,
+      // quem salvou antes da versão 2 passa a ter a vibração ligada (dá para desligar nas configurações)
+      vibrate: (o.v ?? 1) < VERSION ? true : o.vibrate === true,
     };
   } catch {
     return d; // ausente, corrompido ou armazenamento bloqueado
@@ -2048,38 +2085,27 @@ const effectiveReduce = (s) => (s.reduce === null ? lowEnd() : s.reduce);
 let last = { theme: 'retro', mode: 'auto', reduce: false };
 let mq;
 
+// Uma única camada de brilho cobre todo o vidro (placa, visor e teclado); a .sheen reforça só a placa metálica
 function ensureReflexLayer(reduce) {
-  const keys = document.querySelector('.keys');
-  if (!keys) return;
-  const el = keys.querySelector('.reflex');
-  const brand = document.querySelector('.brand');
-  if (reduce) brand?.querySelector('.reflex-clip')?.remove();
-  else if (brand && !brand.querySelector('.reflex-clip')) {
-    // a placa metálica recebe o mesmo brilho (a camada .sheen acompanha a .reflex)
-    const c = document.createElement('div');
-    c.className = 'reflex-clip plate';
-    c.setAttribute('aria-hidden', 'true');
-    const sh = document.createElement('div');
-    sh.className = 'sheen';
-    c.append(sh);
-    brand.prepend(c);
+  const calc = document.querySelector('.calc');
+  if (!calc) return;
+  const clip = calc.querySelector(':scope > .reflex-clip');
+  if (reduce) {
+    clip?.remove();
+    return;
   }
-  if (reduce && el) (el.closest('.reflex-clip') ?? el).remove();
-  if (!reduce && !el) {
-    const clip = document.createElement('div');
-    clip.className = 'reflex-clip';
-    clip.setAttribute('aria-hidden', 'true');
-    const d = document.createElement('div');
-    d.className = 'reflex';
-    clip.append(d);
-    keys.append(clip);
-  }
+  if (clip) return;
+  const c = document.createElement('div');
+  c.className = 'reflex-clip';
+  c.setAttribute('aria-hidden', 'true');
+  c.innerHTML = '<div class="reflex"></div><div class="sheen-clip"><div class="sheen"></div></div>';
+  calc.append(c);
 }
 
 function applyTheme(theme, mode, reduceEffects) {
   last = { theme, mode, reduce: !!reduceEffects };
   const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const resolved = theme === 'retro' ? 'retro' : 'moderno-' + (mode === 'auto' ? (dark ? 'escuro' : 'claro') : mode);
+  const resolved = theme === 'moderno' ? 'moderno-' + (mode === 'auto' ? (dark ? 'escuro' : 'claro') : mode) : theme;
   const root = document.documentElement;
   root.setAttribute('data-theme', resolved);
   root.setAttribute('data-reduce', String(!!reduceEffects));
@@ -2111,9 +2137,9 @@ function mountSettings(ctx) {
     '<header class="settings-head"><span class="settings-title">Configurações</span>' +
     '<button type="button" class="settings-close" aria-label="Fechar configurações">✕</button></header>' +
     '<section class="group"><h3 class="group-title">Aparência</h3>' +
-    '<label class="row"><span class="txt">Tema<small>Clássico tem relevo e visor luminoso; Retro é de vidro</small></span>' +
-    '<select name="theme"><option value="retro">Clássico</option><option value="moderno">Retro</option></select></label>' +
-    '<label class="row"><span class="txt">Modo<small>Automático segue o sistema; o Clássico é sempre escuro</small></span>' +
+    '<label class="row"><span class="txt">Tema<small>Gold e Platinum são metálicos e sempre escuros; Retro é de vidro</small></span>' +
+    '<select name="theme"><option value="retro">Gold</option><option value="platinum">Platinum</option><option value="moderno">Retro</option></select></label>' +
+    '<label class="row"><span class="txt">Modo<small>Automático segue o sistema; só vale no Retro</small></span>' +
     '<select name="mode"><option value="auto">Automático</option><option value="escuro">Escuro</option><option value="claro">Claro</option></select></label></section>' +
     '<section class="group"><h3 class="group-title">Efeitos</h3>' +
     '<label class="row"><span class="txt">Reduzir efeitos<small>Vidro sólido e sem reflexo: poupa bateria</small></span>' +
@@ -2124,6 +2150,13 @@ function mountSettings(ctx) {
     '<button type="button" class="motion">Testar movimento do aparelho</button>' +
     '<small class="motion-status" role="status"></small></section>';
   ctx.top.append(btn);
+  // altura da placa metálica: o brilho de ênfase fica restrito a ela
+  const plate = ctx.top.querySelector('.brand');
+  if (plate) {
+    const setPlate = () => ctx.calc.style.setProperty('--plate-h', plate.offsetHeight + 'px');
+    setPlate();
+    if (typeof ResizeObserver === 'function') new ResizeObserver(setPlate).observe(plate);
+  }
   // tela cheia: só aparece onde o navegador permite e o app ainda não está em tela cheia (PWA instalado)
   const fsOk = document.fullscreenEnabled && !window.matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches;
   if (fsOk) {
@@ -2147,7 +2180,7 @@ function mountSettings(ctx) {
   ctx.calc.append(panel);
   // o tema Clássico é sempre escuro: a escolha de modo fica inativa
   const lockMode = () => {
-    const off = s.theme === 'retro';
+    const off = s.theme !== 'moderno';
     const sel = panel.querySelector('[name=mode]');
     sel.disabled = off;
     sel.closest('.row').classList.toggle('off', off);
@@ -2222,7 +2255,7 @@ function startReflex(layer) {
     const done = Math.abs(target.x - cur.x) < EPS && Math.abs(target.y - cur.y) < EPS;
     if (done) cur = { ...target };
     layer.style.transform = `translate3d(${(cur.x * RANGE_X).toFixed(2)}px, ${(cur.y * RANGE_Y).toFixed(2)}px, 0)`;
-    const op = String((0.55 + 0.25 * Math.abs(cur.x)).toFixed(3));
+    const op = String((0.5 + 0.2 * Math.abs(cur.x)).toFixed(3));
     layer.style.opacity = op;
     if (sheen) {
       sheen.style.transform = layer.style.transform;
@@ -2451,7 +2484,7 @@ function mountApp(root, engine = new Engine()) {
   document.addEventListener('calc12c:effects', (e) => {
     ctx.reflex?.stop();
     ctx.reflex = null;
-    const layer = keys.querySelector('.reflex');
+    const layer = calc.querySelector('.reflex');
     if (!e.detail.reduce && layer) {
       ctx.reflex = startReflex(layer);
       if (motion) ctx.reflex.enableMotion();

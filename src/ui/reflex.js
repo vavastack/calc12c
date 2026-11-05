@@ -26,7 +26,7 @@ export function startReflex(layer) {
     const done = Math.abs(target.x - cur.x) < EPS && Math.abs(target.y - cur.y) < EPS;
     if (done) cur = { ...target };
     layer.style.transform = `translate3d(${(cur.x * RANGE_X).toFixed(2)}px, ${(cur.y * RANGE_Y).toFixed(2)}px, 0)`;
-    const op = String((0.55 + 0.25 * Math.abs(cur.x)).toFixed(3));
+    const op = String((0.5 + 0.2 * Math.abs(cur.x)).toFixed(3));
     layer.style.opacity = op;
     if (sheen) {
       sheen.style.transform = layer.style.transform;

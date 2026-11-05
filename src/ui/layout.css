@@ -24,10 +24,6 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
   /* divisória fixa entre o metal e o vidro: fio escuro + fio de luz */
   border-bottom: 1px solid var(--plate-edge);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 1px 0 var(--engrave-hi), 0 3px 6px rgba(0,0,0,.28); }
-.reflex-clip.plate { z-index: 0; -webkit-mask-image: none; mask-image: none; border-radius: 0; }
-.reflex-clip .sheen { inset: -220px -70%; mix-blend-mode: screen; }
-.reflex-clip .sheen::before { background: linear-gradient(115deg, transparent 28%, #ffffff33 38%, #ffffff80 46%, #fffbe8e6 50%, #ffffff80 54%, #ffffff33 62%, transparent 72%); }
-.brand > :not(.reflex-clip) { position: relative; z-index: 1; }
 .brand .name { font-size: 24px; font-weight: 700; letter-spacing: .01em; color: var(--plate-ink); white-space: nowrap;
   text-shadow: 0 1px 0 var(--engrave-hi), 0 -1px 0 var(--engrave-lo); }
 .brand .name i { font-style: italic; font-weight: 800; }
@@ -37,16 +33,29 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
   text-shadow: 0 1px 0 var(--engrave-hi), 0 -1px 0 var(--engrave-lo); }
 
 /* ---- visor ---- */
-.display { min-height: 88px; background: var(--display-bg); color: var(--display-text); border-radius: 18px; padding: 8px 16px;
-  border: 1px solid var(--display-border); box-shadow: var(--display-shadow);
+.display { position: relative; isolation: isolate; min-height: 88px; color: var(--display-text); border-radius: 14px; padding: 8px 16px;
+  background: var(--display-bg);
+  border: 1px solid var(--display-border);
+  /* moldura escura em volta e sombra por dentro, como um vidro afundado no corpo */
+  box-shadow: var(--display-shadow), inset 0 10px 24px #000a, 0 0 0 3px var(--display-bezel, #000), 0 0 0 4px #ffffff14;
   display: grid; grid-template-rows: auto 1fr auto; gap: 2px; -webkit-backdrop-filter: var(--glass); backdrop-filter: var(--glass); }
+/* linhas finas de varredura + vinheta nas bordas */
+.display::before { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: -1;
+  background: repeating-linear-gradient(0deg, var(--display-scan, #ffffff0b) 0 1px, transparent 1px 3px),
+    radial-gradient(130% 150% at 50% 0%, var(--display-tint, #7aa4c026) 0%, transparent 62%),
+    radial-gradient(120% 140% at 50% 50%, transparent 55%, var(--display-vignette, #0000008c) 100%); }
+/* brilho do vidro: faixa clara suave no alto da tela */
+.display::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(172deg, var(--display-gloss, #ffffff1c) 0%, #ffffff08 26%, transparent 44%); }
 .indicators { display: flex; gap: 10px; font-size: 11px; font-weight: 700; align-items: center; }
 .indicators [data-ind] { color: var(--ind-off); }
 .indicators [data-ind].on { color: var(--ind-on); }
 .fmt-toggle { margin-left: auto; font: inherit; font-size: 11px; border: 1px solid currentColor; background: transparent;
   color: inherit; border-radius: 8px; padding: 1px 8px; opacity: .7; }
 .digits { font-family: "Share Tech Mono", ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 1px; font-size: 44px; text-align: right; white-space: nowrap;
-  overflow: hidden; line-height: 1.1; text-shadow: var(--display-glow); }
+  overflow: hidden; line-height: 1.1; text-shadow: var(--display-glow);
+  /* folga em volta para o brilho do número não ser cortado em retângulo */
+  padding: 14px 18px; margin: -14px -18px; }
 .msg { min-height: 1.2em; font-size: 12px; text-align: right; }
 
 /* ---- teclado ---- */
@@ -89,12 +98,12 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
 /* o brilho de f e g é só opacidade (barato): continua no modo "reduzir efeitos"; só o sistema com movimento reduzido o desliga */
 @media (prefers-reduced-motion: reduce) { .key.touch::after, .key.flash::after, .key.flash::before, .calc .key .lf, .calc .key .lg { animation: none !important; } }
 
-/* recorte do reflexo: as bordas esmaecem, sem corte seco onde o teclado termina */
-.reflex-clip { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 2;
-  border-radius: 24px;
-  -webkit-mask-image: linear-gradient(180deg, transparent, #000 56px, #000 calc(100% - 56px), transparent), linear-gradient(90deg, transparent, #000 44px, #000 calc(100% - 44px), transparent);
-  mask-image: linear-gradient(180deg, transparent, #000 56px, #000 calc(100% - 56px), transparent), linear-gradient(90deg, transparent, #000 44px, #000 calc(100% - 44px), transparent);
-  -webkit-mask-composite: source-in; mask-composite: intersect; }
+/* o reflexo cobre todo o vidro (placa, visor e teclado); a .sheen reforça só a placa, na mesma direção */
+.reflex-clip { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 3; }
+.sheen-clip { position: absolute; inset: 0; overflow: hidden;
+  -webkit-mask-image: linear-gradient(180deg, #000 var(--plate-h, 60px), transparent var(--plate-h, 60px));
+  mask-image: linear-gradient(180deg, #000 var(--plate-h, 60px), transparent var(--plate-h, 60px)); }
+.reflex-clip .sheen::before { background: linear-gradient(115deg, transparent 28%, #ffffff33 38%, #ffffff80 46%, #fffbe8e6 50%, #ffffff80 54%, #ffffff33 62%, transparent 72%); }
 /* reflexo: uma única camada de brilho sobre o teclado (a animação entra na Tarefa 11) */
 .reflex, .sheen { position: absolute; inset: -220px -70%; pointer-events: none; opacity: .7;
   transform: translate3d(0, 0, 0); will-change: transform, opacity; }

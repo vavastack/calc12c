@@ -1,6 +1,7 @@
 // Temas e configurações. Só variáveis de cor mudam; o teclado e o motor nunca.
 const KEY = 'calc12c.settings';
-const THEMES = ['retro', 'moderno'];
+const THEMES = ['retro', 'platinum', 'moderno']; // 'retro' = Gold (padrão), 'platinum' = prata, 'moderno' = Retro (vidro)
+const VERSION = 2; // v2: a vibração ao tocar passou a vir ligada
 const MODES = ['auto', 'escuro', 'claro'];
 
 const lowEnd = () => (navigator.hardwareConcurrency ?? 8) <= 2 || (navigator.deviceMemory ?? 8) <= 2 ||
@@ -8,7 +9,7 @@ const lowEnd = () => (navigator.hardwareConcurrency ?? 8) <= 2 || (navigator.dev
 
 export function defaultSettings() {
   // reduce: null = automático (liga sozinho em aparelhos simples); true/false = escolha do usuário
-  return { theme: 'retro', mode: 'auto', reduce: null, vibrate: false };
+  return { v: VERSION, theme: 'retro', mode: 'auto', reduce: null, vibrate: true };
 }
 
 export function loadSettings() {
@@ -17,10 +18,12 @@ export function loadSettings() {
     const o = JSON.parse(window.localStorage.getItem(KEY) ?? 'null');
     if (!o || typeof o !== 'object') return d;
     return {
+      v: VERSION,
       theme: THEMES.includes(o.theme) ? o.theme : d.theme,
       mode: MODES.includes(o.mode) ? o.mode : d.mode,
       reduce: typeof o.reduce === 'boolean' ? o.reduce : null,
-      vibrate: o.vibrate === true,
+      // quem salvou antes da versão 2 passa a ter a vibração ligada (dá para desligar nas configurações)
+      vibrate: (o.v ?? 1) < VERSION ? true : o.vibrate === true,
     };
   } catch {
     return d; // ausente, corrompido ou armazenamento bloqueado
@@ -40,38 +43,27 @@ const effectiveReduce = (s) => (s.reduce === null ? lowEnd() : s.reduce);
 let last = { theme: 'retro', mode: 'auto', reduce: false };
 let mq;
 
+// Uma única camada de brilho cobre todo o vidro (placa, visor e teclado); a .sheen reforça só a placa metálica
 function ensureReflexLayer(reduce) {
-  const keys = document.querySelector('.keys');
-  if (!keys) return;
-  const el = keys.querySelector('.reflex');
-  const brand = document.querySelector('.brand');
-  if (reduce) brand?.querySelector('.reflex-clip')?.remove();
-  else if (brand && !brand.querySelector('.reflex-clip')) {
-    // a placa metálica recebe o mesmo brilho (a camada .sheen acompanha a .reflex)
-    const c = document.createElement('div');
-    c.className = 'reflex-clip plate';
-    c.setAttribute('aria-hidden', 'true');
-    const sh = document.createElement('div');
-    sh.className = 'sheen';
-    c.append(sh);
-    brand.prepend(c);
+  const calc = document.querySelector('.calc');
+  if (!calc) return;
+  const clip = calc.querySelector(':scope > .reflex-clip');
+  if (reduce) {
+    clip?.remove();
+    return;
   }
-  if (reduce && el) (el.closest('.reflex-clip') ?? el).remove();
-  if (!reduce && !el) {
-    const clip = document.createElement('div');
-    clip.className = 'reflex-clip';
-    clip.setAttribute('aria-hidden', 'true');
-    const d = document.createElement('div');
-    d.className = 'reflex';
-    clip.append(d);
-    keys.append(clip);
-  }
+  if (clip) return;
+  const c = document.createElement('div');
+  c.className = 'reflex-clip';
+  c.setAttribute('aria-hidden', 'true');
+  c.innerHTML = '<div class="reflex"></div><div class="sheen-clip"><div class="sheen"></div></div>';
+  calc.append(c);
 }
 
 export function applyTheme(theme, mode, reduceEffects) {
   last = { theme, mode, reduce: !!reduceEffects };
   const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const resolved = theme === 'retro' ? 'retro' : 'moderno-' + (mode === 'auto' ? (dark ? 'escuro' : 'claro') : mode);
+  const resolved = theme === 'moderno' ? 'moderno-' + (mode === 'auto' ? (dark ? 'escuro' : 'claro') : mode) : theme;
   const root = document.documentElement;
   root.setAttribute('data-theme', resolved);
   root.setAttribute('data-reduce', String(!!reduceEffects));
@@ -103,9 +95,9 @@ export function mountSettings(ctx) {
     '<header class="settings-head"><span class="settings-title">Configurações</span>' +
     '<button type="button" class="settings-close" aria-label="Fechar configurações">✕</button></header>' +
     '<section class="group"><h3 class="group-title">Aparência</h3>' +
-    '<label class="row"><span class="txt">Tema<small>Clássico tem relevo e visor luminoso; Retro é de vidro</small></span>' +
-    '<select name="theme"><option value="retro">Clássico</option><option value="moderno">Retro</option></select></label>' +
-    '<label class="row"><span class="txt">Modo<small>Automático segue o sistema; o Clássico é sempre escuro</small></span>' +
+    '<label class="row"><span class="txt">Tema<small>Gold e Platinum são metálicos e sempre escuros; Retro é de vidro</small></span>' +
+    '<select name="theme"><option value="retro">Gold</option><option value="platinum">Platinum</option><option value="moderno">Retro</option></select></label>' +
+    '<label class="row"><span class="txt">Modo<small>Automático segue o sistema; só vale no Retro</small></span>' +
     '<select name="mode"><option value="auto">Automático</option><option value="escuro">Escuro</option><option value="claro">Claro</option></select></label></section>' +
     '<section class="group"><h3 class="group-title">Efeitos</h3>' +
     '<label class="row"><span class="txt">Reduzir efeitos<small>Vidro sólido e sem reflexo: poupa bateria</small></span>' +
@@ -116,6 +108,13 @@ export function mountSettings(ctx) {
     '<button type="button" class="motion">Testar movimento do aparelho</button>' +
     '<small class="motion-status" role="status"></small></section>';
   ctx.top.append(btn);
+  // altura da placa metálica: o brilho de ênfase fica restrito a ela
+  const plate = ctx.top.querySelector('.brand');
+  if (plate) {
+    const setPlate = () => ctx.calc.style.setProperty('--plate-h', plate.offsetHeight + 'px');
+    setPlate();
+    if (typeof ResizeObserver === 'function') new ResizeObserver(setPlate).observe(plate);
+  }
   // tela cheia: só aparece onde o navegador permite e o app ainda não está em tela cheia (PWA instalado)
   const fsOk = document.fullscreenEnabled && !window.matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches;
   if (fsOk) {
@@ -139,7 +138,7 @@ export function mountSettings(ctx) {
   ctx.calc.append(panel);
   // o tema Clássico é sempre escuro: a escolha de modo fica inativa
   const lockMode = () => {
-    const off = s.theme === 'retro';
+    const off = s.theme !== 'moderno';
     const sel = panel.querySelector('[name=mode]');
     sel.disabled = off;
     sel.closest('.row').classList.toggle('off', off);

@@ -181,12 +181,15 @@ test('painel de configurações: cabeçalho, grupos, interruptores e botão fech
   await app.close();
 });
 
-test('nomes dos temas e modo inativo no Clássico', async () => {
+test('temas Gold, Platinum e Retro; modo claro/escuro só vale no Retro', async () => {
   const app = await openApp(browser, server.url);
   const p = app.page;
   await p.locator('.settings-btn').click();
-  assert.deepEqual(await p.locator('select[name="theme"] option').allTextContents(), ['Clássico', 'Retro']);
-  assert.equal(await p.locator('select[name="theme"]').inputValue(), 'retro'); // padrão: Clássico
+  assert.deepEqual(await p.locator('select[name="theme"] option').allTextContents(), ['Gold', 'Platinum', 'Retro']);
+  assert.equal(await p.locator('select[name="theme"]').inputValue(), 'retro'); // padrão: Gold
+  assert.equal(await p.locator('select[name="mode"]').isDisabled(), true);
+  await p.locator('select[name="theme"]').selectOption('platinum');
+  assert.equal(await attr(p, 'data-theme'), 'platinum');
   assert.equal(await p.locator('select[name="mode"]').isDisabled(), true);
   await p.locator('select[name="theme"]').selectOption('moderno');
   assert.equal(await p.locator('select[name="mode"]').isDisabled(), false);
@@ -198,17 +201,31 @@ test('nomes dos temas e modo inativo no Clássico', async () => {
   await app.close();
 });
 
-test('botão discreto de tela cheia entra e sai do modo', async () => {
+test('vibração vem ligada por padrão e quem tinha salvo antes também passa a ter', async () => {
+  const novo = await openApp(browser, server.url);
+  assert.equal(await novo.page.evaluate(() => window.calc12c.vibrate), true);
+  await novo.close();
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  await ctx.addInitScript(() => localStorage.setItem('calc12c.settings', JSON.stringify({ theme: 'retro', mode: 'auto', reduce: false, vibrate: false })));
+  const p = await ctx.newPage();
+  await p.goto(server.url + '/src/ui/index.html');
+  await p.waitForSelector('button.key');
+  assert.equal(await p.evaluate(() => window.calc12c.vibrate), true); // versão antiga → ligada
+  await ctx.close();
+});
+
+test('o visor tem aspecto de tela: moldura, linhas finas e brilho de vidro', async () => {
   const app = await openApp(browser, server.url);
   const p = app.page;
-  const b = p.locator('.fs-btn');
-  assert.equal(await b.count(), 1);
-  assert.equal(await b.getAttribute('aria-label'), 'Tela cheia');
-  await b.click();
-  await p.waitForFunction(() => !!document.fullscreenElement);
-  assert.equal(await b.getAttribute('aria-label'), 'Sair da tela cheia');
-  await b.click();
-  await p.waitForFunction(() => !document.fullscreenElement);
-  assert.equal(await b.getAttribute('aria-label'), 'Tela cheia');
+  const css = await p.locator('.display').evaluate((e) => ({
+    sombra: getComputedStyle(e).boxShadow,
+    linhas: getComputedStyle(e, '::before').backgroundImage,
+    vidro: getComputedStyle(e, '::after').backgroundImage,
+    digitos: getComputedStyle(e.querySelector('.digits')).paddingLeft,
+  }));
+  assert.match(css.linhas, /repeating-linear-gradient/);
+  assert.match(css.vidro, /linear-gradient/);
+  assert.notEqual(css.sombra, 'none');
+  assert.notEqual(css.digitos, '0px'); // folga para o brilho do número não ser cortado em retângulo
   await app.close();
 });
