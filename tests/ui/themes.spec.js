@@ -197,3 +197,18 @@ test('nomes dos temas e modo inativo no Clássico', async () => {
   assert.equal(await attr(p, 'data-theme'), 'retro');
   await app.close();
 });
+
+test('botão discreto de tela cheia entra e sai do modo', async () => {
+  const app = await openApp(browser, server.url);
+  const p = app.page;
+  const b = p.locator('.fs-btn');
+  assert.equal(await b.count(), 1);
+  assert.equal(await b.getAttribute('aria-label'), 'Tela cheia');
+  await b.click();
+  await p.waitForFunction(() => !!document.fullscreenElement);
+  assert.equal(await b.getAttribute('aria-label'), 'Sair da tela cheia');
+  await b.click();
+  await p.waitForFunction(() => !document.fullscreenElement);
+  assert.equal(await b.getAttribute('aria-label'), 'Tela cheia');
+  await app.close();
+});

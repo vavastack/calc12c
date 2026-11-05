@@ -225,6 +225,8 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
 /* ---- configurações ---- */
 .settings-btn { position: absolute; right: 2px; bottom: -4px; width: 26px; height: 22px; border: 0; background: transparent;
   color: inherit; font-size: 15px; line-height: 1; opacity: .7; padding: 0; }
+.fs-btn { position: absolute; right: 30px; bottom: -4px; width: 26px; height: 22px; border: 0; background: transparent;
+  color: inherit; font-size: 15px; line-height: 1; opacity: .7; padding: 0; }
 .settings[hidden] { display: none; }
 .settings { position: absolute; left: 10px; right: 10px; top: 120px; max-height: calc(100% - 140px); overflow: auto; z-index: 5; display: grid; gap: 8px;
   padding: 10px 12px 12px; border-radius: 16px; background: var(--body-solid); color: var(--key-text);
@@ -2089,6 +2091,26 @@ function mountSettings(ctx) {
     '<button type="button" class="motion">Testar movimento do aparelho</button>' +
     '<small class="motion-status" role="status"></small></section>';
   ctx.top.append(btn);
+  // tela cheia: só aparece onde o navegador permite e o app ainda não está em tela cheia (PWA instalado)
+  const fsOk = document.fullscreenEnabled && !window.matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches;
+  if (fsOk) {
+    const fs = document.createElement('button');
+    fs.type = 'button';
+    fs.className = 'fs-btn';
+    const paint = () => {
+      const on = !!document.fullscreenElement;
+      fs.textContent = on ? '⤡' : '⛶';
+      fs.setAttribute('aria-label', on ? 'Sair da tela cheia' : 'Tela cheia');
+      fs.setAttribute('aria-pressed', String(on));
+    };
+    fs.addEventListener('click', () => {
+      const r = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+      r?.catch(() => {});
+    });
+    document.addEventListener('fullscreenchange', paint);
+    paint();
+    ctx.top.append(fs);
+  }
   ctx.calc.append(panel);
   // o tema Clássico é sempre escuro: a escolha de modo fica inativa
   const lockMode = () => {

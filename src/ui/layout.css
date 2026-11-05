@@ -128,6 +128,8 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
 /* ---- configurações ---- */
 .settings-btn { position: absolute; right: 2px; bottom: -4px; width: 26px; height: 22px; border: 0; background: transparent;
   color: inherit; font-size: 15px; line-height: 1; opacity: .7; padding: 0; }
+.fs-btn { position: absolute; right: 30px; bottom: -4px; width: 26px; height: 22px; border: 0; background: transparent;
+  color: inherit; font-size: 15px; line-height: 1; opacity: .7; padding: 0; }
 .settings[hidden] { display: none; }
 .settings { position: absolute; left: 10px; right: 10px; top: 120px; max-height: calc(100% - 140px); overflow: auto; z-index: 5; display: grid; gap: 8px;
   padding: 10px 12px 12px; border-radius: 16px; background: var(--body-solid); color: var(--key-text);

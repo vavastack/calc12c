@@ -104,6 +104,26 @@ export function mountSettings(ctx) {
     '<button type="button" class="motion">Testar movimento do aparelho</button>' +
     '<small class="motion-status" role="status"></small></section>';
   ctx.top.append(btn);
+  // tela cheia: só aparece onde o navegador permite e o app ainda não está em tela cheia (PWA instalado)
+  const fsOk = document.fullscreenEnabled && !window.matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches;
+  if (fsOk) {
+    const fs = document.createElement('button');
+    fs.type = 'button';
+    fs.className = 'fs-btn';
+    const paint = () => {
+      const on = !!document.fullscreenElement;
+      fs.textContent = on ? '⤡' : '⛶';
+      fs.setAttribute('aria-label', on ? 'Sair da tela cheia' : 'Tela cheia');
+      fs.setAttribute('aria-pressed', String(on));
+    };
+    fs.addEventListener('click', () => {
+      const r = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+      r?.catch(() => {});
+    });
+    document.addEventListener('fullscreenchange', paint);
+    paint();
+    ctx.top.append(fs);
+  }
   ctx.calc.append(panel);
   // o tema Clássico é sempre escuro: a escolha de modo fica inativa
   const lockMode = () => {
