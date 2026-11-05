@@ -45,7 +45,7 @@ export function makeSound() {
           osc.type = 'triangle';
           osc.frequency.setValueAtTime((down ? 1900 : 2300) * f, t);
           osc.frequency.exponentialRampToValueAtTime((down ? 700 : 1100) * f, t + 0.025);
-          env(gain, t, (down ? 0.07 : 0.03) * g, 0.03);
+          env(gain, t, (down ? 0.035 : 0.015) * g, 0.03);
           osc.connect(gain).connect(ac.destination);
           osc.start(t);
           osc.stop(t + 0.04);
@@ -59,7 +59,7 @@ export function makeSound() {
         bp.type = 'bandpass';
         bp.frequency.value = (down ? 2600 : 3600) * f;
         bp.Q.value = 1.3;
-        env(gn, t, (down ? 0.2 : 0.09) * g, down ? 0.025 : 0.018);
+        env(gn, t, (down ? 0.09 : 0.04) * g, down ? 0.025 : 0.018);
         src.connect(bp).connect(gn).connect(ac.destination);
         src.start(t);
         src.stop(t + 0.05);
@@ -69,7 +69,7 @@ export function makeSound() {
           th.type = 'sine';
           th.frequency.setValueAtTime(170 * f, t);
           th.frequency.exponentialRampToValueAtTime(80 * f, t + 0.045);
-          env(tg, t, 0.16 * g, 0.05);
+          env(tg, t, 0.07 * g, 0.05);
           th.connect(tg).connect(ac.destination);
           th.start(t);
           th.stop(t + 0.06);

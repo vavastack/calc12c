@@ -230,6 +230,9 @@ html:not([data-theme^="moderno"]) .key .face { transition: transform .16s cubic-
 html:not([data-theme^="moderno"]) .key .lm { transition: transform .16s cubic-bezier(.3,1.6,.5,1); }
 html:not([data-theme^="moderno"]) .key.down .face { transform: translateY(2px); box-shadow: 0 0 0 transparent, inset 0 2px 4px #0009; filter: brightness(.88); transition-duration: .035s; }
 html:not([data-theme^="moderno"]) .key.down .lm { transform: translateY(2px); transition-duration: .035s; }
+/* o contorno de f/g ativo envolve só a face da tecla, não a faixa dos rótulos acima dela */
+html:not([data-theme^="moderno"]) .calc[data-shift="f"] .key.prefix-f, html:not([data-theme^="moderno"]) .calc[data-shift="g"] .key.prefix-g { outline: 0; }
+html:not([data-theme^="moderno"]) .calc[data-shift="f"] .key.prefix-f .face, html:not([data-theme^="moderno"]) .calc[data-shift="g"] .key.prefix-g .face { outline: 2px solid var(--key-text); outline-offset: 1px; }
 html:not([data-theme^="moderno"]) .key::after { top: var(--face-top); }
 html:not([data-theme^="moderno"]) .key::before { top: calc(var(--face-top) - 2px); }
 html:not([data-theme^="moderno"]) .key .lg:empty { display: none; }
