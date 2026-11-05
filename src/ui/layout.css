@@ -37,11 +37,11 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
   grid-template-rows: 1fr auto; border-radius: 6px; border: 3px solid transparent;
   background: linear-gradient(#0b0b0c, #0b0b0c) padding-box, var(--metal) border-box;
   box-shadow: 0 0 0 1px var(--plate-edge), 0 1px 0 var(--engrave-hi), 0 2px 4px #0005; }
-.brand .badge .mw { display: grid; place-items: center; border-radius: 3px; background: var(--metal); --r: 11px;
-  font-size: 10px; font-weight: 900; letter-spacing: -.05em; line-height: 1; color: var(--plate-b); position: relative; }
-.brand .badge .mw::before { content: ""; position: absolute; left: 50%; top: 50%; width: calc(var(--r) * 2); height: calc(var(--r) * 2);
-  transform: translate(-50%, -50%); border-radius: 50%; background: #0b0b0c; }
-.brand .badge .mw i { position: relative; font-style: italic; transform: translateX(-.5px); }
+.brand .badge .mw { display: block; min-height: 0; border-radius: 3px; background: var(--metal); overflow: hidden; }
+.brand .badge .mw svg { display: block; width: 100%; height: 100%; }
+.brand .badge .mw .disc { fill: #0b0b0c; }
+.brand .badge .mw .ink { stroke: #0b0b0c; }
+.brand .badge .mw .lit { stroke: var(--plate-b); }
 .brand .badge .model { display: block; text-align: center; padding: 3px 0 2px; border-radius: 3px; background: #0b0b0c;
   border: 1px solid var(--plate-a); font-size: 11px; font-weight: 900; letter-spacing: .02em; line-height: 1; color: var(--plate-b); }
 
@@ -193,7 +193,6 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
   .brand .title { font-size: 18px; }
   .brand .rpn { font-size: 8px; }
   .brand .badge { width: 42px; height: 42px; padding: 2px; gap: 2px; border-width: 2px; }
-  .brand .badge .mw { --r: 8px; font-size: 7px; }
   .brand .badge .model { font-size: 8px; padding: 2px 0 1px; }
   .display { min-height: 60px; padding: 4px 14px; }
   .digits { font-size: 34px; }

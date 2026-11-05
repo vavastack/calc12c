@@ -61,7 +61,7 @@ export function mountApp(root, engine = new Engine()) {
   brand.className = 'brand';
   brand.setAttribute('aria-label', 'Calc 12c, calculadora financeira RPN');
   brand.innerHTML = '<span class="name"><b class="title">Calc 12c</b><span class="rpn">RPN</span></span><span class="rule" aria-hidden="true"></span>' +
-    '<span class="badge" aria-hidden="true"><span class="mw"><i>MW</i></span><span class="model">12C</span></span>';
+    '<span class="badge" aria-hidden="true"><span class="mw"><svg viewBox="0 0 44 28" preserveAspectRatio="xMidYMid meet" focusable="false"><defs><clipPath id="mwc"><circle cx="22" cy="14" r="10.6"/></clipPath><g id="mwl" transform="translate(1.8 0) skewX(-7)" fill="none" stroke-width="2.7" stroke-linejoin="miter" stroke-miterlimit="4"><polyline points="9.4,28 9.4,6.5 15.4,18.5 21.4,6.5 21.4,22"/><polyline points="24.4,6.5 27.7,21.5 30.9,11 34.1,21.5 38.6,0"/></g></defs><circle cx="22" cy="14" r="10.6" class="disc"/><use href="#mwl" class="ink"/><use href="#mwl" class="lit" clip-path="url(#mwc)"/></svg></span><span class="model">12C</span></span>';
   top.append(brand, display);
   calc.append(top, keys, notice);
   root.append(calc);

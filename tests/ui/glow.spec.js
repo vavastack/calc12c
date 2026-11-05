@@ -66,7 +66,8 @@ test('cabeçalho Calc 12C, dica da gaveta e teclas f e g coloridas', async () =>
   const p = app.page;
   assert.equal(await p.locator('.brand .title').innerText(), 'Calc 12c'); // nome à esquerda
   assert.equal(await p.locator('.brand .rpn').innerText(), 'RPN'); // RPN discreto embaixo
-  assert.equal((await p.locator('.brand .badge').innerText()).replace(/\s+/g, ''), 'MW12C'); // emblema à direita
+  assert.equal((await p.locator('.brand .badge').innerText()).replace(/\s+/g, ''), '12C'); // emblema à direita (MW desenhado em SVG)
+  assert.equal(await p.locator('.brand .badge .mw svg').count(), 1);
   const [xr, xb] = await p.evaluate(() => [document.querySelector('.brand .name').getBoundingClientRect().x, document.querySelector('.brand .badge').getBoundingClientRect().x]);
   assert.ok(xr < xb);
   const hint = await p.locator('.drawer-handle').evaluate((e) => getComputedStyle(e, '::before').content);

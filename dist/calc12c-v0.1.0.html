@@ -163,11 +163,11 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
   grid-template-rows: 1fr auto; border-radius: 6px; border: 3px solid transparent;
   background: linear-gradient(#0b0b0c, #0b0b0c) padding-box, var(--metal) border-box;
   box-shadow: 0 0 0 1px var(--plate-edge), 0 1px 0 var(--engrave-hi), 0 2px 4px #0005; }
-.brand .badge .mw { display: grid; place-items: center; border-radius: 3px; background: var(--metal); --r: 11px;
-  font-size: 10px; font-weight: 900; letter-spacing: -.05em; line-height: 1; color: var(--plate-b); position: relative; }
-.brand .badge .mw::before { content: ""; position: absolute; left: 50%; top: 50%; width: calc(var(--r) * 2); height: calc(var(--r) * 2);
-  transform: translate(-50%, -50%); border-radius: 50%; background: #0b0b0c; }
-.brand .badge .mw i { position: relative; font-style: italic; transform: translateX(-.5px); }
+.brand .badge .mw { display: block; min-height: 0; border-radius: 3px; background: var(--metal); overflow: hidden; }
+.brand .badge .mw svg { display: block; width: 100%; height: 100%; }
+.brand .badge .mw .disc { fill: #0b0b0c; }
+.brand .badge .mw .ink { stroke: #0b0b0c; }
+.brand .badge .mw .lit { stroke: var(--plate-b); }
 .brand .badge .model { display: block; text-align: center; padding: 3px 0 2px; border-radius: 3px; background: #0b0b0c;
   border: 1px solid var(--plate-a); font-size: 11px; font-weight: 900; letter-spacing: .02em; line-height: 1; color: var(--plate-b); }
 
@@ -319,7 +319,6 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
   .brand .title { font-size: 18px; }
   .brand .rpn { font-size: 8px; }
   .brand .badge { width: 42px; height: 42px; padding: 2px; gap: 2px; border-width: 2px; }
-  .brand .badge .mw { --r: 8px; font-size: 7px; }
   .brand .badge .model { font-size: 8px; padding: 2px 0 1px; }
   .display { min-height: 60px; padding: 4px 14px; }
   .digits { font-size: 34px; }
@@ -2454,7 +2453,7 @@ function mountApp(root, engine = new Engine()) {
   brand.className = 'brand';
   brand.setAttribute('aria-label', 'Calc 12c, calculadora financeira RPN');
   brand.innerHTML = '<span class="name"><b class="title">Calc 12c</b><span class="rpn">RPN</span></span><span class="rule" aria-hidden="true"></span>' +
-    '<span class="badge" aria-hidden="true"><span class="mw"><i>MW</i></span><span class="model">12C</span></span>';
+    '<span class="badge" aria-hidden="true"><span class="mw"><svg viewBox="0 0 44 28" preserveAspectRatio="xMidYMid meet" focusable="false"><defs><clipPath id="mwc"><circle cx="22" cy="14" r="10.6"/></clipPath><g id="mwl" transform="translate(1.8 0) skewX(-7)" fill="none" stroke-width="2.7" stroke-linejoin="miter" stroke-miterlimit="4"><polyline points="9.4,28 9.4,6.5 15.4,18.5 21.4,6.5 21.4,22"/><polyline points="24.4,6.5 27.7,21.5 30.9,11 34.1,21.5 38.6,0"/></g></defs><circle cx="22" cy="14" r="10.6" class="disc"/><use href="#mwl" class="ink"/><use href="#mwl" class="lit" clip-path="url(#mwc)"/></svg></span><span class="model">12C</span></span>';
   top.append(brand, display);
   calc.append(top, keys, notice);
   root.append(calc);
