@@ -172,3 +172,25 @@ test('a tecla afunda ao encostar e volta ao soltar; som antigo ligado vira suave
   assert.equal(await p.evaluate(() => window.calc12c.sounder.mode), 'soft');
   await close();
 });
+
+test('vibração: vibra ao encostar e, se o navegador recusar, vibra ao soltar', async () => {
+  const { page: p, close } = await openApp(browser, server.url);
+  await p.evaluate(() => {
+    window.__v = [];
+    window.__ok = true;
+    navigator.vibrate = (ms) => (window.__ok ? (window.__v.push(ms), true) : false);
+  });
+  const b = p.locator('.key[data-id="7"]');
+  const box = await b.boundingBox();
+  await p.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await p.mouse.down();
+  assert.equal(await p.evaluate(() => window.__v.length), 1);
+  await p.mouse.up();
+  assert.equal(await p.evaluate(() => window.__v.length), 1);
+  await p.evaluate(() => (window.__ok = false));
+  await p.mouse.down();
+  await p.evaluate(() => (window.__ok = true));
+  await p.mouse.up();
+  assert.equal(await p.evaluate(() => window.__v.length), 2);
+  await close();
+});

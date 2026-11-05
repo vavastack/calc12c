@@ -2941,7 +2941,9 @@ function mountApp(root, engine = new Engine()) {
     engine.setLocale(engine.locale === 'br' ? 'us' : 'br');
     ctx.render();
   });
-  const haptic = (ms) => ctx.vibrate && navigator.vibrate && navigator.vibrate(ms);
+  // Alguns navegadores só liberam a vibração depois que o toque termina (ativação do usuário): se a do "encostar" for
+  // recusada, a tecla vibra ao soltar. `ctx.hapticOk` guarda se a vibração já funcionou neste toque.
+  const haptic = (ms) => (ctx.vibrate && navigator.vibrate ? navigator.vibrate(ms) : false);
   // efeito do toque: realce só dentro da tecla, a partir de onde o dedo encostou (ou do centro, quando vem de um exemplo)
   const tapFx = (b, x = 50, y = 50) => {
     b.style.setProperty('--tx', x.toFixed(1) + '%');
@@ -2971,7 +2973,7 @@ function mountApp(root, engine = new Engine()) {
     if (pressed) pressed.classList.remove('down');
     pressed = b;
     keyDown(b);
-    if (k.id !== 'on') haptic(8); // vibra já ao encostar, como uma tecla de verdade
+    ctx.hapticOk = k.id === 'on' || haptic(12); // vibra já ao encostar, como uma tecla de verdade
   });
   const release = () => {
     if (!pressed) return;
@@ -3050,13 +3052,19 @@ function mountApp(root, engine = new Engine()) {
     const k = KEYS.find((x) => x.id === b.dataset.id);
     if (k.id === 'on') {
       if (held) held = false; // o segurar já abriu o verso; o clique que vem ao soltar não faz mais nada
-      else ctx.onTap();
+      else {
+        haptic(12);
+        ctx.onTap();
+      }
+      ctx.hapticOk = false;
       return;
     }
     if (!k.enabled) {
       showNotice('Programação e estatística: não disponível nesta versão.');
       return;
     }
+    if (!ctx.hapticOk) haptic(12);
+    ctx.hapticOk = false;
     ctx.pressKey(k.id);
   });
   bindKeyboard(engine, ctx.render);
