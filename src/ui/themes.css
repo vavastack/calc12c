@@ -16,8 +16,8 @@
   --keyf-shadow: 0 2px 0 #5c4210, inset 0 1px 0 #ffffff66; --flash-f: #ffd978e6;
   --keyg-bg: linear-gradient(#3b97ff, #1b63d1); --keyg-border: #5aa8ff; --keyg-text: #ffffff;
   --keyg-shadow: 0 2px 0 #0b2f6b, inset 0 1px 0 #ffffff59; --flash-g: #7dbdffe6;
-  --display-bg: #050607; --display-solid: #050607; --display-border: #6b5420;
-  --display-shadow: inset 0 0 18px #000c; --display-text: #aef2ff;
+  --display-bg: #000; --display-solid: #000; --display-border: #6b5420;
+  --display-shadow: none; --display-text: #aef2ff;
   --display-glow: 0 0 12px #78dcff8c;
   --ind-on: #f0b429; --ind-off: #55555a; --handle: #3a3a3e;
   --glass: none;
@@ -40,8 +40,8 @@
   --keyf-shadow: 0 2px 0 #4a4f57, inset 0 1px 0 #ffffff99; --flash-f: #ffffffe6;
   --keyg-bg: linear-gradient(#707a86, #3d444d); --keyg-border: #8d97a3; --keyg-text: #ffffff;
   --keyg-shadow: 0 2px 0 #1b1f24, inset 0 1px 0 #ffffff59; --flash-g: #d3dce6e6;
-  --display-bg: #050607; --display-solid: #050607; --display-border: #5d626a;
-  --display-shadow: inset 0 0 18px #000c; --display-text: #e9f2f8;
+  --display-bg: #000; --display-solid: #000; --display-border: #5d626a;
+  --display-shadow: none; --display-text: #e9f2f8;
   --display-glow: 0 0 12px #cfe4f28c;
   --ind-on: #e3e6ea; --ind-off: #55575c; --handle: #3b3c40;
   --glass: none;
@@ -64,7 +64,7 @@
   --keyf-shadow: inset 0 1px 0 #ffffff66, 0 4px 12px #d6961e4d; --flash-f: #ffd978e6;
   --keyg-bg: linear-gradient(#64afffad, #286ee673); --keyg-border: #96c8ff99; --keyg-text: #ffffff;
   --keyg-shadow: inset 0 1px 0 #ffffff66, 0 4px 12px #286ee659; --flash-g: #7dbdffe6;
-  --display-bg: linear-gradient(#ffffff1a, #ffffff08); --display-solid: #14171d; --display-border: #ffffff29;
+  --display-bg: #000; --display-solid: #000; --display-border: #ffffff24;
   --display-shadow: inset 0 1px 0 #ffffff38; --display-text: #eafcff;
   --display-glow: 0 0 10px #96dcff59;
   --ind-on: #f5c451; --ind-off: #5d626d; --handle: #ffffff47;
@@ -76,7 +76,7 @@
 
 /* Moderno claro: vidro claro em champanhe e marfim, com as mesmas cores de f e g */
 [data-theme="moderno-claro"] {
-  --display-scan:#00000009; --display-vignette:#0000001a; --display-gloss:#ffffff33; --display-tint:transparent; --display-bezel:#d2c6aa;
+  --display-bezel:#141414;
   --plate-a:#d9b56a; --plate-b:#f3dba0; --plate-c:#dfbf79; --plate-edge:#a88642; --plate-ink:#4a3410; --engrave-hi:rgba(255,248,222,.85); --engrave-lo:rgba(90,60,10,.4);
   --bg: #efe5d2;
   --body: linear-gradient(160deg, #f6efe2 0%, #eadfca 100%); --body-solid: #f1e8d6;
@@ -90,10 +90,10 @@
   --keyf-shadow: inset 0 1px 0 #ffffffb3, 0 3px 8px #c88c1e4d; --flash-f: #fff0b8f2;
   --keyg-bg: linear-gradient(#82beffFa, #3c82ebd1); --keyg-border: #3c78dc99; --keyg-text: #06203f;
   --keyg-shadow: inset 0 1px 0 #ffffffb3, 0 3px 8px #2864dc47; --flash-g: #cfe5fff2;
-  --display-bg: linear-gradient(#ffffffcc, #ffffff6b); --display-solid: #fffcf4; --display-border: #785f3240;
-  --display-shadow: inset 0 1px 0 #fff; --display-text: #0f2231;
-  --display-glow: none;
-  --ind-on: #8a5d00; --ind-off: #b8a98a; --handle: #cbbd9d;
+  --display-bg: #000; --display-solid: #000; --display-border: #00000000;
+  --display-shadow: none; --display-text: #e6f6ff;
+  --display-glow: 0 0 10px #9fd8ff80;
+  --ind-on: #f0c24f; --ind-off: #5a5f66; --handle: #cbbd9d;
   --glass: blur(14px) saturate(1.1);
   --glow: radial-gradient(260px 220px at 8% 6%, #f0b42961, transparent 70%),
           radial-gradient(300px 260px at 95% 92%, #3a8cff3d, transparent 70%);

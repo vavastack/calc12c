@@ -214,18 +214,21 @@ test('vibração vem ligada por padrão e quem tinha salvo antes também passa a
   await ctx.close();
 });
 
-test('o visor tem aspecto de tela: moldura, linhas finas e brilho de vidro', async () => {
+test('o visor é OLED: preto puro em todos os temas, sem linhas nem vidro cinza, números sem corte', async () => {
   const app = await openApp(browser, server.url);
   const p = app.page;
-  const css = await p.locator('.display').evaluate((e) => ({
-    sombra: getComputedStyle(e).boxShadow,
-    linhas: getComputedStyle(e, '::before').backgroundImage,
-    vidro: getComputedStyle(e, '::after').backgroundImage,
-    digitos: getComputedStyle(e.querySelector('.digits')).paddingLeft,
-  }));
-  assert.match(css.linhas, /repeating-linear-gradient/);
-  assert.match(css.vidro, /linear-gradient/);
-  assert.notEqual(css.sombra, 'none');
-  assert.notEqual(css.digitos, '0px'); // folga para o brilho do número não ser cortado em retângulo
+  for (const [t, m] of [['retro', 'auto'], ['platinum', 'auto'], ['moderno', 'escuro'], ['moderno', 'claro']]) {
+    await apply(p, t, m);
+    const css = await p.locator('.display').evaluate((e) => ({
+      fundo: getComputedStyle(e).backgroundColor,
+      linhas: getComputedStyle(e, '::before').content,
+      vidro: getComputedStyle(e, '::after').content,
+      folga: getComputedStyle(e.querySelector('.digits')).paddingLeft,
+    }));
+    assert.equal(css.fundo, 'rgb(0, 0, 0)', `${t}/${m}`);
+    assert.equal(css.linhas, 'none');
+    assert.equal(css.vidro, 'none');
+    assert.notEqual(css.folga, '0px'); // folga para o brilho do número não ser cortado em retângulo
+  }
   await app.close();
 });

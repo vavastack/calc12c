@@ -27,8 +27,8 @@
   --keyf-shadow: 0 2px 0 #5c4210, inset 0 1px 0 #ffffff66; --flash-f: #ffd978e6;
   --keyg-bg: linear-gradient(#3b97ff, #1b63d1); --keyg-border: #5aa8ff; --keyg-text: #ffffff;
   --keyg-shadow: 0 2px 0 #0b2f6b, inset 0 1px 0 #ffffff59; --flash-g: #7dbdffe6;
-  --display-bg: #050607; --display-solid: #050607; --display-border: #6b5420;
-  --display-shadow: inset 0 0 18px #000c; --display-text: #aef2ff;
+  --display-bg: #000; --display-solid: #000; --display-border: #6b5420;
+  --display-shadow: none; --display-text: #aef2ff;
   --display-glow: 0 0 12px #78dcff8c;
   --ind-on: #f0b429; --ind-off: #55555a; --handle: #3a3a3e;
   --glass: none;
@@ -51,8 +51,8 @@
   --keyf-shadow: 0 2px 0 #4a4f57, inset 0 1px 0 #ffffff99; --flash-f: #ffffffe6;
   --keyg-bg: linear-gradient(#707a86, #3d444d); --keyg-border: #8d97a3; --keyg-text: #ffffff;
   --keyg-shadow: 0 2px 0 #1b1f24, inset 0 1px 0 #ffffff59; --flash-g: #d3dce6e6;
-  --display-bg: #050607; --display-solid: #050607; --display-border: #5d626a;
-  --display-shadow: inset 0 0 18px #000c; --display-text: #e9f2f8;
+  --display-bg: #000; --display-solid: #000; --display-border: #5d626a;
+  --display-shadow: none; --display-text: #e9f2f8;
   --display-glow: 0 0 12px #cfe4f28c;
   --ind-on: #e3e6ea; --ind-off: #55575c; --handle: #3b3c40;
   --glass: none;
@@ -75,7 +75,7 @@
   --keyf-shadow: inset 0 1px 0 #ffffff66, 0 4px 12px #d6961e4d; --flash-f: #ffd978e6;
   --keyg-bg: linear-gradient(#64afffad, #286ee673); --keyg-border: #96c8ff99; --keyg-text: #ffffff;
   --keyg-shadow: inset 0 1px 0 #ffffff66, 0 4px 12px #286ee659; --flash-g: #7dbdffe6;
-  --display-bg: linear-gradient(#ffffff1a, #ffffff08); --display-solid: #14171d; --display-border: #ffffff29;
+  --display-bg: #000; --display-solid: #000; --display-border: #ffffff24;
   --display-shadow: inset 0 1px 0 #ffffff38; --display-text: #eafcff;
   --display-glow: 0 0 10px #96dcff59;
   --ind-on: #f5c451; --ind-off: #5d626d; --handle: #ffffff47;
@@ -87,7 +87,7 @@
 
 /* Moderno claro: vidro claro em champanhe e marfim, com as mesmas cores de f e g */
 [data-theme="moderno-claro"] {
-  --display-scan:#00000009; --display-vignette:#0000001a; --display-gloss:#ffffff33; --display-tint:transparent; --display-bezel:#d2c6aa;
+  --display-bezel:#141414;
   --plate-a:#d9b56a; --plate-b:#f3dba0; --plate-c:#dfbf79; --plate-edge:#a88642; --plate-ink:#4a3410; --engrave-hi:rgba(255,248,222,.85); --engrave-lo:rgba(90,60,10,.4);
   --bg: #efe5d2;
   --body: linear-gradient(160deg, #f6efe2 0%, #eadfca 100%); --body-solid: #f1e8d6;
@@ -101,10 +101,10 @@
   --keyf-shadow: inset 0 1px 0 #ffffffb3, 0 3px 8px #c88c1e4d; --flash-f: #fff0b8f2;
   --keyg-bg: linear-gradient(#82beffFa, #3c82ebd1); --keyg-border: #3c78dc99; --keyg-text: #06203f;
   --keyg-shadow: inset 0 1px 0 #ffffffb3, 0 3px 8px #2864dc47; --flash-g: #cfe5fff2;
-  --display-bg: linear-gradient(#ffffffcc, #ffffff6b); --display-solid: #fffcf4; --display-border: #785f3240;
-  --display-shadow: inset 0 1px 0 #fff; --display-text: #0f2231;
-  --display-glow: none;
-  --ind-on: #8a5d00; --ind-off: #b8a98a; --handle: #cbbd9d;
+  --display-bg: #000; --display-solid: #000; --display-border: #00000000;
+  --display-shadow: none; --display-text: #e6f6ff;
+  --display-glow: 0 0 10px #9fd8ff80;
+  --ind-on: #f0c24f; --ind-off: #5a5f66; --handle: #cbbd9d;
   --glass: blur(14px) saturate(1.1);
   --glow: radial-gradient(260px 220px at 8% 6%, #f0b42961, transparent 70%),
           radial-gradient(300px 260px at 95% 92%, #3a8cff3d, transparent 70%);
@@ -134,9 +134,9 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
   -webkit-backdrop-filter: var(--glass); backdrop-filter: var(--glass);
   user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .calc::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: var(--glow, none); }
-.top { position: relative; z-index: 1; }
+.top { position: relative; }
 /* placa metálica que nasce nas bordas e se funde com o vidro embaixo */
-.brand { display: flex; align-items: center; gap: 14px; position: relative;
+.brand { z-index: 1; display: flex; align-items: center; gap: 14px; position: relative;
   margin: calc(-1 * var(--pt)) calc(-1 * var(--pr)) 10px calc(-1 * var(--pl));
   padding: calc(var(--pt) + 8px) calc(var(--pr) + 12px) 12px calc(var(--pl) + 12px);
   background:
@@ -155,20 +155,11 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
   text-shadow: 0 1px 0 var(--engrave-hi), 0 -1px 0 var(--engrave-lo); }
 
 /* ---- visor ---- */
-.display { position: relative; isolation: isolate; min-height: 88px; color: var(--display-text); border-radius: 14px; padding: 8px 16px;
-  background: var(--display-bg);
-  border: 1px solid var(--display-border);
-  /* moldura escura em volta e sombra por dentro, como um vidro afundado no corpo */
-  box-shadow: var(--display-shadow), inset 0 10px 24px #000a, 0 0 0 3px var(--display-bezel, #000), 0 0 0 4px #ffffff14;
-  display: grid; grid-template-rows: auto 1fr auto; gap: 2px; -webkit-backdrop-filter: var(--glass); backdrop-filter: var(--glass); }
-/* linhas finas de varredura + vinheta nas bordas */
-.display::before { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: -1;
-  background: repeating-linear-gradient(0deg, var(--display-scan, #ffffff0b) 0 1px, transparent 1px 3px),
-    radial-gradient(130% 150% at 50% 0%, var(--display-tint, #7aa4c026) 0%, transparent 62%),
-    radial-gradient(120% 140% at 50% 50%, transparent 55%, var(--display-vignette, #0000008c) 100%); }
-/* brilho do vidro: faixa clara suave no alto da tela */
-.display::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
-  background: linear-gradient(172deg, var(--display-gloss, #ffffff1c) 0%, #ffffff08 26%, transparent 44%); }
+/* tela OLED: preto puro (pixels apagados), só os números e indicadores emitem luz, sem linhas nem vidro cinza */
+.display { position: relative; z-index: 4; /* acima do reflexo: tela apagada fica preta de verdade */ min-height: 88px; color: var(--display-text); border-radius: 16px; padding: 8px 16px;
+  background: #000; border: 1px solid var(--display-border);
+  box-shadow: var(--display-shadow), 0 0 0 3px var(--display-bezel, #000), 0 0 0 4px #ffffff12;
+  display: grid; grid-template-rows: auto 1fr auto; gap: 2px; }
 .indicators { display: flex; gap: 10px; font-size: 11px; font-weight: 700; align-items: center; }
 .indicators [data-ind] { color: var(--ind-off); }
 .indicators [data-ind].on { color: var(--ind-on); }
@@ -232,8 +223,8 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
 /* o brilho em si fica numa camada interna que vai e volta devagar (só transform, no compositor):
    o reflexo nunca fica parado, mesmo sem sensor de movimento nem toque; a camada externa segue a inclinação/dedo */
 .reflex::before, .sheen::before { content: ""; position: absolute; inset: 0; background: var(--reflex); will-change: transform;
-  animation: reflex-drift 7s ease-in-out infinite alternate; }
-@keyframes reflex-drift { from { transform: translate3d(-16%, -6%, 0); } to { transform: translate3d(16%, 6%, 0); } }
+  animation: reflex-drift 26s ease-in-out infinite alternate; }
+@keyframes reflex-drift { from { transform: translate3d(-14%, -5%, 0); } to { transform: translate3d(14%, 5%, 0); } }
 @media (prefers-reduced-motion: reduce) { .reflex::before, .sheen::before { animation: none; } }
 
 .notice { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); background: #000c; color: #fff;
@@ -2231,7 +2222,8 @@ const __m_reflex = (() => {
 // Só `transform` e `opacity`; no máximo uma escrita por quadro; pausa em segundo plano.
 const RANGE_X = 90; // px de deslocamento máximo
 const RANGE_Y = 120;
-const SMOOTH = 0.18; // amortecimento por quadro
+const SMOOTH_MOUSE = 0.035; // PC: acompanha o mouse bem devagar
+const SMOOTH_TILT = 0.09; // celular: um pouco mais ágil, mas ainda suave
 const MIN_DELTA = 0.01; // variação mínima do alvo para valer a pena atualizar
 const EPS = 0.002;
 const TILT_SPAN = 18; // graus de inclinação, a partir da posição neutra, que levam o reflexo ao limite
@@ -2244,14 +2236,15 @@ function startReflex(layer) {
   let stopped = false;
   let motionOn = false;
   let tiltSeen = false;
+  let smooth = SMOOTH_MOUSE;
   let base = null; // posição neutra: a primeira leitura (e a seguinte a cada calibração)
 
   const sheen = document.querySelector('.sheen'); // brilho da placa metálica: mesma posição e opacidade
   const frame = () => {
     raf = 0;
     if (stopped || document.hidden) return;
-    cur.x += (target.x - cur.x) * SMOOTH;
-    cur.y += (target.y - cur.y) * SMOOTH;
+    cur.x += (target.x - cur.x) * smooth;
+    cur.y += (target.y - cur.y) * smooth;
     const done = Math.abs(target.x - cur.x) < EPS && Math.abs(target.y - cur.y) < EPS;
     if (done) cur = { ...target };
     layer.style.transform = `translate3d(${(cur.x * RANGE_X).toFixed(2)}px, ${(cur.y * RANGE_Y).toFixed(2)}px, 0)`;
@@ -2274,10 +2267,11 @@ function startReflex(layer) {
   };
 
   // só o mouse (PC) move o reflexo; toque e caneta não interferem
-  const onMouse = (e) => e.pointerType && e.pointerType !== 'mouse' ? undefined : aim((e.clientX / window.innerWidth) * 2 - 1, (e.clientY / window.innerHeight) * 2 - 1);
+  const onMouse = (e) => e.pointerType && e.pointerType !== 'mouse' ? undefined : (smooth = SMOOTH_MOUSE, aim((e.clientX / window.innerWidth) * 2 - 1, (e.clientY / window.innerHeight) * 2 - 1));
   const onTilt = (e) => {
     if (e.gamma == null && e.beta == null) return;
     tiltSeen = true;
+    smooth = SMOOTH_TILT;
     const g = e.gamma ?? 0;
     const b = e.beta ?? 50;
     if (!base) base = { g, b }; // calibração automática: o jeito atual de segurar vira o "centro"

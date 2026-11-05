@@ -12,9 +12,9 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
   -webkit-backdrop-filter: var(--glass); backdrop-filter: var(--glass);
   user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .calc::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: var(--glow, none); }
-.top { position: relative; z-index: 1; }
+.top { position: relative; }
 /* placa metálica que nasce nas bordas e se funde com o vidro embaixo */
-.brand { display: flex; align-items: center; gap: 14px; position: relative;
+.brand { z-index: 1; display: flex; align-items: center; gap: 14px; position: relative;
   margin: calc(-1 * var(--pt)) calc(-1 * var(--pr)) 10px calc(-1 * var(--pl));
   padding: calc(var(--pt) + 8px) calc(var(--pr) + 12px) 12px calc(var(--pl) + 12px);
   background:
@@ -33,20 +33,11 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
   text-shadow: 0 1px 0 var(--engrave-hi), 0 -1px 0 var(--engrave-lo); }
 
 /* ---- visor ---- */
-.display { position: relative; isolation: isolate; min-height: 88px; color: var(--display-text); border-radius: 14px; padding: 8px 16px;
-  background: var(--display-bg);
-  border: 1px solid var(--display-border);
-  /* moldura escura em volta e sombra por dentro, como um vidro afundado no corpo */
-  box-shadow: var(--display-shadow), inset 0 10px 24px #000a, 0 0 0 3px var(--display-bezel, #000), 0 0 0 4px #ffffff14;
-  display: grid; grid-template-rows: auto 1fr auto; gap: 2px; -webkit-backdrop-filter: var(--glass); backdrop-filter: var(--glass); }
-/* linhas finas de varredura + vinheta nas bordas */
-.display::before { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: -1;
-  background: repeating-linear-gradient(0deg, var(--display-scan, #ffffff0b) 0 1px, transparent 1px 3px),
-    radial-gradient(130% 150% at 50% 0%, var(--display-tint, #7aa4c026) 0%, transparent 62%),
-    radial-gradient(120% 140% at 50% 50%, transparent 55%, var(--display-vignette, #0000008c) 100%); }
-/* brilho do vidro: faixa clara suave no alto da tela */
-.display::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
-  background: linear-gradient(172deg, var(--display-gloss, #ffffff1c) 0%, #ffffff08 26%, transparent 44%); }
+/* tela OLED: preto puro (pixels apagados), só os números e indicadores emitem luz, sem linhas nem vidro cinza */
+.display { position: relative; z-index: 4; /* acima do reflexo: tela apagada fica preta de verdade */ min-height: 88px; color: var(--display-text); border-radius: 16px; padding: 8px 16px;
+  background: #000; border: 1px solid var(--display-border);
+  box-shadow: var(--display-shadow), 0 0 0 3px var(--display-bezel, #000), 0 0 0 4px #ffffff12;
+  display: grid; grid-template-rows: auto 1fr auto; gap: 2px; }
 .indicators { display: flex; gap: 10px; font-size: 11px; font-weight: 700; align-items: center; }
 .indicators [data-ind] { color: var(--ind-off); }
 .indicators [data-ind].on { color: var(--ind-on); }
@@ -110,8 +101,8 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
 /* o brilho em si fica numa camada interna que vai e volta devagar (só transform, no compositor):
    o reflexo nunca fica parado, mesmo sem sensor de movimento nem toque; a camada externa segue a inclinação/dedo */
 .reflex::before, .sheen::before { content: ""; position: absolute; inset: 0; background: var(--reflex); will-change: transform;
-  animation: reflex-drift 7s ease-in-out infinite alternate; }
-@keyframes reflex-drift { from { transform: translate3d(-16%, -6%, 0); } to { transform: translate3d(16%, 6%, 0); } }
+  animation: reflex-drift 26s ease-in-out infinite alternate; }
+@keyframes reflex-drift { from { transform: translate3d(-14%, -5%, 0); } to { transform: translate3d(14%, 5%, 0); } }
 @media (prefers-reduced-motion: reduce) { .reflex::before, .sheen::before { animation: none; } }
 
 .notice { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); background: #000c; color: #fff;

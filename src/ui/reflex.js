@@ -2,7 +2,8 @@
 // Só `transform` e `opacity`; no máximo uma escrita por quadro; pausa em segundo plano.
 const RANGE_X = 90; // px de deslocamento máximo
 const RANGE_Y = 120;
-const SMOOTH = 0.18; // amortecimento por quadro
+const SMOOTH_MOUSE = 0.035; // PC: acompanha o mouse bem devagar
+const SMOOTH_TILT = 0.09; // celular: um pouco mais ágil, mas ainda suave
 const MIN_DELTA = 0.01; // variação mínima do alvo para valer a pena atualizar
 const EPS = 0.002;
 const TILT_SPAN = 18; // graus de inclinação, a partir da posição neutra, que levam o reflexo ao limite
@@ -15,14 +16,15 @@ export function startReflex(layer) {
   let stopped = false;
   let motionOn = false;
   let tiltSeen = false;
+  let smooth = SMOOTH_MOUSE;
   let base = null; // posição neutra: a primeira leitura (e a seguinte a cada calibração)
 
   const sheen = document.querySelector('.sheen'); // brilho da placa metálica: mesma posição e opacidade
   const frame = () => {
     raf = 0;
     if (stopped || document.hidden) return;
-    cur.x += (target.x - cur.x) * SMOOTH;
-    cur.y += (target.y - cur.y) * SMOOTH;
+    cur.x += (target.x - cur.x) * smooth;
+    cur.y += (target.y - cur.y) * smooth;
     const done = Math.abs(target.x - cur.x) < EPS && Math.abs(target.y - cur.y) < EPS;
     if (done) cur = { ...target };
     layer.style.transform = `translate3d(${(cur.x * RANGE_X).toFixed(2)}px, ${(cur.y * RANGE_Y).toFixed(2)}px, 0)`;
@@ -45,10 +47,11 @@ export function startReflex(layer) {
   };
 
   // só o mouse (PC) move o reflexo; toque e caneta não interferem
-  const onMouse = (e) => e.pointerType && e.pointerType !== 'mouse' ? undefined : aim((e.clientX / window.innerWidth) * 2 - 1, (e.clientY / window.innerHeight) * 2 - 1);
+  const onMouse = (e) => e.pointerType && e.pointerType !== 'mouse' ? undefined : (smooth = SMOOTH_MOUSE, aim((e.clientX / window.innerWidth) * 2 - 1, (e.clientY / window.innerHeight) * 2 - 1));
   const onTilt = (e) => {
     if (e.gamma == null && e.beta == null) return;
     tiltSeen = true;
+    smooth = SMOOTH_TILT;
     const g = e.gamma ?? 0;
     const b = e.beta ?? 50;
     if (!base) base = { g, b }; // calibração automática: o jeito atual de segurar vira o "centro"
