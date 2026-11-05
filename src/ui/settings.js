@@ -44,12 +44,15 @@ function ensureReflexLayer(reduce) {
   const keys = document.querySelector('.keys');
   if (!keys) return;
   const el = keys.querySelector('.reflex');
-  if (reduce && el) el.remove();
+  if (reduce && el) (el.closest('.reflex-clip') ?? el).remove();
   if (!reduce && !el) {
+    const clip = document.createElement('div');
+    clip.className = 'reflex-clip';
+    clip.setAttribute('aria-hidden', 'true');
     const d = document.createElement('div');
     d.className = 'reflex';
-    d.setAttribute('aria-hidden', 'true');
-    keys.append(d);
+    clip.append(d);
+    keys.append(clip);
   }
 }
 
