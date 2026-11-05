@@ -15,6 +15,7 @@
 /* Retro: preto e dourado, teclas com relevo, visor luminoso ciano (padrão) */
 :root, [data-theme="retro"] {
   --plate-a:#b98a35; --plate-b:#e9c777; --plate-c:#c79a45; --plate-edge:#7a5a1c; --plate-ink:#3b2a08; --engrave-hi:rgba(255,236,180,.75); --engrave-lo:rgba(60,38,0,.55);
+  --badge-a:#ecd98c; --badge-b:#b89a3e; --badge-c:#d8c070; --badge-d:#9c8230; --badge-ink:#e3cf86; --badge-frame:#0b0b0c;
   --bg: #0b0b0c;
   --body: #0b0b0c; --body-solid: #0b0b0c;
   --edge: #8a6a2c; --edge-w: 2px;
@@ -22,11 +23,11 @@
   --key-flat: #232326;
   --key-bg: linear-gradient(#2c2c2f, #19191b); --key-border: #3d3d41;
   --key-shadow: 0 2px 0 #050505, inset 0 1px 0 #ffffff14;
-  --key-text: #f2f2f2; --gold: #f0b429; --blue: #4aa8ff;
-  --keyf-bg: linear-gradient(#f6c764, #c8922a); --keyf-border: #e3b04a; --keyf-text: #1a1205;
-  --keyf-shadow: 0 2px 0 #5c4210, inset 0 1px 0 #ffffff66; --flash-f: #ffd978e6;
-  --keyg-bg: linear-gradient(#3b97ff, #1b63d1); --keyg-border: #5aa8ff; --keyg-text: #ffffff;
-  --keyg-shadow: 0 2px 0 #0b2f6b, inset 0 1px 0 #ffffff59; --flash-g: #7dbdffe6;
+  --key-text: #efe8d4; --gold: #e8982f; --blue: #4db4e6; --rim-a:#d9b45a; --rim-b:#8e6c25;
+  --keyf-bg: linear-gradient(#f2a93c, #c97a12); --keyf-border: #e0a040; --keyf-text: #1a1205;
+  --keyf-shadow: 0 2px 0 #4d3208, inset 0 1px 0 #ffffff55; --flash-f: #ffc66ae6;
+  --keyg-bg: linear-gradient(#4db4e6, #2a86b5); --keyg-border: #6cc4ee; --keyg-text: #04202c;
+  --keyg-shadow: 0 2px 0 #0b3347, inset 0 1px 0 #ffffff59; --flash-g: #8fd4f5e6;
   --display-bg: #000; --display-solid: #000; --display-border: #6b5420;
   --display-shadow: none; --display-text: #aef2ff;
   --display-glow: 0 0 12px #78dcff8c;
@@ -39,6 +40,7 @@
 /* Platinum: o mesmo estilo do Gold, em prata e monocromático */
 [data-theme="platinum"] {
   --plate-a:#8f959d; --plate-b:#e6e9ee; --plate-c:#aeb4bc; --plate-edge:#555a62; --plate-ink:#1f2227; --engrave-hi:rgba(255,255,255,.8); --engrave-lo:rgba(10,12,16,.55);
+  --badge-a:#f2f4f7; --badge-b:#a9afb8; --badge-c:#dfe3e8; --badge-d:#8a9099; --badge-ink:#dfe3e8; --badge-frame:#0c0d0f;
   --bg: #0c0d0f;
   --body: #0c0d0f; --body-solid: #0c0d0f;
   --edge: #8a9098; --edge-w: 2px;
@@ -46,7 +48,7 @@
   --key-flat: #25272a;
   --key-bg: linear-gradient(#303236, #1b1c1f); --key-border: #40434a;
   --key-shadow: 0 2px 0 #050505, inset 0 1px 0 #ffffff14;
-  --key-text: #f1f2f4; --gold: #e3e6ea; --blue: #93a6b8;
+  --key-text: #eceff2; --gold: #e3e6ea; --blue: #93a6b8; --rim-a:#cdd2d9; --rim-b:#7f8590;
   --keyf-bg: linear-gradient(#f2f4f7, #aeb4bc); --keyf-border: #d7dbe1; --keyf-text: #15171a;
   --keyf-shadow: 0 2px 0 #4a4f57, inset 0 1px 0 #ffffff99; --flash-f: #ffffffe6;
   --keyg-bg: linear-gradient(#707a86, #3d444d); --keyg-border: #8d97a3; --keyg-text: #ffffff;
@@ -63,6 +65,7 @@
 /* Moderno escuro: vidro translúcido em grafite, halos dourado e azul nos cantos, reflexo suave */
 [data-theme="moderno-escuro"] {
   --plate-a:#a8895a; --plate-b:#dcc08a; --plate-c:#b99a66; --plate-edge:#6d5733; --plate-ink:#33260c; --engrave-hi:rgba(255,238,200,.65); --engrave-lo:rgba(50,34,6,.5);
+  --badge-a:#d9bf8a; --badge-b:#a8895a; --badge-c:#c8aa74; --badge-d:#8a6f43; --badge-ink:#d9bf8a; --badge-frame:#141414;
   --bg: #0a0b0e;
   --body: linear-gradient(160deg, #171a21 0%, #0c0d11 60%, #0a0b0e 100%); --body-solid: #101217;
   --edge: #e8d6aa8c; --edge-w: 1.5px;
@@ -89,6 +92,7 @@
 [data-theme="moderno-claro"] {
   --display-bezel:#141414;
   --plate-a:#d9b56a; --plate-b:#f3dba0; --plate-c:#dfbf79; --plate-edge:#a88642; --plate-ink:#4a3410; --engrave-hi:rgba(255,248,222,.85); --engrave-lo:rgba(90,60,10,.4);
+  --badge-a:#f0d99a; --badge-b:#d3ad62; --badge-c:#e4c47c; --badge-d:#b99245; --badge-ink:#f0d99a; --badge-frame:#141414;
   --bg: #efe5d2;
   --body: linear-gradient(160deg, #f6efe2 0%, #eadfca 100%); --body-solid: #f1e8d6;
   --edge: #96733288; --edge-w: 1.5px;
@@ -138,7 +142,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
 /* placa metálica que nasce nas bordas e se funde com o vidro embaixo */
 .brand { z-index: 1; display: flex; align-items: center; gap: 14px; position: relative;
   margin: calc(-1 * var(--pt)) calc(-1 * var(--pr)) 10px calc(-1 * var(--pl));
-  padding: calc(var(--pt) + 8px) calc(var(--pr) + 12px) 12px calc(var(--pl) + 12px);
+  padding: calc(var(--pt) + 7px) calc(var(--pr) + 12px) 9px calc(var(--pl) + 12px);
   background:
     linear-gradient(180deg, rgba(255,255,255,.30) 0%, rgba(255,255,255,0) 45%, rgba(0,0,0,.08) 100%),
     repeating-linear-gradient(90deg, rgba(255,255,255,.07) 0 1px, rgba(0,0,0,.05) 1px 2px),
@@ -146,17 +150,27 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
   /* divisória fixa entre o metal e o vidro: fio escuro + fio de luz */
   border-bottom: 1px solid var(--plate-edge);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 1px 0 var(--engrave-hi), 0 3px 6px rgba(0,0,0,.28); }
-.brand .name { font-size: 24px; font-weight: 700; letter-spacing: .01em; color: var(--plate-ink); white-space: nowrap;
+.brand .sub { font-size: 26px; font-weight: 800; letter-spacing: .28em; color: var(--plate-ink); white-space: nowrap;
   text-shadow: 0 1px 0 var(--engrave-hi), 0 -1px 0 var(--engrave-lo); }
-.brand .name i { font-style: italic; font-weight: 800; }
 .brand .rule { flex: 1; height: 2px; border-radius: 1px; background: var(--plate-ink); opacity: .75;
   box-shadow: 0 1px 0 var(--engrave-hi); }
-.brand .sub { font-size: 14px; font-weight: 700; letter-spacing: .3em; color: var(--plate-ink); white-space: nowrap;
-  text-shadow: 0 1px 0 var(--engrave-hi), 0 -1px 0 var(--engrave-lo); }
+/* emblema MW 12C: moldura na cor da placa, miolo preto, selo MW e barra 12C (como o hp 12C original) */
+.brand .badge { --metal: linear-gradient(135deg, var(--plate-b) 0%, var(--plate-c) 45%, var(--plate-a) 100%);
+  flex: none; display: grid; gap: 3px; width: 56px; height: 56px; box-sizing: border-box; padding: 3px;
+  grid-template-rows: 1fr auto; border-radius: 6px; border: 3px solid transparent;
+  background: linear-gradient(#0b0b0c, #0b0b0c) padding-box, var(--metal) border-box;
+  box-shadow: 0 0 0 1px var(--plate-edge), 0 1px 0 var(--engrave-hi), 0 2px 4px #0005; }
+.brand .badge .mw { display: grid; place-items: center; border-radius: 3px; background: var(--metal); --r: 11px;
+  font-size: 10px; font-weight: 900; letter-spacing: -.05em; line-height: 1; color: var(--plate-b); position: relative; }
+.brand .badge .mw::before { content: ""; position: absolute; left: 50%; top: 50%; width: calc(var(--r) * 2); height: calc(var(--r) * 2);
+  transform: translate(-50%, -50%); border-radius: 50%; background: #0b0b0c; }
+.brand .badge .mw i { position: relative; font-style: italic; transform: translateX(-.5px); }
+.brand .badge .model { display: block; text-align: center; padding: 3px 0 2px; border-radius: 3px; background: #0b0b0c;
+  border: 1px solid var(--plate-a); font-size: 11px; font-weight: 900; letter-spacing: .02em; line-height: 1; color: var(--plate-b); }
 
 /* ---- visor ---- */
 /* tela OLED: preto puro (pixels apagados), só os números e indicadores emitem luz, sem linhas nem vidro cinza */
-.display { position: relative; z-index: 4; /* acima do reflexo: tela apagada fica preta de verdade */ min-height: 88px; color: var(--display-text); border-radius: 16px; padding: 8px 16px;
+.display { position: relative; z-index: 4; /* acima do reflexo: tela apagada fica preta de verdade */ min-height: 88px; color: var(--display-text); border-radius: var(--display-radius, 16px); padding: 8px 16px;
   background: #000; border: 1px solid var(--display-border);
   box-shadow: var(--display-shadow), 0 0 0 3px var(--display-bezel, #000), 0 0 0 4px #ffffff12;
   display: grid; grid-template-rows: auto 1fr auto; gap: 2px; }
@@ -175,8 +189,9 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
 .keys { display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(8, 1fr); gap: 8px; min-height: 0; position: relative; z-index: 1; overflow: clip; }
 .key { grid-column: calc(var(--c) + 1); grid-row: calc(var(--r) + 1) / span var(--rs, 1);
   display: flex; flex-direction: column; justify-content: space-between; align-items: center;
-  background: var(--key-bg); box-shadow: var(--key-shadow); color: var(--key-text); border: 1px solid var(--key-border); border-radius: 13px;
+  background: var(--key-bg); box-shadow: var(--key-shadow); color: var(--key-text); border: 1px solid var(--key-border); border-radius: var(--key-radius, 13px);
   position: relative; padding: 5px 0 4px; font: inherit; min-width: 0; min-height: 0; }
+.face { display: none; }
 .key:active { filter: brightness(1.25); transform: scale(.97); }
 .key .lf { color: var(--gold); font-size: clamp(8.5px, 1.15dvh, 9.5px); font-weight: 600; white-space: nowrap; line-height: 1; min-height: 10px; }
 .key .lg { color: var(--blue); font-size: clamp(8.5px, 1.15dvh, 9.5px); font-weight: 600; white-space: nowrap; line-height: 1; min-height: 10px; }
@@ -196,7 +211,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
 /* brilho de f e g: realce curto, só com opacidade, na tecla e nos rótulos que acendem */
 .key::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0;
   background: radial-gradient(circle at var(--tx, 50%) var(--ty, 38%), var(--flash, #ffffffcc), transparent 72%); }
-.key::before { content: ""; position: absolute; inset: -2px; border-radius: 15px; pointer-events: none; opacity: 0;
+.key::before { content: ""; position: absolute; inset: -2px; border-radius: calc(var(--key-radius, 13px) + 2px); pointer-events: none; opacity: 0;
   box-shadow: 0 0 14px 3px var(--flash, #ffffffcc); }
 .key.flash::before, .key.flash::after { animation: glow-key .6s ease-out; }
 /* enquanto f ou g está ativo, a tecla fica com um halo suave */
@@ -298,8 +313,10 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
   /* a placa cobre a largura toda, inclusive acima dos registradores */
   .calc { --plate-h: 40px; }
   .brand { margin-left: calc(-1 * (var(--pl) + 238px)); padding: calc(var(--pt) + 4px) calc(var(--pr) + 14px) 6px calc(var(--pl) + 14px); margin-bottom: 8px; }
-  .brand .name { font-size: 20px; }
-  .brand .sub { font-size: 12px; }
+  .brand .sub { font-size: 18px; }
+  .brand .badge { width: 42px; height: 42px; padding: 2px; gap: 2px; border-width: 2px; }
+  .brand .badge .mw { --r: 8px; font-size: 7px; }
+  .brand .badge .model { font-size: 8px; padding: 2px 0 1px; }
   .display { min-height: 60px; padding: 4px 14px; }
   .digits { font-size: 34px; }
   .indicators { font-size: 10px; }
@@ -328,6 +345,28 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
     background: var(--body-solid); padding: 8px; border-radius: 8px; }
   .settings { left: 238px; top: 70px; max-height: calc(100% - 110px); }
 }
+
+/* ---- Gold e Platinum: visual mais quadrado, inspirado na HP 12C original (mesmas posições das teclas) ---- */
+html:not([data-theme^="moderno"]) { --key-radius: 3px; --display-radius: 2px; --face-top: 15px; }
+html:not([data-theme^="moderno"]) .key { background: none; border: 0; box-shadow: none; padding: 3px 0 4px; font-family: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif; }
+/* a face escura da tecla começa abaixo do rótulo f, como na calculadora original */
+html:not([data-theme^="moderno"]) .key .face { display: block; position: absolute; left: 0; right: 0; bottom: 0; top: var(--face-top); z-index: -1;
+  border-radius: var(--key-radius); background: var(--key-bg); border: 1px solid var(--key-border); box-shadow: var(--key-shadow); }
+html:not([data-theme^="moderno"]) .key.prefix-f .face { background: var(--keyf-bg); border-color: var(--keyf-border); box-shadow: var(--keyf-shadow); }
+html:not([data-theme^="moderno"]) .key.prefix-g .face { background: var(--keyg-bg); border-color: var(--keyg-border); box-shadow: var(--keyg-shadow); }
+html:not([data-theme^="moderno"]) .key::after { top: var(--face-top); }
+html:not([data-theme^="moderno"]) .key::before { top: calc(var(--face-top) - 2px); }
+html:not([data-theme^="moderno"]) .key .lg:empty { display: none; }
+html:not([data-theme^="moderno"]) .key .lm { font-weight: 600; letter-spacing: 0; }
+html:not([data-theme^="moderno"]) .key .lf, html:not([data-theme^="moderno"]) .key .lg { font-weight: 700; letter-spacing: .01em; }
+/* visor numa janela retangular com aro metálico */
+html:not([data-theme^="moderno"]) .display { border: 4px solid transparent;
+  background: linear-gradient(#000, #000) padding-box, linear-gradient(160deg, var(--rim-a), var(--rim-b) 55%, var(--rim-a)) border-box;
+  background-color: #000; box-shadow: inset 0 0 0 1px #000, 0 0 0 1px #000a; }
+@media (orientation: landscape) { html:not([data-theme^="moderno"]) { --face-top: 11px; } html:not([data-theme^="moderno"]) .key { padding: 2px 0 2px; } }
+
+/* troca de tema: fusão suave entre o visual antigo e o novo */
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .5s; animation-timing-function: ease-in-out; }
 
 </style>
 </head>
@@ -2208,7 +2247,14 @@ function mountSettings(ctx) {
     else s[n] = e.target.checked; // reduce, vibrate
     saveSettings(s);
     lockMode();
-    apply();
+    // troca de tema com fusão suave (View Transitions); sem suporte ou com movimento reduzido, troca direto
+    if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches && n !== 'vibrate') {
+      const vt = document.startViewTransition(() => apply());
+      // trocas rápidas cancelam a transição anterior; isso é esperado, não é erro
+      for (const k of ['ready', 'finished', 'updateCallbackDone']) vt[k] && vt[k].catch(() => {});
+    } else {
+      apply();
+    }
   });
   apply();
   return { get: () => ({ ...s }) };
@@ -2380,7 +2426,7 @@ function makeKey(k) {
   b.setAttribute('aria-label', ariaLabel(k));
   if (!k.enabled) b.setAttribute('aria-disabled', 'true');
   b.innerHTML =
-    `<span class="lf">${k.f ?? ''}</span><span class="lm">${k.label}</span><span class="lg">${k.g ?? ''}</span>`;
+    `<span class="face" aria-hidden="true"></span><span class="lf">${k.f ?? ''}</span><span class="lm">${k.label}</span><span class="lg">${k.g ?? ''}</span>`;
   return b;
 }
 
@@ -2402,7 +2448,9 @@ function mountApp(root, engine = new Engine()) {
   top.className = 'top';
   const brand = document.createElement('div');
   brand.className = 'brand';
-  brand.innerHTML = '<span class="name">Calc <i>12c</i></span><span class="rule" aria-hidden="true"></span><span class="sub">RPN</span>';
+  brand.setAttribute('aria-label', 'Calc 12c, calculadora financeira RPN');
+  brand.innerHTML = '<span class="sub">RPN</span><span class="rule" aria-hidden="true"></span>' +
+    '<span class="badge" aria-hidden="true"><span class="mw"><i>MW</i></span><span class="model">12C</span></span>';
   top.append(brand, display);
   calc.append(top, keys, notice);
   root.append(calc);

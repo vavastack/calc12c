@@ -37,7 +37,7 @@ function makeKey(k) {
   b.setAttribute('aria-label', ariaLabel(k));
   if (!k.enabled) b.setAttribute('aria-disabled', 'true');
   b.innerHTML =
-    `<span class="lf">${k.f ?? ''}</span><span class="lm">${k.label}</span><span class="lg">${k.g ?? ''}</span>`;
+    `<span class="face" aria-hidden="true"></span><span class="lf">${k.f ?? ''}</span><span class="lm">${k.label}</span><span class="lg">${k.g ?? ''}</span>`;
   return b;
 }
 
@@ -59,7 +59,9 @@ export function mountApp(root, engine = new Engine()) {
   top.className = 'top';
   const brand = document.createElement('div');
   brand.className = 'brand';
-  brand.innerHTML = '<span class="name">Calc <i>12c</i></span><span class="rule" aria-hidden="true"></span><span class="sub">RPN</span>';
+  brand.setAttribute('aria-label', 'Calc 12c, calculadora financeira RPN');
+  brand.innerHTML = '<span class="sub">RPN</span><span class="rule" aria-hidden="true"></span>' +
+    '<span class="badge" aria-hidden="true"><span class="mw"><i>MW</i></span><span class="model">12C</span></span>';
   top.append(brand, display);
   calc.append(top, keys, notice);
   root.append(calc);

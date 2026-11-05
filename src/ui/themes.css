@@ -4,6 +4,7 @@
 /* Retro: preto e dourado, teclas com relevo, visor luminoso ciano (padrão) */
 :root, [data-theme="retro"] {
   --plate-a:#b98a35; --plate-b:#e9c777; --plate-c:#c79a45; --plate-edge:#7a5a1c; --plate-ink:#3b2a08; --engrave-hi:rgba(255,236,180,.75); --engrave-lo:rgba(60,38,0,.55);
+  --badge-a:#ecd98c; --badge-b:#b89a3e; --badge-c:#d8c070; --badge-d:#9c8230; --badge-ink:#e3cf86; --badge-frame:#0b0b0c;
   --bg: #0b0b0c;
   --body: #0b0b0c; --body-solid: #0b0b0c;
   --edge: #8a6a2c; --edge-w: 2px;
@@ -11,11 +12,11 @@
   --key-flat: #232326;
   --key-bg: linear-gradient(#2c2c2f, #19191b); --key-border: #3d3d41;
   --key-shadow: 0 2px 0 #050505, inset 0 1px 0 #ffffff14;
-  --key-text: #f2f2f2; --gold: #f0b429; --blue: #4aa8ff;
-  --keyf-bg: linear-gradient(#f6c764, #c8922a); --keyf-border: #e3b04a; --keyf-text: #1a1205;
-  --keyf-shadow: 0 2px 0 #5c4210, inset 0 1px 0 #ffffff66; --flash-f: #ffd978e6;
-  --keyg-bg: linear-gradient(#3b97ff, #1b63d1); --keyg-border: #5aa8ff; --keyg-text: #ffffff;
-  --keyg-shadow: 0 2px 0 #0b2f6b, inset 0 1px 0 #ffffff59; --flash-g: #7dbdffe6;
+  --key-text: #efe8d4; --gold: #e8982f; --blue: #4db4e6; --rim-a:#d9b45a; --rim-b:#8e6c25;
+  --keyf-bg: linear-gradient(#f2a93c, #c97a12); --keyf-border: #e0a040; --keyf-text: #1a1205;
+  --keyf-shadow: 0 2px 0 #4d3208, inset 0 1px 0 #ffffff55; --flash-f: #ffc66ae6;
+  --keyg-bg: linear-gradient(#4db4e6, #2a86b5); --keyg-border: #6cc4ee; --keyg-text: #04202c;
+  --keyg-shadow: 0 2px 0 #0b3347, inset 0 1px 0 #ffffff59; --flash-g: #8fd4f5e6;
   --display-bg: #000; --display-solid: #000; --display-border: #6b5420;
   --display-shadow: none; --display-text: #aef2ff;
   --display-glow: 0 0 12px #78dcff8c;
@@ -28,6 +29,7 @@
 /* Platinum: o mesmo estilo do Gold, em prata e monocromático */
 [data-theme="platinum"] {
   --plate-a:#8f959d; --plate-b:#e6e9ee; --plate-c:#aeb4bc; --plate-edge:#555a62; --plate-ink:#1f2227; --engrave-hi:rgba(255,255,255,.8); --engrave-lo:rgba(10,12,16,.55);
+  --badge-a:#f2f4f7; --badge-b:#a9afb8; --badge-c:#dfe3e8; --badge-d:#8a9099; --badge-ink:#dfe3e8; --badge-frame:#0c0d0f;
   --bg: #0c0d0f;
   --body: #0c0d0f; --body-solid: #0c0d0f;
   --edge: #8a9098; --edge-w: 2px;
@@ -35,7 +37,7 @@
   --key-flat: #25272a;
   --key-bg: linear-gradient(#303236, #1b1c1f); --key-border: #40434a;
   --key-shadow: 0 2px 0 #050505, inset 0 1px 0 #ffffff14;
-  --key-text: #f1f2f4; --gold: #e3e6ea; --blue: #93a6b8;
+  --key-text: #eceff2; --gold: #e3e6ea; --blue: #93a6b8; --rim-a:#cdd2d9; --rim-b:#7f8590;
   --keyf-bg: linear-gradient(#f2f4f7, #aeb4bc); --keyf-border: #d7dbe1; --keyf-text: #15171a;
   --keyf-shadow: 0 2px 0 #4a4f57, inset 0 1px 0 #ffffff99; --flash-f: #ffffffe6;
   --keyg-bg: linear-gradient(#707a86, #3d444d); --keyg-border: #8d97a3; --keyg-text: #ffffff;
@@ -52,6 +54,7 @@
 /* Moderno escuro: vidro translúcido em grafite, halos dourado e azul nos cantos, reflexo suave */
 [data-theme="moderno-escuro"] {
   --plate-a:#a8895a; --plate-b:#dcc08a; --plate-c:#b99a66; --plate-edge:#6d5733; --plate-ink:#33260c; --engrave-hi:rgba(255,238,200,.65); --engrave-lo:rgba(50,34,6,.5);
+  --badge-a:#d9bf8a; --badge-b:#a8895a; --badge-c:#c8aa74; --badge-d:#8a6f43; --badge-ink:#d9bf8a; --badge-frame:#141414;
   --bg: #0a0b0e;
   --body: linear-gradient(160deg, #171a21 0%, #0c0d11 60%, #0a0b0e 100%); --body-solid: #101217;
   --edge: #e8d6aa8c; --edge-w: 1.5px;
@@ -78,6 +81,7 @@
 [data-theme="moderno-claro"] {
   --display-bezel:#141414;
   --plate-a:#d9b56a; --plate-b:#f3dba0; --plate-c:#dfbf79; --plate-edge:#a88642; --plate-ink:#4a3410; --engrave-hi:rgba(255,248,222,.85); --engrave-lo:rgba(90,60,10,.4);
+  --badge-a:#f0d99a; --badge-b:#d3ad62; --badge-c:#e4c47c; --badge-d:#b99245; --badge-ink:#f0d99a; --badge-frame:#141414;
   --bg: #efe5d2;
   --body: linear-gradient(160deg, #f6efe2 0%, #eadfca 100%); --body-solid: #f1e8d6;
   --edge: #96733288; --edge-w: 1.5px;

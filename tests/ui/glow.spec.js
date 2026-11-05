@@ -64,10 +64,13 @@ test('o brilho usa só opacidade (sem transform) e continua com "reduzir efeitos
 test('cabeçalho Calc 12C, dica da gaveta e teclas f e g coloridas', async () => {
   const app = await openApp(browser, server.url);
   const p = app.page;
-  assert.equal(await p.locator('.brand .name').innerText(), 'Calc 12c');
+  assert.equal(await p.locator('.brand .sub').innerText(), 'RPN'); // RPN à esquerda
+  assert.equal((await p.locator('.brand .badge').innerText()).replace(/\s+/g, ''), 'MW12C'); // emblema à direita
+  const [xr, xb] = await p.evaluate(() => [document.querySelector('.brand .sub').getBoundingClientRect().x, document.querySelector('.brand .badge').getBoundingClientRect().x]);
+  assert.ok(xr < xb);
   const hint = await p.locator('.drawer-handle').evaluate((e) => getComputedStyle(e, '::before').content);
   assert.match(hint, /Puxe para ver a fita e a memória/);
-  const bg = (id) => key(p, id).evaluate((e) => getComputedStyle(e).backgroundImage);
+  const bg = (id) => key(p, id).locator('.face').evaluate((e) => getComputedStyle(e).backgroundImage); // a face da tecla carrega a cor
   assert.notEqual(await bg('f'), await bg('g'));
   assert.notEqual(await bg('f'), await bg('n'));
   assert.deepEqual(await p.evaluate(() => [...document.querySelectorAll('.top, .keys')].map((e) => getComputedStyle(e).zIndex)), ['auto', '1']); // o visor (z 4) e a placa (z 1) ficam por cima do vidro do corpo

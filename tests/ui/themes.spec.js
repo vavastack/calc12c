@@ -189,15 +189,15 @@ test('temas Gold, Platinum e Retro; modo claro/escuro só vale no Retro', async 
   assert.equal(await p.locator('select[name="theme"]').inputValue(), 'retro'); // padrão: Gold
   assert.equal(await p.locator('select[name="mode"]').isDisabled(), true);
   await p.locator('select[name="theme"]').selectOption('platinum');
-  assert.equal(await attr(p, 'data-theme'), 'platinum');
+  await p.waitForFunction((v) => document.documentElement.getAttribute('data-theme') === v, 'platinum'); // a troca é suave: termina logo depois
   assert.equal(await p.locator('select[name="mode"]').isDisabled(), true);
   await p.locator('select[name="theme"]').selectOption('moderno');
   assert.equal(await p.locator('select[name="mode"]').isDisabled(), false);
   await p.locator('select[name="mode"]').selectOption('claro');
-  assert.equal(await attr(p, 'data-theme'), 'moderno-claro');
+  await p.waitForFunction((v) => document.documentElement.getAttribute('data-theme') === v, 'moderno-claro'); // a troca é suave: termina logo depois
   await p.locator('select[name="theme"]').selectOption('retro');
   assert.equal(await p.locator('select[name="mode"]').isDisabled(), true);
-  assert.equal(await attr(p, 'data-theme'), 'retro');
+  await p.waitForFunction((v) => document.documentElement.getAttribute('data-theme') === v, 'retro'); // a troca é suave: termina logo depois
   await app.close();
 });
 
@@ -230,5 +230,39 @@ test('o visor é OLED: preto puro em todos os temas, sem linhas nem vidro cinza,
     assert.equal(css.vidro, 'none');
     assert.notEqual(css.folga, '0px'); // folga para o brilho do número não ser cortado em retângulo
   }
+  await app.close();
+});
+
+test('Gold e Platinum: teclas e visor quadrados (como a HP 12C); Retro mantém os cantos arredondados', async () => {
+  const app = await openApp(browser, server.url);
+  const p = app.page;
+  const raio = () => p.evaluate(() => ({
+    tecla: parseFloat(getComputedStyle(document.querySelector('.key .face')).borderTopLeftRadius),
+    visor: parseFloat(getComputedStyle(document.querySelector('.display')).borderTopLeftRadius),
+    rotuloF: getComputedStyle(document.querySelector('.key .lf')).position,
+  }));
+  for (const t of ['retro', 'platinum']) {
+    await apply(p, t, 'auto');
+    const r = await raio();
+    assert.ok(r.tecla <= 4 && r.visor <= 4, `${t}: tecla ${r.tecla}, visor ${r.visor}`);
+  }
+  await apply(p, 'moderno', 'escuro');
+  const r = await p.evaluate(() => ({
+    tecla: parseFloat(getComputedStyle(document.querySelector('.key')).borderTopLeftRadius),
+    visor: parseFloat(getComputedStyle(document.querySelector('.display')).borderTopLeftRadius),
+  }));
+  assert.ok(r.tecla >= 12 && r.visor >= 14, `retro: tecla ${r.tecla}, visor ${r.visor}`);
+  await app.close();
+});
+
+test('trocar o tema pelas configurações usa transição suave (fusão) e chega ao tema escolhido', async () => {
+  const app = await openApp(browser, server.url);
+  const p = app.page;
+  await p.evaluate(() => { window.__vt = 0; const o = document.startViewTransition?.bind(document); if (o) document.startViewTransition = (f) => { window.__vt++; return o(f); }; });
+  await p.locator('.settings-btn').click();
+  await p.locator('select[name="theme"]').selectOption('platinum');
+  await p.waitForFunction(() => document.documentElement.getAttribute('data-theme') === 'platinum');
+  assert.equal(await p.evaluate(() => window.__vt), 1);
+  assert.equal(await p.evaluate(() => getComputedStyle(document.documentElement, '::view-transition-old(root)').animationDuration !== undefined), true);
   await app.close();
 });

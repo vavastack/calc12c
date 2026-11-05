@@ -175,7 +175,14 @@ export function mountSettings(ctx) {
     else s[n] = e.target.checked; // reduce, vibrate
     saveSettings(s);
     lockMode();
-    apply();
+    // troca de tema com fusão suave (View Transitions); sem suporte ou com movimento reduzido, troca direto
+    if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches && n !== 'vibrate') {
+      const vt = document.startViewTransition(() => apply());
+      // trocas rápidas cancelam a transição anterior; isso é esperado, não é erro
+      for (const k of ['ready', 'finished', 'updateCallbackDone']) vt[k] && vt[k].catch(() => {});
+    } else {
+      apply();
+    }
   });
   apply();
   return { get: () => ({ ...s }) };
