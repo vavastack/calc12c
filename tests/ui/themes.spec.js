@@ -163,3 +163,20 @@ test('configurações corrompidas no armazenamento caem nos padrões, sem erro',
   assert.deepEqual(app.errors, []);
   await app.close();
 });
+
+test('painel de configurações: cabeçalho, grupos, interruptores e botão fechar', async () => {
+  const app = await openApp(browser, server.url);
+  const p = app.page;
+  await p.locator('.settings-btn').click();
+  assert.equal(await p.locator('.settings-title').innerText(), 'Configurações');
+  assert.deepEqual((await p.locator('.group-title').allTextContents()).map((t) => t.toLowerCase()), ['aparência', 'efeitos', 'brilho']);
+  const w = await p.locator('input[name="vibrate"]').evaluate((e) => e.getBoundingClientRect().width);
+  assert.ok(w >= 44, `interruptor largo o bastante para o toque (${w}px)`);
+  await p.locator('input[name="vibrate"]').check();
+  assert.equal(await p.locator('input[name="vibrate"]').isChecked(), true);
+  const painel = await p.locator('.settings').boundingBox();
+  assert.ok(painel.x >= 0 && painel.x + painel.width <= 390, 'painel cabe na largura da tela');
+  await p.locator('.settings-close').click();
+  assert.equal(await p.locator('.settings').isHidden(), true);
+  await app.close();
+});

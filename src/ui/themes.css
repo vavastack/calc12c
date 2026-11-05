@@ -21,7 +21,7 @@
   --ind-on: #f0b429; --ind-off: #55555a; --handle: #3a3a3e;
   --glass: none;
   --glow: none;
-  --reflex: linear-gradient(115deg, transparent 28%, #ffd98a2e 44%, #ffffff12 52%, transparent 66%);
+  --reflex: linear-gradient(115deg, transparent 30%, #ffd98a59 44%, #ffffff26 52%, transparent 64%);
 }
 
 /* Moderno escuro: vidro translúcido em grafite, halos dourado e azul nos cantos, reflexo suave */
@@ -45,7 +45,7 @@
   --glass: blur(14px) saturate(1.2);
   --glow: radial-gradient(260px 220px at 8% 6%, #f0b42947, transparent 70%),
           radial-gradient(300px 260px at 95% 92%, #3a8cff4d, transparent 70%);
-  --reflex: linear-gradient(115deg, transparent 28%, #ffffff30 44%, #ffffff0f 52%, transparent 66%);
+  --reflex: linear-gradient(115deg, transparent 30%, #ffffff55 44%, #ffffff1f 52%, transparent 64%);
 }
 
 /* Moderno claro: vidro claro em champanhe e marfim, com as mesmas cores de f e g */
@@ -69,7 +69,7 @@
   --glass: blur(14px) saturate(1.1);
   --glow: radial-gradient(260px 220px at 8% 6%, #f0b42961, transparent 70%),
           radial-gradient(300px 260px at 95% 92%, #3a8cff3d, transparent 70%);
-  --reflex: linear-gradient(115deg, transparent 26%, #ffffff66 44%, #ffffff1f 54%, transparent 68%);
+  --reflex: linear-gradient(115deg, transparent 30%, #ffc45f66 44%, #ffffff59 52%, transparent 64%);
 }
 
 /* Reduzir efeitos: vidro sólido, sem reflexo (liga sozinho em aparelhos simples) */

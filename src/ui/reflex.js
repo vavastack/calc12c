@@ -12,6 +12,7 @@ export function startReflex(layer) {
   let raf = 0;
   let stopped = false;
   let motionOn = false;
+  let tiltSeen = false;
 
   const frame = () => {
     raf = 0;
@@ -37,6 +38,7 @@ export function startReflex(layer) {
   const onMouse = (e) => aim((e.clientX / window.innerWidth) * 2 - 1, (e.clientY / window.innerHeight) * 2 - 1);
   const onTilt = (e) => {
     if (e.gamma == null && e.beta == null) return;
+    tiltSeen = true;
     aim((e.gamma ?? 0) / 25, ((e.beta ?? 50) - 50) / 25); // ~25° de inclinação já leva o reflexo ao limite
   };
   const onVisibility = () => {
@@ -53,6 +55,9 @@ export function startReflex(layer) {
 
   return {
     // No iPhone o sensor exige permissão, pedida num toque do usuário. Negada → brilho fixo.
+    get tiltSeen() {
+      return tiltSeen;
+    },
     get needsPermission() {
       return typeof window.DeviceOrientationEvent?.requestPermission === 'function';
     },

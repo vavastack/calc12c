@@ -32,7 +32,7 @@
   --ind-on: #f0b429; --ind-off: #55555a; --handle: #3a3a3e;
   --glass: none;
   --glow: none;
-  --reflex: linear-gradient(115deg, transparent 28%, #ffd98a2e 44%, #ffffff12 52%, transparent 66%);
+  --reflex: linear-gradient(115deg, transparent 30%, #ffd98a59 44%, #ffffff26 52%, transparent 64%);
 }
 
 /* Moderno escuro: vidro translúcido em grafite, halos dourado e azul nos cantos, reflexo suave */
@@ -56,7 +56,7 @@
   --glass: blur(14px) saturate(1.2);
   --glow: radial-gradient(260px 220px at 8% 6%, #f0b42947, transparent 70%),
           radial-gradient(300px 260px at 95% 92%, #3a8cff4d, transparent 70%);
-  --reflex: linear-gradient(115deg, transparent 28%, #ffffff30 44%, #ffffff0f 52%, transparent 66%);
+  --reflex: linear-gradient(115deg, transparent 30%, #ffffff55 44%, #ffffff1f 52%, transparent 64%);
 }
 
 /* Moderno claro: vidro claro em champanhe e marfim, com as mesmas cores de f e g */
@@ -80,7 +80,7 @@
   --glass: blur(14px) saturate(1.1);
   --glow: radial-gradient(260px 220px at 8% 6%, #f0b42961, transparent 70%),
           radial-gradient(300px 260px at 95% 92%, #3a8cff3d, transparent 70%);
-  --reflex: linear-gradient(115deg, transparent 26%, #ffffff66 44%, #ffffff1f 54%, transparent 68%);
+  --reflex: linear-gradient(115deg, transparent 30%, #ffc45f66 44%, #ffffff59 52%, transparent 64%);
 }
 
 /* Reduzir efeitos: vidro sólido, sem reflexo (liga sozinho em aparelhos simples) */
@@ -167,7 +167,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
    o reflexo nunca fica parado, mesmo sem sensor de movimento nem toque; a camada externa segue a inclinação/dedo */
 .reflex::before { content: ""; position: absolute; inset: 0; background: var(--reflex); will-change: transform;
   animation: reflex-drift 7s ease-in-out infinite alternate; }
-@keyframes reflex-drift { from { transform: translate3d(-9%, -4%, 0); } to { transform: translate3d(9%, 4%, 0); } }
+@keyframes reflex-drift { from { transform: translate3d(-16%, -6%, 0); } to { transform: translate3d(16%, 6%, 0); } }
 @media (prefers-reduced-motion: reduce) { .reflex::before { animation: none; } }
 
 .notice { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); background: #000c; color: #fff;
@@ -180,7 +180,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
   border-radius: 2px; background: var(--handle); }
 .drawer-handle::before { content: "Puxe para ver a fita e a memória"; position: absolute; left: 0; right: 0; top: 11px;
   font-size: 11px; color: var(--hint); text-align: center; }
-.drawer, .settings { position: absolute; left: 8px; right: 8px; top: 150px; max-height: 60%; overflow: auto; z-index: 5;
+.drawer { position: absolute; left: 8px; right: 8px; top: 150px; max-height: 60%; overflow: auto; z-index: 5;
   background: var(--body-solid); border: 1px solid var(--edge); border-radius: 10px; padding: 8px; display: none; gap: 8px; }
 .drawer[data-open="true"] { display: grid; }
 .mem { display: grid; gap: 6px; }
@@ -193,7 +193,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
 .tape button { width: 100%; display: flex; justify-content: space-between; gap: 8px; background: transparent; color: inherit;
   border: 0; border-bottom: 1px solid #8884; font: inherit; font-size: 12px; padding: 4px 2px; text-align: left; }
 .tape-wrap { display: grid; gap: 6px; }
-.clear-all, .confirm button, .settings button { font: inherit; font-size: 12px; background: #8883; color: inherit; border: 1px solid #8886; border-radius: 8px; padding: 4px 10px; }
+.clear-all, .confirm button { font: inherit; font-size: 12px; background: #8883; color: inherit; border: 1px solid #8886; border-radius: 8px; padding: 4px 10px; }
 .confirm[hidden] { display: none; }
 .confirm { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 12px; }
 .confirm p { margin: 0; flex: 1 1 100%; }
@@ -202,10 +202,34 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
 .settings-btn { position: absolute; right: 2px; bottom: -4px; width: 26px; height: 22px; border: 0; background: transparent;
   color: inherit; font-size: 15px; line-height: 1; opacity: .7; padding: 0; }
 .settings[hidden] { display: none; }
-.settings { display: grid; }
+.settings { position: absolute; left: 10px; right: 10px; top: 150px; max-height: calc(100% - 170px); overflow: auto; z-index: 5; display: grid; gap: 14px;
+  padding: 14px 16px 16px; border-radius: 20px; background: var(--body-solid); color: var(--key-text);
+  border: 1px solid var(--key-border); box-shadow: 0 18px 40px #0008, inset 0 1px 0 #ffffff1f; }
+.settings-head { display: flex; justify-content: space-between; align-items: center; }
+.settings-title { font-size: 16px; font-weight: 600; color: var(--brand); letter-spacing: .02em; }
+.settings-close { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--key-border); background: var(--key-flat);
+  color: inherit; font-size: 14px; padding: 0; line-height: 1; }
+.group { display: grid; gap: 4px; }
+.group-title { margin: 0 0 2px; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--sub); }
+.row { display: flex; justify-content: space-between; align-items: center; gap: 14px; min-height: 52px; padding: 6px 0;
+  border-bottom: 1px solid var(--key-border); }
+.group .row:last-of-type { border-bottom: 0; }
+.row .txt { display: grid; gap: 2px; font-size: 15px; min-width: 0; }
+.row .txt small { font-size: 11.5px; line-height: 1.25; color: var(--sub); }
+.settings select { font: inherit; font-size: 14px; min-height: 40px; padding: 0 34px 0 14px; border-radius: 12px; color: var(--key-text);
+  background: var(--key-flat) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23999' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 12px center;
+  border: 1px solid var(--key-border); -webkit-appearance: none; appearance: none; flex: none; }
+.settings input[type="checkbox"] { -webkit-appearance: none; appearance: none; flex: none; position: relative; width: 50px; height: 30px; margin: 0;
+  border-radius: 15px; background: var(--key-flat); border: 1px solid var(--key-border); transition: background .2s; }
+.settings input[type="checkbox"]::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--key-text); opacity: .75; box-shadow: 0 1px 3px #0006; transition: transform .2s, opacity .2s; }
+.settings input[type="checkbox"]:checked { background: var(--gold); border-color: var(--gold); }
+.settings input[type="checkbox"]:checked::after { transform: translateX(20px); opacity: 1; background: #fff; }
+.settings .motion { width: 100%; min-height: 46px; font: inherit; font-size: 14px; font-weight: 600; border-radius: 14px; cursor: pointer;
+  background: var(--keyg-bg); border: 1px solid var(--keyg-border); color: var(--keyg-text); box-shadow: var(--keyg-shadow); }
+.settings .motion:active { filter: brightness(1.15); }
+.settings .motion-status { display: block; min-height: 1.3em; padding: 4px 2px 0; font-size: 12px; line-height: 1.3; color: var(--sub); }
 .settings[hidden] { display: none; }
-.settings label { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 13px; }
-.settings select { font: inherit; font-size: 13px; background: var(--key-flat); color: var(--key-text); border: 1px solid var(--edge); border-radius: 6px; padding: 2px 6px; }
 
 @media (orientation: landscape) {
   .calc { max-width: none; grid-template-columns: 230px 1fr; grid-template-rows: auto 1fr; }
@@ -227,7 +251,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
     background: var(--body-solid); border: 1px solid var(--edge); border-radius: 10px; padding: 8px; max-height: 50%; overflow: auto; }
   .drawer[data-open="true"] .confirm:not([hidden]) { display: flex; position: absolute; left: 238px; top: 60px; z-index: 6;
     background: var(--body-solid); padding: 8px; border-radius: 8px; }
-  .settings { left: 238px; top: 110px; }
+  .settings { left: 238px; top: 100px; max-height: calc(100% - 110px); }
 }
 
 </style>
@@ -2019,11 +2043,21 @@ function mountSettings(ctx) {
   panel.className = 'settings';
   panel.hidden = true;
   panel.innerHTML =
-    '<label>Tema <select name="theme"><option value="retro">Retro</option><option value="moderno">Moderno</option></select></label>' +
-    '<label>Modo <select name="mode"><option value="auto">Automático</option><option value="escuro">Escuro</option><option value="claro">Claro</option></select></label>' +
-    '<label>Reduzir efeitos <input type="checkbox" name="reduce"></label>' +
-    '<label>Vibração leve ao tocar <input type="checkbox" name="vibrate"></label>' +
-    '<button type="button" class="motion">Ativar movimento do aparelho (brilho)</button>';
+    '<header class="settings-head"><span class="settings-title">Configurações</span>' +
+    '<button type="button" class="settings-close" aria-label="Fechar configurações">✕</button></header>' +
+    '<section class="group"><h3 class="group-title">Aparência</h3>' +
+    '<label class="row"><span class="txt">Tema<small>Retro tem relevo e visor luminoso; Moderno é de vidro</small></span>' +
+    '<select name="theme"><option value="retro">Retro</option><option value="moderno">Moderno</option></select></label>' +
+    '<label class="row"><span class="txt">Modo<small>Automático segue o sistema; o Retro é sempre escuro</small></span>' +
+    '<select name="mode"><option value="auto">Automático</option><option value="escuro">Escuro</option><option value="claro">Claro</option></select></label></section>' +
+    '<section class="group"><h3 class="group-title">Efeitos</h3>' +
+    '<label class="row"><span class="txt">Reduzir efeitos<small>Vidro sólido e sem reflexo: poupa bateria</small></span>' +
+    '<input type="checkbox" name="reduce" role="switch"></label>' +
+    '<label class="row"><span class="txt">Vibração leve ao tocar<small>Só em aparelhos que permitem vibrar</small></span>' +
+    '<input type="checkbox" name="vibrate" role="switch"></label></section>' +
+    '<section class="group"><h3 class="group-title">Brilho</h3>' +
+    '<button type="button" class="motion">Testar movimento do aparelho</button>' +
+    '<small class="motion-status" role="status"></small></section>';
   ctx.top.append(btn);
   ctx.calc.append(panel);
   const sync = () => {
@@ -2032,7 +2066,21 @@ function mountSettings(ctx) {
     panel.querySelector('[name=reduce]').checked = effectiveReduce(s);
     panel.querySelector('[name=vibrate]').checked = s.vibrate;
   };
-  panel.querySelector('.motion').addEventListener('click', () => ctx.enableMotion?.());
+  panel.querySelector('.settings-close').addEventListener('click', () => (panel.hidden = true));
+  const status = panel.querySelector('.motion-status');
+  panel.querySelector('.motion').addEventListener('click', async () => {
+    status.textContent = 'Inclinando o aparelho…';
+    const ok = await ctx.enableMotion?.();
+    if (!ok) {
+      status.textContent = 'Sem permissão ou sensor. O brilho segue o toque e se move sozinho.';
+      return;
+    }
+    // o Chrome só envia a inclinação em páginas seguras (https); em arquivo local pode não chegar nada
+    await new Promise((r) => setTimeout(r, 1500));
+    status.textContent = ctx.reflex?.tiltSeen
+      ? 'Movimento ativo: incline o aparelho.'
+      : 'Este modo de abertura não envia a inclinação (precisa de https). O brilho segue o toque e se move sozinho.';
+  });
   btn.addEventListener('click', () => {
     panel.hidden = !panel.hidden;
     sync();
@@ -2066,6 +2114,7 @@ function startReflex(layer) {
   let raf = 0;
   let stopped = false;
   let motionOn = false;
+  let tiltSeen = false;
 
   const frame = () => {
     raf = 0;
@@ -2091,6 +2140,7 @@ function startReflex(layer) {
   const onMouse = (e) => aim((e.clientX / window.innerWidth) * 2 - 1, (e.clientY / window.innerHeight) * 2 - 1);
   const onTilt = (e) => {
     if (e.gamma == null && e.beta == null) return;
+    tiltSeen = true;
     aim((e.gamma ?? 0) / 25, ((e.beta ?? 50) - 50) / 25); // ~25° de inclinação já leva o reflexo ao limite
   };
   const onVisibility = () => {
@@ -2107,6 +2157,9 @@ function startReflex(layer) {
 
   return {
     // No iPhone o sensor exige permissão, pedida num toque do usuário. Negada → brilho fixo.
+    get tiltSeen() {
+      return tiltSeen;
+    },
     get needsPermission() {
       return typeof window.DeviceOrientationEvent?.requestPermission === 'function';
     },

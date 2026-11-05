@@ -85,11 +85,21 @@ export function mountSettings(ctx) {
   panel.className = 'settings';
   panel.hidden = true;
   panel.innerHTML =
-    '<label>Tema <select name="theme"><option value="retro">Retro</option><option value="moderno">Moderno</option></select></label>' +
-    '<label>Modo <select name="mode"><option value="auto">Automático</option><option value="escuro">Escuro</option><option value="claro">Claro</option></select></label>' +
-    '<label>Reduzir efeitos <input type="checkbox" name="reduce"></label>' +
-    '<label>Vibração leve ao tocar <input type="checkbox" name="vibrate"></label>' +
-    '<button type="button" class="motion">Ativar movimento do aparelho (brilho)</button>';
+    '<header class="settings-head"><span class="settings-title">Configurações</span>' +
+    '<button type="button" class="settings-close" aria-label="Fechar configurações">✕</button></header>' +
+    '<section class="group"><h3 class="group-title">Aparência</h3>' +
+    '<label class="row"><span class="txt">Tema<small>Retro tem relevo e visor luminoso; Moderno é de vidro</small></span>' +
+    '<select name="theme"><option value="retro">Retro</option><option value="moderno">Moderno</option></select></label>' +
+    '<label class="row"><span class="txt">Modo<small>Automático segue o sistema; o Retro é sempre escuro</small></span>' +
+    '<select name="mode"><option value="auto">Automático</option><option value="escuro">Escuro</option><option value="claro">Claro</option></select></label></section>' +
+    '<section class="group"><h3 class="group-title">Efeitos</h3>' +
+    '<label class="row"><span class="txt">Reduzir efeitos<small>Vidro sólido e sem reflexo: poupa bateria</small></span>' +
+    '<input type="checkbox" name="reduce" role="switch"></label>' +
+    '<label class="row"><span class="txt">Vibração leve ao tocar<small>Só em aparelhos que permitem vibrar</small></span>' +
+    '<input type="checkbox" name="vibrate" role="switch"></label></section>' +
+    '<section class="group"><h3 class="group-title">Brilho</h3>' +
+    '<button type="button" class="motion">Testar movimento do aparelho</button>' +
+    '<small class="motion-status" role="status"></small></section>';
   ctx.top.append(btn);
   ctx.calc.append(panel);
   const sync = () => {
@@ -98,7 +108,21 @@ export function mountSettings(ctx) {
     panel.querySelector('[name=reduce]').checked = effectiveReduce(s);
     panel.querySelector('[name=vibrate]').checked = s.vibrate;
   };
-  panel.querySelector('.motion').addEventListener('click', () => ctx.enableMotion?.());
+  panel.querySelector('.settings-close').addEventListener('click', () => (panel.hidden = true));
+  const status = panel.querySelector('.motion-status');
+  panel.querySelector('.motion').addEventListener('click', async () => {
+    status.textContent = 'Inclinando o aparelho…';
+    const ok = await ctx.enableMotion?.();
+    if (!ok) {
+      status.textContent = 'Sem permissão ou sensor. O brilho segue o toque e se move sozinho.';
+      return;
+    }
+    // o Chrome só envia a inclinação em páginas seguras (https); em arquivo local pode não chegar nada
+    await new Promise((r) => setTimeout(r, 1500));
+    status.textContent = ctx.reflex?.tiltSeen
+      ? 'Movimento ativo: incline o aparelho.'
+      : 'Este modo de abertura não envia a inclinação (precisa de https). O brilho segue o toque e se move sozinho.';
+  });
   btn.addEventListener('click', () => {
     panel.hidden = !panel.hidden;
     sync();

@@ -111,6 +111,7 @@ test('com a permissão de movimento negada o brilho fica fixo e o app segue func
   const [a, b] = [nums(fixo), nums(await tf(page))];
   // a inclinação (gamma 30) moveria dezenas de px; só sobra o fim do amortecimento do mouse
   assert.ok(Math.abs(a[0] - b[0]) < 1 && Math.abs(a[1] - b[1]) < 1, `brilho deveria ficar fixo: ${fixo} → ${b}`);
+  await page.locator('.settings-close').click(); // fecha o painel para tocar nas teclas
   await page.locator('button.key[data-id="5"]').click();
   assert.equal(await page.locator('.digits').innerText(), '5');
   assert.deepEqual(errors, []);
