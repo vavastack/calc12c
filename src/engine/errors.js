@@ -13,8 +13,8 @@ export const ERRORS = {
 };
 
 export class CalcError extends Error {
-  constructor(code) {
-    super(ERRORS[code] ?? ERRORS[9]);
+  constructor(code, message) {
+    super(message ?? ERRORS[code] ?? ERRORS[9]);
     this.name = 'CalcError';
     this.code = code;
   }

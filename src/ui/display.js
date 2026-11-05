@@ -27,7 +27,7 @@ export function renderDisplay(el, s) {
   ensureStructure(el, getProfile(s.profile ?? '12c').indicators);
   const lit = {
     RPN: s.mode === 'rpn', ALG: s.mode === 'alg', '( )': s.parens > 0,
-    f: s.shift === 'f', g: s.shift === 'g', BEGIN: s.begin, C: s.compound, 'D.MY': s.dmy, PRGM: s.prgm, UNDO: s.undo === true,
+    f: s.shift === 'f', g: s.shift === 'g', BEGIN: s.begin, C: s.compound || s.carry === true, 'D.MY': s.dmy, PRGM: s.prgm, UNDO: s.undo === true, G: s.oor === true,
   };
   for (const span of el.querySelectorAll('[data-ind]')) {
     span.classList.toggle('on', !!lit[span.dataset.ind]);
@@ -50,7 +50,8 @@ export function bindKeyboard(engine, onChange = () => {}, target = window) {
       ev.preventDefault();
       engine.backspace();
     } else {
-      const id = /^[0-9]$/.test(ev.key) ? ev.key : KEY_TO_ID[ev.key];
+      const hex = getProfile(engine.profile).kind === 'int' && /^[a-fA-F]$/.test(ev.key) ? 'd' + ev.key.toLowerCase() : null; // letras A-F na 16C
+      const id = hex ?? (/^[0-9]$/.test(ev.key) ? ev.key : KEY_TO_ID[ev.key]);
       if (!id) return;
       ev.preventDefault();
       engine.press(id);

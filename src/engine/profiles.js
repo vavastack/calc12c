@@ -1,7 +1,7 @@
 // Perfis de calculadora. Cada perfil define o que muda de um modelo para outro: identidade, mapa de teclas,
 // modos de cálculo, indicadores do visor e as linhas de ligação (colchetes) do teclado.
 // O motor (engine.js) consulta o perfil pelo id; a interface monta o teclado a partir dele.
-import { KEYS, KEY_BY_ID, KEYS_PLATINUM, KEY_BY_ID_PLATINUM } from './keymap.js';
+import { KEYS, KEY_BY_ID, KEYS_PLATINUM, KEY_BY_ID_PLATINUM, KEYS_16C, KEY_BY_ID_16C } from './keymap.js';
 
 export const DEFAULT_PROFILE = '12c';
 
@@ -15,8 +15,9 @@ const BRACKETS_12C = [
 
 // Limites e comportamentos que variam entre os modelos (a clássica é o padrão):
 // maxLines = linhas de programa; maxFlows = fluxos CFj além do CFo; regCount = registradores (10 = R0-R9, 20 = + .0-.9);
+// kind = tipo de motor ('dec' = decimal das HP 10C a 12C; 'int' = inteiros de largura fixa da 16C);
 // undo = teclas g ← (Backspace) e g Undo; clearPrgmKeepsPc = f CLEAR PRGM em RUN não leva à linha 00.
-const LIMITS_12C = { maxLines: 99, maxFlows: 20, regCount: 10, undo: false, clearPrgmKeepsPc: false };
+const LIMITS_12C = { kind: 'dec', maxLines: 99, maxFlows: 20, regCount: 10, undo: false, clearPrgmKeepsPc: false };
 
 const PROFILES = new Map();
 
@@ -93,4 +94,27 @@ registerProfile({
   brackets: BRACKETS_12C,
   themes: ['platinum', 'moderno'],
   defaultTheme: 'platinum',
+});
+
+// HP-16C "Computer Scientist": motor de inteiros de largura fixa (engine16.js). Só RPN, sem programação nesta etapa.
+// Indicadores: C = carry (flag 4), G = fora da faixa (flag 5).
+registerProfile({
+  id: '16c',
+  name: 'Calc 16c',
+  label: 'Calc 16c (programador)',
+  model: '16C',
+  kind: 'int',
+  keys: KEYS_16C,
+  keyById: KEY_BY_ID_16C,
+  modes: ['rpn'],
+  indicators: ['f', 'g', 'C', 'G', 'PRGM'],
+  brackets: [
+    { label: 'SHOW', r: 1, c0: 2, c1: 4, hr: 1, hc0: 2, hc1: 5 },
+    { label: '', r: 5, c0: 0, c1: 0, cls: 'pfx' }, // BIN também é SHOW: no retrato fica na outra metade
+    { label: 'CLEAR', r: 2, c0: 2, c1: 4, hr: 2, hc0: 2, hc1: 4 },
+    { label: 'SET COMPL', r: 6, c0: 1, c1: 3, hr: 2, hc0: 6, hc1: 8 },
+  ],
+  themes: ['retro', 'moderno'],
+  defaultTheme: 'retro',
+  regCount: 32,
 });

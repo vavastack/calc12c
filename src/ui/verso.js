@@ -4,13 +4,16 @@ import { VERSO_BY_PROFILE, preKeys } from './verso-data.js';
 
 const STEP_MS = 140; // intervalo entre as teclas quando um exemplo é executado
 
+const HEX_TOK = /^[0-9A-F]*[A-F][0-9A-F]*$/; // número com letras maiúsculas A-F (HEX da 16C)
+const isNumTok = (t) => /^\d+(\.\d+)?$/.test(t) || HEX_TOK.test(t);
+
 // "31.052003" → "31,052003"; ids do motor → rótulo impresso na tecla; f/g + tecla viram um chip só (ex.: "g ΔDYS")
 export function chipsOf(keys, keyById = KEY_BY_ID) {
   const out = [];
   const t = keys.split(/\s+/).filter(Boolean);
   for (let i = 0; i < t.length; i++) {
     const id = t[i];
-    if (/^\d+(\.\d+)?$/.test(id)) out.push({ text: id.replace('.', ','), kind: 'num' });
+    if (isNumTok(id)) out.push({ text: id.replace('.', ','), kind: 'num' });
     else if ((id === 'f' || id === 'g') && t[i + 1] && !/^\d.+/.test(t[i + 1])) { // f/g + tecla (um dígito sozinho é tecla, ex.: g 4)
       const next = keyById.get(t[++i]);
       out.push({ text: `${id} ${next[id] ?? next.label}`, kind: id });
@@ -23,7 +26,8 @@ export function chipsOf(keys, keyById = KEY_BY_ID) {
 export function expandKeys(keys) {
   const ids = [];
   for (const tok of keys.split(/\s+/).filter(Boolean)) {
-    if (/^\d+(\.\d+)?$/.test(tok)) for (const c of tok) ids.push(c === '.' ? 'dot' : c);
+    if (HEX_TOK.test(tok)) for (const c of tok) ids.push(/\d/.test(c) ? c : 'd' + c.toLowerCase()); // 16C: F0F → F, 0, F
+    else if (/^\d+(\.\d+)?$/.test(tok)) for (const c of tok) ids.push(c === '.' ? 'dot' : c);
     else ids.push(tok);
   }
   return ids;

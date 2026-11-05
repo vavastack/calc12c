@@ -1,4 +1,4 @@
-import { Engine } from '../engine/engine.js';
+import { createEngine } from '../engine/engines.js';
 import { getProfile } from '../engine/profiles.js';
 import { renderDisplay, bindKeyboard } from './display.js';
 import { mountDrawer } from './tape.js';
@@ -54,7 +54,7 @@ function makeKey(k) {
   return b;
 }
 
-export function mountApp(root, engine = new Engine()) {
+export function mountApp(root, engine = createEngine()) {
   root.innerHTML = '';
   const calc = document.createElement('main');
   calc.className = 'calc';
@@ -96,7 +96,7 @@ export function mountApp(root, engine = new Engine()) {
   // título e selo do topo seguem o perfil e o modo (RPN/ALG só nos perfis que têm os dois)
   const paintBrand = (s) => {
     const p = ctx.profile;
-    const modeLabel = p.modes.length > 1 ? s.mode.toUpperCase() : 'RPN';
+    const modeLabel = p.kind === 'int' ? p.model : p.modes.length > 1 ? s.mode.toUpperCase() : 'RPN'; // 16C: o selo mostra o modelo
     const title = brand.querySelector('.title');
     if (title.dataset.profile !== p.id) { // o título muda só quando o perfil muda
       title.dataset.profile = p.id;
@@ -105,7 +105,7 @@ export function mountApp(root, engine = new Engine()) {
       else title.textContent = p.name;
     }
     brand.querySelector('.model').textContent = modeLabel;
-    brand.setAttribute('aria-label', `${p.name}, calculadora financeira ${modeLabel}`);
+    brand.setAttribute('aria-label', `${p.name}, calculadora ${p.kind === 'int' ? 'de programador' : 'financeira'} ${modeLabel}`);
   };
   ctx.render = () => {
     const s = engine.state;
@@ -131,7 +131,7 @@ export function mountApp(root, engine = new Engine()) {
     b.classList.add('touch');
     b.addEventListener('animationend', () => b.classList.remove('touch'), { once: true });
   };
-  const kindOf = (id) => (id === 'enter' ? 'enter' : id === 'f' || id === 'g' ? 'fg' : /^\d$|^dot$/.test(id) ? 'num' : 'fn');
+  const kindOf = (id) => (id === 'enter' ? 'enter' : id === 'f' || id === 'g' ? 'fg' : /^\d$|^dot$|^d[a-f]$/.test(id) ? 'num' : 'fn');
   // a tecla afunda ao encostar e volta ao soltar; o som acompanha os dois momentos
   let pressed = null;
   const keyDown = (b) => {

@@ -173,6 +173,73 @@ export const VERSO = [
   },
 ];
 
+
+// Guia da HP-16C (inteiros de largura fixa). Cada exemplo começa pondo a calculadora em um estado conhecido:
+// "dec 16 f sto f 2" = palavra de 16 bits em complemento de 2.
+const W16 = 'dec 16 f sto f 2';
+const W8 = 'dec 8 f sto f 2';
+export const VERSO_16C = [
+  {
+    id: 'base', tag: 'BASE', title: 'Bases numéricas',
+    items: [
+      {
+        id: 'base-255', title: '255 em HEX, OCT e BIN', text: 'As teclas HEX, DEC, OCT e BIN trocam só a base do visor; o número guardado é o mesmo.', ready: true,
+        variants: [
+          { label: 'HEX', keys: `${W16} 255 hex` },
+          { label: 'OCT', keys: `${W16} 255 oct` },
+          { label: 'BIN', keys: `${W16} 255 bin` },
+        ],
+      },
+      {
+        id: 'base-neg', title: '−50 em 8 bits', text: 'Em HEX, CHS troca o número pelo complemento. No complemento de 2, −50 é CE; no de 1, é CD.', ready: true,
+        variants: [
+          { label: 'Complemento de 2', keys: `${W8} 50 chs hex` },
+          { label: 'Complemento de 1', keys: 'dec 8 f sto f 1 50 chs hex' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'logic', tag: 'LÓGICA', title: 'Lógica de bits',
+    items: [
+      {
+        id: 'logic-ops', title: 'F0F0 e FF00', text: 'AND, OR e XOR combinam Y e X bit a bit; NOT inverte todos os bits de X.', ready: true,
+        variants: [
+          { label: 'AND', keys: `${W16} hex F0F0 enter FF00 f times` },
+          { label: 'OR', keys: `${W16} hex F0F0 enter FF00 f plus` },
+          { label: 'XOR', keys: `${W16} hex F0F0 enter FF00 f divide` },
+          { label: 'NOT', keys: `${W16} hex F0F0 f minus` },
+        ],
+      },
+      {
+        id: 'logic-shift', title: 'Deslocar e girar 81 (8 bits)', text: 'SL desloca para a esquerda e o bit que sai vai para o indicador C. RL gira: o bit que sai volta pela direita.', ready: true,
+        variants: [
+          { label: 'SL', keys: `${W8} hex 81 f da` },
+          { label: 'RL', keys: `${W8} hex 81 f dc` },
+          { label: 'Máscara dos 3 bits altos', keys: `${W8} hex 3 f 7` },
+          { label: 'Bits 1 em F0F', keys: `${W16} hex F0F g 7` },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'carry', tag: 'C e G', title: 'Carry e estouro',
+    items: [
+      {
+        id: 'carry-g', title: '32767 × 2 em 16 bits', text: 'O resultado não cabe: o indicador G acende. Zere o aviso com g CF 5.', ready: true,
+        variants: [{ label: 'Estouro', keys: `${W16} 32767 enter 2 times` }],
+      },
+      {
+        id: 'carry-c', title: '66 ÷ 7 em HEX', text: 'A divisão é inteira. Se sobra resto, o indicador C acende; RMD dá o resto.', ready: true,
+        variants: [
+          { label: 'Quociente', keys: `${W16} hex 66 enter 7 divide` },
+          { label: 'Resto', keys: `${W16} hex 66 enter 7 f 9` },
+        ],
+      },
+    ],
+  },
+];
+
 // Guia do verso de cada perfil.
 // O grupo ALG só existe na Platinum.
 // Na Platinum o GTO tem 3 dígitos (400 linhas): os exemplos de programa ganham um zero (GTO 04 → GTO 004).
@@ -190,6 +257,7 @@ const forPlatinum = (groups) => groups.map((g) => (g.id !== 'prog' ? g : {
 export const VERSO_BY_PROFILE = {
   '12c': { sections: VERSO.filter((g) => g.id !== 'alg'), sigma: SIGMA_MAP },
   '12cp': { sections: forPlatinum(VERSO), sigma: SIGMA_MAP },
+  '16c': { sections: VERSO_16C, sigma: [] },
 };
 
 // Uma variante pode depender da gravação do programa: `pre` é o rótulo de outra variante do mesmo exemplo,

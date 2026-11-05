@@ -504,14 +504,60 @@ const PLATINUM_LABELS = { chs: { f: 'RPN' }, eex: { f: 'ALG' }, sto: { g: '(' },
 const KEYS_PLATINUM = KEYS.map((x) => ({ ...x, ...PLATINUM_LABELS[x.id] }));
 const KEY_BY_ID_PLATINUM = new Map(KEYS_PLATINUM.map((x) => [x.id, x]));
 
-return { KEYS, KEY_BY_ID, KEYS_PLATINUM, KEY_BY_ID_PLATINUM };
+// HP-16C: 39 teclas. O teclado de 4×10 da HP original dobra ao meio como o da 12C: colunas 1-5 em cima, 6-10 embaixo.
+// As letras A-F são teclas de dígito (ids da..df). `enabled:false` = programação e ponto flutuante (fora desta etapa).
+const off = { enabled: false };
+const KEYS_16C = [
+  k('da', 'A', 'SL', 'LJ', 0, 0),
+  k('db', 'B', 'SR', 'ASR', 0, 1),
+  k('dc', 'C', 'RL', 'RLC', 0, 2),
+  k('dd', 'D', 'RR', 'RRC', 0, 3),
+  k('de', 'E', 'RLn', 'RLCn', 0, 4),
+  k('gsb', 'GSB', 'x≷(i)', 'RTN', 1, 0, off),
+  k('gto', 'GTO', 'x≷I', 'LBL', 1, 1, off),
+  k('hex', 'HEX', 'SHOW', 'DSZ', 1, 2),
+  k('dec', 'DEC', 'SHOW', 'ISZ', 1, 3),
+  k('oct', 'OCT', 'SHOW', '√x', 1, 4),
+  k('rs', 'R/S', '(i)', 'P/R', 2, 0, off),
+  k('sst', 'SST', 'I', 'BST', 2, 1, off),
+  k('rdown', 'R↓', 'CLEAR PRGM', 'R↑', 2, 2),
+  k('xy', 'x≷y', 'CLEAR REG', 'PSE', 2, 3),
+  k('bsp', 'BSP', 'CLEAR PREFIX', 'CLx', 2, 4),
+  k('on', 'ON', null, null, 3, 0),
+  k('f', 'f', null, null, 3, 1),
+  k('g', 'g', null, null, 3, 2),
+  k('sto', 'STO', 'WSIZE', '<', 3, 3),
+  k('rcl', 'RCL', 'FLOAT', '>', 3, 4),
+  k('df', 'F', 'RRn', 'RRCn', 4, 0),
+  k('7', '7', 'MASKL', '#B', 4, 1),
+  k('8', '8', 'MASKR', 'ABS', 4, 2),
+  k('9', '9', 'RMD', 'DBLR', 4, 3),
+  k('divide', '÷', 'XOR', 'DBL÷', 4, 4),
+  k('bin', 'BIN', 'SHOW', '1/x', 5, 0),
+  k('4', '4', 'SB', 'SF', 5, 1),
+  k('5', '5', 'CB', 'CF', 5, 2),
+  k('6', '6', 'B?', 'F?', 5, 3),
+  k('times', '×', 'AND', 'DBL×', 5, 4),
+  k('enter', 'ENTER', 'WINDOW', 'LSTx', 6, 0, { rowSpan: 2 }),
+  k('1', '1', "1's", 'x≤y', 6, 1),
+  k('2', '2', "2's", 'x<0', 6, 2),
+  k('3', '3', 'UNSGN', 'x>y', 6, 3),
+  k('minus', '−', 'NOT', 'x>0', 6, 4),
+  k('0', '0', 'MEM', 'x≠y', 7, 1),
+  k('dot', '.', 'STATUS', 'x≠0', 7, 2),
+  k('chs', 'CHS', 'EEX', 'x=y', 7, 3),
+  k('plus', '+', 'OR', 'x=0', 7, 4),
+];
+const KEY_BY_ID_16C = new Map(KEYS_16C.map((x) => [x.id, x]));
+
+return { KEYS, KEY_BY_ID, KEYS_PLATINUM, KEY_BY_ID_PLATINUM, KEYS_16C, KEY_BY_ID_16C };
 })();
 
 const __m_profiles = (() => {
 // Perfis de calculadora. Cada perfil define o que muda de um modelo para outro: identidade, mapa de teclas,
 // modos de cálculo, indicadores do visor e as linhas de ligação (colchetes) do teclado.
 // O motor (engine.js) consulta o perfil pelo id; a interface monta o teclado a partir dele.
-const { KEYS, KEY_BY_ID, KEYS_PLATINUM, KEY_BY_ID_PLATINUM } = __m_keymap;
+const { KEYS, KEY_BY_ID, KEYS_PLATINUM, KEY_BY_ID_PLATINUM, KEYS_16C, KEY_BY_ID_16C } = __m_keymap;
 
 const DEFAULT_PROFILE = '12c';
 
@@ -525,8 +571,9 @@ const BRACKETS_12C = [
 
 // Limites e comportamentos que variam entre os modelos (a clássica é o padrão):
 // maxLines = linhas de programa; maxFlows = fluxos CFj além do CFo; regCount = registradores (10 = R0-R9, 20 = + .0-.9);
+// kind = tipo de motor ('dec' = decimal das HP 10C a 12C; 'int' = inteiros de largura fixa da 16C);
 // undo = teclas g ← (Backspace) e g Undo; clearPrgmKeepsPc = f CLEAR PRGM em RUN não leva à linha 00.
-const LIMITS_12C = { maxLines: 99, maxFlows: 20, regCount: 10, undo: false, clearPrgmKeepsPc: false };
+const LIMITS_12C = { kind: 'dec', maxLines: 99, maxFlows: 20, regCount: 10, undo: false, clearPrgmKeepsPc: false };
 
 const PROFILES = new Map();
 
@@ -603,6 +650,29 @@ registerProfile({
   brackets: BRACKETS_12C,
   themes: ['platinum', 'moderno'],
   defaultTheme: 'platinum',
+});
+
+// HP-16C "Computer Scientist": motor de inteiros de largura fixa (engine16.js). Só RPN, sem programação nesta etapa.
+// Indicadores: C = carry (flag 4), G = fora da faixa (flag 5).
+registerProfile({
+  id: '16c',
+  name: 'Calc 16c',
+  label: 'Calc 16c (programador)',
+  model: '16C',
+  kind: 'int',
+  keys: KEYS_16C,
+  keyById: KEY_BY_ID_16C,
+  modes: ['rpn'],
+  indicators: ['f', 'g', 'C', 'G', 'PRGM'],
+  brackets: [
+    { label: 'SHOW', r: 1, c0: 2, c1: 4, hr: 1, hc0: 2, hc1: 5 },
+    { label: '', r: 5, c0: 0, c1: 0, cls: 'pfx' }, // BIN também é SHOW: no retrato fica na outra metade
+    { label: 'CLEAR', r: 2, c0: 2, c1: 4, hr: 2, hc0: 2, hc1: 4 },
+    { label: 'SET COMPL', r: 6, c0: 1, c1: 3, hr: 2, hc0: 6, hc1: 8 },
+  ],
+  themes: ['retro', 'moderno'],
+  defaultTheme: 'retro',
+  regCount: 32,
 });
 
 return { DEFAULT_PROFILE, ALL_THEMES, registerProfile, hasProfile, getProfile, listProfiles, allowedThemes, themeFor };
@@ -918,8 +988,8 @@ const ERRORS = {
 };
 
 class CalcError extends Error {
-  constructor(code) {
-    super(ERRORS[code] ?? ERRORS[9]);
+  constructor(code, message) {
+    super(message ?? ERRORS[code] ?? ERRORS[9]);
     this.name = 'CalcError';
     this.code = code;
   }
@@ -2717,6 +2787,887 @@ class Engine {
 return { Engine };
 })();
 
+const __m_intmath = (() => {
+// Aritmética de inteiros de largura fixa da HP-16C. Os valores são BigInt "crus": o padrão de bits da palavra,
+// de 0 a 2^ws − 1. O modo de complemento ('2' = complemento de 2, '1' = de 1, 'u' = sem sinal) só decide como
+// esse padrão é lido como número. Cada operação devolve { raw, c, g }: o resultado, o vai-um/empréstimo (flag 4, C)
+// e o fora-de-faixa (flag 5, G).
+
+const maskOf = (ws) => (1n << BigInt(ws)) - 1n;
+const signBit = (ws) => 1n << BigInt(ws - 1);
+
+// Número que o padrão de bits representa.
+function toSigned(raw, ws, cmp) {
+  if (cmp === 'u' || raw < signBit(ws)) return raw;
+  return cmp === '2' ? raw - (1n << BigInt(ws)) : raw - maskOf(ws); // 1's: todos uns = −0
+}
+
+// Maior e menor número que cabem na palavra.
+function range(ws, cmp) {
+  if (cmp === 'u') return [0n, maskOf(ws)];
+  const max = signBit(ws) - 1n;
+  return [cmp === '2' ? -signBit(ws) : -max, max];
+}
+
+function inRange(sv, ws, cmp) {
+  const [lo, hi] = range(ws, cmp);
+  return sv >= lo && sv <= hi;
+}
+
+// Padrão de bits de um número que cabe na faixa.
+function toRaw(sv, ws, cmp) {
+  if (sv >= 0n) return sv & maskOf(ws);
+  return cmp === '1' ? maskOf(ws) ^ (-sv & maskOf(ws)) : BigInt.asUintN(ws, sv);
+}
+
+// Número fora da faixa: o 16C guarda o sinal e só os bits baixos da grandeza (32767 × 2 dá 32766, com G).
+function truncate(sv, ws, cmp) {
+  if (cmp === 'u') return sv & maskOf(ws);
+  const mag = (sv < 0n ? -sv : sv) & (signBit(ws) - 1n);
+  return toRaw(sv < 0n ? -mag : mag, ws, cmp);
+}
+
+function add(y, x, ws, cmp) {
+  const m = maskOf(ws);
+  let s = y + x;
+  const c = s > m;
+  s &= m;
+  if (cmp === '1' && c) s = (s + 1n) & m; // complemento de 1: o vai-um volta ao bit 0
+  const g = cmp === 'u' ? c : !inRange(toSigned(y, ws, cmp) + toSigned(x, ws, cmp), ws, cmp);
+  return { raw: s, c, g };
+}
+
+function sub(y, x, ws, cmp) {
+  const m = maskOf(ws);
+  if (cmp === '1') {
+    const r = add(y, m ^ x, ws, cmp);
+    const sg = toSigned(y, ws, cmp) - toSigned(x, ws, cmp);
+    return { raw: r.raw, c: !r.c, g: !inRange(sg, ws, cmp) };
+  }
+  const raw = BigInt.asUintN(ws, y - x);
+  const g = cmp === 'u' ? y < x : !inRange(toSigned(y, ws, cmp) - toSigned(x, ws, cmp), ws, cmp);
+  return { raw, c: y < x, g };
+}
+
+function mul(y, x, ws, cmp) {
+  const p = toSigned(y, ws, cmp) * toSigned(x, ws, cmp);
+  const ok = inRange(p, ws, cmp);
+  return { raw: ok ? toRaw(p, ws, cmp) : truncate(p, ws, cmp), c: false, g: !ok };
+}
+
+// Divisão inteira (trunca para zero). C = sobrou resto.
+function div(y, x, ws, cmp) {
+  const sx = toSigned(x, ws, cmp);
+  if (sx === 0n) return null;
+  const sy = toSigned(y, ws, cmp);
+  const q = sy / sx;
+  const ok = inRange(q, ws, cmp);
+  return { raw: ok ? toRaw(q, ws, cmp) : truncate(q, ws, cmp), c: sy % sx !== 0n, g: !ok };
+}
+
+function rmd(y, x, ws, cmp) {
+  const sx = toSigned(x, ws, cmp);
+  if (sx === 0n) return null;
+  return { raw: toRaw(toSigned(y, ws, cmp) % sx, ws, cmp), c: false, g: false };
+}
+
+// CHS fora do decimal e em sem sinal: troca o número pelo complemento de 1 ou de 2.
+function negate(raw, ws, cmp) {
+  const m = maskOf(ws);
+  if (cmp === '1') return { raw: m ^ raw, c: false, g: false };
+  const r = (m ^ raw) + 1n & m;
+  if (cmp === 'u') return { raw: r, c: false, g: true }; // negativo não existe no sem sinal: só avisa com G
+  return { raw: r, c: false, g: raw === signBit(ws) }; // o menor negativo continua o mesmo, com G
+}
+
+function popcount(raw) {
+  let n = 0;
+  for (let v = raw; v > 0n; v >>= 1n) n += Number(v & 1n);
+  return n;
+}
+
+function isqrt(n) {
+  if (n < 2n) return n;
+  let x = n;
+  let y = (x + 1n) >> 1n;
+  while (y < x) {
+    x = y;
+    y = (x + n / x) >> 1n;
+  }
+  return x;
+}
+
+// Deslocamentos e rotações. Devolvem { raw, c } (c = bit que saiu).
+const shiftLeft = (raw, ws) => ({ raw: (raw << 1n) & maskOf(ws), c: (raw & signBit(ws)) !== 0n });
+const shiftRight = (raw) => ({ raw: raw >> 1n, c: (raw & 1n) !== 0n });
+function asr(raw, ws) {
+  return { raw: (raw >> 1n) | (raw & signBit(ws)), c: (raw & 1n) !== 0n };
+}
+function rotLeft(raw, ws, carryIn = null) {
+  const out = (raw & signBit(ws)) !== 0n;
+  const bit = carryIn === null ? out : carryIn; // com carry (RLC), entra o C antigo
+  return { raw: ((raw << 1n) & maskOf(ws)) | (bit ? 1n : 0n), c: out };
+}
+function rotRight(raw, ws, carryIn = null) {
+  const out = (raw & 1n) !== 0n;
+  const bit = carryIn === null ? out : carryIn;
+  return { raw: (raw >> 1n) | (bit ? signBit(ws) : 0n), c: out };
+}
+
+// Justificar à esquerda: desloca até o bit mais alto valer 1. Devolve o número e quantos deslocamentos.
+function leftJustify(raw, ws) {
+  if (raw === 0n) return { raw, n: 0 };
+  let v = raw;
+  let n = 0;
+  while ((v & signBit(ws)) === 0n) {
+    v <<= 1n;
+    n += 1;
+  }
+  return { raw: v, n };
+}
+
+// Texto do número em uma base, sem zeros à esquerda (a menos que `pad`).
+const RADIX = { hex: 16, dec: 10, oct: 8, bin: 2 };
+function digitsOf(raw, ws, cmp, base, pad = false) {
+  if (base === 'dec') {
+    const sv = toSigned(raw, ws, cmp);
+    return (sv < 0n ? '-' : '') + (sv < 0n ? -sv : sv).toString();
+  }
+  let t = raw.toString(RADIX[base]).toUpperCase();
+  if (pad) t = t.padStart(Math.ceil(ws / Math.log2(RADIX[base])), '0');
+  return t;
+}
+
+return { maskOf, toSigned, range, inRange, toRaw, add, sub, mul, div, rmd, negate, popcount, isqrt, shiftLeft, shiftRight, asr, rotLeft, rotRight, leftJustify, digitsOf };
+})();
+
+const __m_engine16 = (() => {
+// Motor da HP-16C: inteiros de largura fixa (1 a 64 bits) em HEX, DEC, OCT e BIN, com complemento de 1, de 2 ou sem sinal.
+// Segue a interface do Engine da 12C (press, state, serialize, restore...), mas guarda tudo como BigInt "cru":
+// o padrão de bits de cada registrador. Etapa atual: teclado sem programação nem ponto flutuante.
+const { CalcError } = __m_errors;
+const { getProfile } = __m_profiles;
+const { add, asr, digitsOf, div, inRange, isqrt, leftJustify, maskOf, mul, negate, popcount, range, rmd, rotLeft, rotRight, shiftLeft, shiftRight, sub, toRaw, toSigned } = __m_intmath;
+
+const VERSION = 1;
+const MAX_TAPE = 200;
+const WIN = { hex: 8, dec: 8, oct: 8, bin: 16 }; // dígitos por janela do visor
+const LETTER = { hex: 'h', dec: 'd', oct: 'o', bin: 'b' };
+const RADIX = { hex: 16, dec: 10, oct: 8, bin: 2 };
+const CMP_CODE = { 2: '2', 1: '1', u: '0' };
+const bad = () => new Error('estado salvo inválido');
+const arg = (m) => new CalcError(3, m);
+
+const digitOf = (id) => (/^[0-9]$/.test(id) ? id : /^d[a-f]$/.test(id) ? id[1].toUpperCase() : null);
+
+class Engine16 {
+  constructor(opts = {}) {
+    this.profile = opts.profile ?? '16c';
+    this.locale = opts.locale ?? 'br';
+    this.mode = 'rpn';
+    this.ws = 16;
+    this.cmp = '2'; // '2' | '1' | 'u'
+    this.base = 'dec';
+    this.st = { x: 0n, y: 0n, z: 0n, t: 0n, l: 0n };
+    this.flags = [false, false, false, false, false, false]; // flags 0 a 5 (4 = C, 5 = G)
+    this.regs = new Array(getProfile(this.profile).regCount).fill(0n);
+    this.entry = null; // dígitos sendo digitados (texto) ou null
+    this.lift = true;
+    this.shift = null;
+    this.pending = null; // 'sto' | 'rcl' | 'sto.' | 'rcl.' | 'sb' | 'cb' | 'sf' | 'cf' | 'window'
+    this.window = 0;
+    this.temp = null; // texto temporário (SHOW, STATUS) até a próxima tecla
+    this.error = null;
+    this.tape = [];
+    this.tokens = [];
+  }
+
+  get keyById() {
+    return getProfile(this.profile).keyById;
+  }
+
+  // ---------- estado ----------
+  get state() {
+    const { x, y, z, t, l } = this.st;
+    const text = (v) => this._valText(v, 0);
+    return {
+      display: this._display(),
+      profile: this.profile,
+      mode: 'rpn',
+      parens: 0,
+      stack: { x: String(x), y: String(y), z: String(z), t: String(t), lastX: String(l) },
+      texts: { x: text(x), y: text(y), z: text(z), t: text(t), lastX: text(l), regs: this.regs.map(text) },
+      regs: this.regs.map(String),
+      fin: { n: 0, i: 0, pv: 0, pmt: 0, fv: 0 },
+      begin: false,
+      compound: false,
+      dmy: false,
+      prgm: false,
+      pc: 0,
+      shift: this.shift,
+      decimals: 0,
+      locale: this.locale,
+      error: this.error ? { ...this.error } : null,
+      tape: this.tape.map((r) => ({ ...r })),
+      pending: this.pending,
+      undo: false,
+      ws: this.ws,
+      cmp: this.cmp,
+      base: this.base,
+      carry: this.flags[4],
+      oor: this.flags[5],
+      flags: [...this.flags],
+      window: this.window,
+    };
+  }
+
+  setLocale(locale) {
+    if (locale !== 'br' && locale !== 'us') throw new Error('formato desconhecido: ' + locale);
+    this.locale = locale;
+  }
+
+  takePauses() {
+    return [];
+  }
+
+  reset() {
+    const locale = this.locale;
+    Object.assign(this, new Engine16({ locale, profile: this.profile }));
+  }
+
+  loadValue(v) {
+    if (this.error) return;
+    this.pending = null;
+    this.shift = null;
+    this._push(BigInt(v) & maskOf(this.ws));
+  }
+
+  // ⌫ do teclado do PC
+  backspace() {
+    if (this.error) {
+      this.error = null;
+      this.shift = null;
+      this.pending = null;
+      return;
+    }
+    this.shift = null;
+    this.pending = null;
+    this._bsp();
+  }
+
+  // ---------- teclas ----------
+  press(id) {
+    const key = this.keyById.get(id);
+    if (!key) throw new Error('tecla desconhecida: ' + id);
+    if (id !== 'f' && id !== 'g') this.temp = null;
+    if (this.error) {
+      this.error = null;
+      this.shift = null;
+      this.pending = null;
+      return;
+    }
+    if (!key.enabled) {
+      this.shift = null;
+      this.pending = null;
+      return;
+    }
+    if (id === 'f' || id === 'g') {
+      this.pending = null;
+      this.shift = id;
+      return;
+    }
+    try {
+      this._dispatch(key);
+    } catch (e) {
+      if (!(e instanceof CalcError)) throw e;
+      this.error = { code: e.code, message: e.message };
+      this.shift = null;
+      this.pending = null;
+      this.entry = null;
+      this.tokens = [];
+    }
+  }
+
+  _dispatch(key) {
+    const shift = this.shift;
+    this.shift = null;
+    const id = key.id;
+    if (!(shift === 'g' && (id === 'sto' || id === 'rcl')) && !this.pending) this.window = 0; // quase toda tecla volta à janela 0
+    if (this.pending) return this._finishPending(key);
+    if (id === 'on') return;
+    if (shift === 'f') return this._f(key);
+    if (shift === 'g') return this._g(key);
+    return this._primary(key);
+  }
+
+  // ---------- pilha e entrada ----------
+  _commit() {
+    if (this.entry === null) return;
+    this.tokens.push(this.entry === '' ? '0' : this.entry);
+    this.st.x = this._parse(this.entry);
+    this.entry = null;
+  }
+
+  _parse(text) {
+    if (text === '') return 0n;
+    const v = BigInt(({ hex: '0x', dec: '', oct: '0o', bin: '0b' })[this.base] + text);
+    return this.base === 'dec' && this.cmp !== 'u' ? toRaw(v, this.ws, this.cmp) : v;
+  }
+
+  _fits(text) {
+    const v = BigInt(({ hex: '0x', dec: '', oct: '0o', bin: '0b' })[this.base] + (text || '0'));
+    if (this.base !== 'dec' || this.cmp === 'u') return v <= maskOf(this.ws);
+    return v <= range(this.ws, this.cmp)[1]; // decimal com sinal: o negativo vem pelo CHS
+  }
+
+  _digit(d) {
+    if (parseInt(d, 16) >= RADIX[this.base]) return; // dígito que não existe na base: ignorado
+    const cur = this.entry ?? '';
+    const next = (cur === '0' ? '' : cur) + d;
+    if (!this._fits(next)) return;
+    if (this.entry === null) {
+      if (this.lift) this._rise();
+      this.lift = true;
+    }
+    this.entry = next;
+    this.st.x = this._parse(next);
+  }
+
+  _rise() {
+    const s = this.st;
+    s.t = s.z;
+    s.z = s.y;
+    s.y = s.x;
+  }
+
+  _push(raw) {
+    if (this.lift) this._rise();
+    this.st.x = raw;
+    this.lift = true;
+  }
+
+  _drop() {
+    const s = this.st;
+    s.y = s.z;
+    s.z = s.t;
+  }
+
+  _flags(r) {
+    this.flags[4] = r.c;
+    this.flags[5] = r.g;
+  }
+
+  // Operação de dois números (Y op X): o resultado fica em X e a pilha desce.
+  _binary(fn, label, setFlags = true) {
+    this._commit();
+    const s = this.st;
+    const r = fn(s.y, s.x, this.ws, this.cmp);
+    if (!r) throw new CalcError(0);
+    if (setFlags) this._flags(r);
+    s.l = s.x;
+    s.x = r.raw;
+    this._drop();
+    this.lift = true;
+    this._record(label);
+  }
+
+  // Operação de um número (só X), com resultado { raw, c?, g? }.
+  _unary(fn, label, flags = 'cg') {
+    this._commit();
+    const s = this.st;
+    const r = fn(s.x, this.ws, this.cmp);
+    if (!r) throw new CalcError(0);
+    if (flags.includes('c')) this.flags[4] = r.c ?? false;
+    if (flags.includes('g')) this.flags[5] = r.g ?? false;
+    s.l = s.x;
+    s.x = r.raw;
+    this.lift = true;
+    this._record(label);
+  }
+
+  _bsp() {
+    if (this.entry !== null) {
+      this.entry = this.entry.slice(0, -1);
+      this.st.x = this._parse(this.entry);
+      return;
+    }
+    this._clx();
+  }
+
+  _clx() {
+    this.entry = null;
+    this.st.x = 0n;
+    this.lift = false;
+    this.tokens.push('CLx');
+  }
+
+  // ---------- teclas sem prefixo ----------
+  _primary(key) {
+    const id = key.id;
+    const d = digitOf(id);
+    if (d !== null) return this._digit(d);
+    switch (id) {
+      case 'hex':
+      case 'dec':
+      case 'oct':
+      case 'bin':
+        this._commit();
+        this.base = id;
+        return;
+      case 'plus':
+        return this._binary(add, '+');
+      case 'minus':
+        return this._binary(sub, '−');
+      case 'times':
+        return this._binary(mul, '×');
+      case 'divide':
+        return this._binary(div, '÷');
+      case 'enter': {
+        this._commit();
+        const s = this.st;
+        s.t = s.z;
+        s.z = s.y;
+        s.y = s.x;
+        this.lift = false;
+        this.tokens.push('ENTER');
+        return;
+      }
+      case 'xy': {
+        this._commit();
+        const s = this.st;
+        [s.x, s.y] = [s.y, s.x];
+        this.lift = true;
+        this.tokens.push('x≷y');
+        return;
+      }
+      case 'rdown': {
+        this._commit();
+        const s = this.st;
+        [s.x, s.y, s.z, s.t] = [s.y, s.z, s.t, s.x];
+        this.lift = true;
+        this.tokens.push('R↓');
+        return;
+      }
+      case 'bsp':
+        return this._bsp();
+      case 'chs':
+        return this._chs();
+      case 'sto':
+      case 'rcl':
+        this._commit();
+        this.pending = id;
+        return;
+    }
+  }
+
+  _chs() {
+    this._commit();
+    const s = this.st;
+    const signed = this.base === 'dec' && this.cmp !== 'u';
+    const r = signed ? this._negateSigned(s.x) : negate(s.x, this.ws, this.cmp);
+    this.flags[5] = r.g;
+    s.x = r.raw;
+    this.lift = true;
+    this.tokens.push('CHS');
+    this._record('CHS');
+  }
+
+  _negateSigned(raw) {
+    const sv = toSigned(raw, this.ws, this.cmp);
+    const n = -sv;
+    if (!inRange(n, this.ws, this.cmp)) return { raw, g: true }; // −(menor negativo)
+    return { raw: toRaw(n, this.ws, this.cmp), g: false };
+  }
+
+  // ---------- f ----------
+  _f(key) {
+    const id = key.id;
+    const s = this.st;
+    switch (id) {
+      case 'da': return this._shiftOp(shiftLeft, 'SL');
+      case 'db': return this._shiftOp(shiftRight, 'SR');
+      case 'dc': return this._shiftOp(rotLeft, 'RL');
+      case 'dd': return this._shiftOp(rotRight, 'RR');
+      case 'de': return this._rotN(true, false, 'RLn');
+      case 'df': return this._rotN(false, false, 'RRn');
+      case '7': return this._maskOp(true);
+      case '8': return this._maskOp(false);
+      case '9': return this._binary(rmd, 'RMD');
+      case 'divide': return this._binary((y, x) => ({ raw: y ^ x }), 'XOR', false);
+      case 'times': return this._binary((y, x) => ({ raw: y & x }), 'AND', false);
+      case 'plus': return this._binary((y, x) => ({ raw: y | x }), 'OR', false);
+      case 'minus': return this._unary((x, ws) => ({ raw: maskOf(ws) ^ x }), 'NOT', '');
+      case 'hex':
+      case 'dec':
+      case 'oct':
+      case 'bin':
+        this._commit();
+        this.temp = this._valText(s.x, 0, id);
+        return;
+      case '1': this.cmp = '1'; return;
+      case '2': this.cmp = '2'; return;
+      case '3': this.cmp = 'u'; return;
+      case '4': this.pending = 'sb'; return this._commit();
+      case '5': this.pending = 'cb'; return this._commit();
+      case 'sto': return this._wsize();
+      case 'enter': this._commit(); this.pending = 'window'; return;
+      case 'dot':
+        this._commit();
+        this.temp = `${CMP_CODE[this.cmp]}-${this.ws}-${[3, 2, 1, 0].map((n) => (this.flags[n] ? 1 : 0)).join('')}`;
+        return;
+      case 'xy': // CLEAR REG
+        this.regs.fill(0n);
+        return;
+      // CLEAR PRGM, CLEAR PREFIX: nada a fazer; demais: fora desta etapa
+    }
+  }
+
+  _wsize() {
+    this._commit();
+    const s = this.st;
+    let n = Number(s.x);
+    if (s.x > 64n) n = 99;
+    if (n === 0) n = 64;
+    if (n > 64) throw arg('Tamanho de palavra inválido');
+    this.ws = n;
+    const m = maskOf(n);
+    for (const k of ['x', 'y', 'z', 't', 'l']) s[k] &= m;
+    this.regs = this.regs.map((r) => r & m);
+    this.lift = true;
+  }
+
+  _shiftOp(fn, label) {
+    this._commit();
+    const s = this.st;
+    const useCarry = fn === rotLeft || fn === rotRight ? null : undefined;
+    const r = useCarry === undefined ? fn(s.x, this.ws) : fn(s.x, this.ws, null);
+    this.flags[4] = r.c;
+    s.l = s.x;
+    s.x = r.raw;
+    this.lift = true;
+    this._record(label);
+  }
+
+  _carryOp(fn, label) {
+    this._commit();
+    const s = this.st;
+    const r = fn(s.x, this.ws, this.flags[4]);
+    this.flags[4] = r.c;
+    s.l = s.x;
+    s.x = r.raw;
+    this.lift = true;
+    this._record(label);
+  }
+
+  // RLn, RRn, RLCn, RRCn: giram Y pelas X posições; o resultado fica em X.
+  _rotN(left, carry, label) {
+    this._commit();
+    const s = this.st;
+    const n = s.x > 255n ? 255 : Number(s.x);
+    let v = s.y;
+    let c = this.flags[4];
+    for (let i = 0; i < n; i++) {
+      const r = left ? rotLeft(v, this.ws, carry ? c : null) : rotRight(v, this.ws, carry ? c : null);
+      v = r.raw;
+      c = r.c;
+    }
+    this.flags[4] = n === 0 ? this.flags[4] : c;
+    s.l = s.x;
+    s.x = v;
+    this._drop();
+    this.lift = true;
+    this._record(label);
+  }
+
+  _maskOp(left) {
+    this._commit();
+    const s = this.st;
+    if (s.x > BigInt(this.ws)) throw arg('Número de bits inválido');
+    const n = Number(s.x);
+    const low = (1n << BigInt(n)) - 1n;
+    s.l = s.x;
+    s.x = left ? low << BigInt(this.ws - n) : low;
+    this.lift = true;
+    this._record(left ? 'MASKL' : 'MASKR');
+  }
+
+  // ---------- g ----------
+  _g(key) {
+    const id = key.id;
+    const s = this.st;
+    switch (id) {
+      case 'da': return this._leftJustify();
+      case 'db': return this._shiftOp((raw, ws) => asr(raw, ws), 'ASR');
+      case 'dc': return this._carryOp(rotLeft, 'RLC');
+      case 'dd': return this._carryOp(rotRight, 'RRC');
+      case 'de': return this._rotN(true, true, 'RLCn');
+      case 'df': return this._rotN(false, true, 'RRCn');
+      case '7': return this._unary((x) => ({ raw: BigInt(popcount(x)) }), '#B', '');
+      case '8': return this._unary((x, ws, cmp) => this._abs(x, ws, cmp), 'ABS', 'g');
+      case 'oct': return this._unary((x, ws, cmp) => this._sqrt(x, ws, cmp), '√x');
+      case 'bin': return this._unary((x, ws, cmp) => this._recip(x, ws, cmp), '1/x');
+      case '4': this._commit(); this.pending = 'sf'; return;
+      case '5': this._commit(); this.pending = 'cf'; return;
+      case 'times': return this._dblMul();
+      case 'divide': return this._dblDiv(false);
+      case '9': return this._dblDiv(true);
+      case 'rdown': {
+        this._commit();
+        [s.x, s.y, s.z, s.t] = [s.t, s.x, s.y, s.z];
+        this.lift = true;
+        this.tokens.push('R↑');
+        return;
+      }
+      case 'bsp':
+        return this._clx();
+      case 'enter':
+        this._commit();
+        this._push(s.l);
+        this.tokens.push('LSTx');
+        return;
+      case 'sto': return this._scroll(1);
+      case 'rcl': return this._scroll(-1);
+    }
+  }
+
+  _abs(x, ws, cmp) {
+    if (cmp === 'u') return { raw: x, g: false };
+    const sv = toSigned(x, ws, cmp);
+    if (sv >= 0n) return { raw: x, g: false };
+    if (!inRange(-sv, ws, cmp)) return { raw: x, g: true };
+    return { raw: toRaw(-sv, ws, cmp), g: false };
+  }
+
+  _sqrt(x, ws, cmp) {
+    const sv = toSigned(x, ws, cmp);
+    if (sv < 0n) return null; // raiz de negativo: Error 0
+    const r = isqrt(sv);
+    return { raw: r, c: r * r !== sv, g: false };
+  }
+
+  _recip(x, ws, cmp) {
+    const sv = toSigned(x, ws, cmp);
+    if (sv === 0n) return null;
+    const one = 1n;
+    const q = one / sv; // trunca: só ±1 dá diferente de zero
+    return { raw: toRaw(q, ws, cmp), c: one % sv !== 0n, g: false };
+  }
+
+  _leftJustify() {
+    this._commit();
+    const s = this.st;
+    const r = leftJustify(s.x, this.ws);
+    s.l = s.x;
+    this._rise();
+    s.y = r.raw;
+    s.x = BigInt(r.n);
+    this.lift = true;
+    this._record('LJ');
+  }
+
+  // Multiplicação e divisão de precisão dupla: o par Y:X (ou Z:Y) guarda um número de 2·ws bits.
+  _dbl(hi, lo) {
+    const w = BigInt(this.ws);
+    const v = (hi << w) | lo;
+    return this.cmp === 'u' ? v : BigInt.asIntN(this.ws * 2, v);
+  }
+
+  _dblMul() {
+    this._commit();
+    const s = this.st;
+    const p = toSigned(s.y, this.ws, this.cmp) * toSigned(s.x, this.ws, this.cmp);
+    const u = BigInt.asUintN(this.ws * 2, p);
+    s.l = s.x;
+    s.x = u & maskOf(this.ws);
+    s.y = u >> BigInt(this.ws);
+    this.flags[5] = false;
+    this.lift = true;
+    this._record('DBL×');
+  }
+
+  _dblDiv(remainder) {
+    this._commit();
+    const s = this.st;
+    const sx = toSigned(s.x, this.ws, this.cmp);
+    if (sx === 0n) throw new CalcError(0);
+    const n = this._dbl(s.z, s.y);
+    const r = remainder ? n % sx : n / sx;
+    const ok = inRange(r, this.ws, this.cmp);
+    s.l = s.x;
+    s.x = ok ? toRaw(r, this.ws, this.cmp) : BigInt.asUintN(this.ws, r);
+    s.y = s.t;
+    s.z = s.t;
+    this.flags[5] = !ok;
+    this.flags[4] = !remainder && n % sx !== 0n;
+    this.lift = true;
+    this._record(remainder ? 'DBLR' : 'DBL÷');
+  }
+
+  _scroll(dir) {
+    const max = this._windowCount(this.st.x) - 1;
+    this.window = Math.max(0, Math.min(Math.max(0, max), this.window + dir));
+  }
+
+  // ---------- STO, RCL, bits, flags, janela ----------
+  _finishPending(key) {
+    const mode = this.pending;
+    this.pending = null;
+    const id = key.id;
+    const d = digitOf(id);
+    const s = this.st;
+    if (mode === 'sto' || mode === 'rcl' || mode === 'sto.' || mode === 'rcl.') {
+      if (id === 'dot' && !mode.endsWith('.')) {
+        this.pending = mode + '.';
+        return;
+      }
+      if (d === null) return;
+      const n = parseInt(d, 16) + (mode.endsWith('.') ? 16 : 0);
+      if (n >= this.regs.length) throw new CalcError(6);
+      const label = `${mode.startsWith('sto') ? 'STO' : 'RCL'} ${mode.endsWith('.') ? '.' : ''}${d}`;
+      if (mode.startsWith('sto')) {
+        this.regs[n] = s.x;
+        this.lift = true;
+      } else this._push(this.regs[n]);
+      this._record(label);
+      return;
+    }
+    if (d === null) return;
+    const n = parseInt(d, 16);
+    if (mode === 'window') {
+      if (n > 7) throw arg('Janela inválida');
+      this.window = n;
+    } else if (mode === 'sf' || mode === 'cf') {
+      if (n > 5) throw arg('Flag inválido');
+      this.flags[n] = mode === 'sf';
+    } else {
+      if (n >= this.ws) throw arg('Bit inexistente');
+      s.x = mode === 'sb' ? s.x | (1n << BigInt(n)) : s.x & ~(1n << BigInt(n));
+      this.lift = true;
+      this._record(mode === 'sb' ? `SB ${d}` : `CB ${d}`);
+    }
+  }
+
+  // ---------- visor ----------
+  _windowCount(raw) {
+    const len = digitsOf(raw, this.ws, this.cmp, this.base, this.flags[3]).replace('-', '').length;
+    return Math.ceil(len / WIN[this.base]);
+  }
+
+  // Texto de um valor na base (a atual, se não vier outra) e janela dadas; o fim do número é a janela 0.
+  _valText(raw, window = this.window, base = this.base) {
+    const full = digitsOf(raw, this.ws, this.cmp, base, this.flags[3]);
+    return this._slice(full, window, base);
+  }
+
+  _slice(full, window, base) {
+    const neg = full.startsWith('-');
+    const digits = neg ? full.slice(1) : full;
+    const size = WIN[base];
+    const end = digits.length - window * size;
+    const part = end <= 0 ? '0' : digits.slice(Math.max(0, end - size), end);
+    return (neg && window === 0 ? '-' : '') + part + ' ' + LETTER[base];
+  }
+
+  _display() {
+    if (this.error) return 'Error ' + this.error.code;
+    if (this.temp !== null) return this.temp;
+    if (this.entry !== null) return this._slice(this.entry === '' ? '0' : this.entry, 0, this.base);
+    return this._valText(this.st.x);
+  }
+
+  _record(label) {
+    this.tokens.push(label);
+    this.tape.push({ keys: this.tokens.join(' '), label, value: String(this.st.x), text: this._valText(this.st.x, 0) });
+    if (this.tape.length > MAX_TAPE) this.tape.shift();
+    this.tokens = [];
+  }
+
+  // ---------- serialização ----------
+  serialize() {
+    const s = this.st;
+    return JSON.stringify({
+      v: VERSION,
+      profile: this.profile,
+      ws: this.ws,
+      cmp: this.cmp,
+      base: this.base,
+      st: { x: String(s.x), y: String(s.y), z: String(s.z), t: String(s.t), l: String(s.l) },
+      flags: this.flags,
+      regs: this.regs.map(String),
+      entry: this.entry,
+      lift: this.lift,
+      shift: this.shift,
+      pending: this.pending,
+      window: this.window,
+      locale: this.locale,
+      error: this.error,
+      tape: this.tape,
+      tokens: this.tokens,
+    });
+  }
+
+  static restore(json) {
+    const o = JSON.parse(json);
+    const big = (v, ws) => {
+      if (typeof v !== 'string' || !/^[0-9]+$/.test(v)) throw bad();
+      const b = BigInt(v);
+      if (b > maskOf(ws)) throw bad();
+      return b;
+    };
+    if (!o || typeof o !== 'object' || o.v !== VERSION) throw bad();
+    if (typeof o.profile !== 'string') throw bad();
+    if (!Number.isInteger(o.ws) || o.ws < 1 || o.ws > 64) throw bad();
+    if (!['2', '1', 'u'].includes(o.cmp) || !['hex', 'dec', 'oct', 'bin'].includes(o.base)) throw bad();
+    if (!o.st || !Array.isArray(o.flags) || o.flags.length !== 6 || !o.flags.every((f) => typeof f === 'boolean')) throw bad();
+    if (!Array.isArray(o.regs) || !Array.isArray(o.tape) || !Array.isArray(o.tokens)) throw bad();
+    if (o.locale !== 'br' && o.locale !== 'us') throw bad();
+    if (![null, 'f', 'g'].includes(o.shift) || ![null, 'sto', 'rcl', 'sto.', 'rcl.', 'sb', 'cb', 'sf', 'cf', 'window'].includes(o.pending)) throw bad();
+    if (o.entry !== null && !(typeof o.entry === 'string' && /^[0-9A-F]*$/.test(o.entry))) throw bad();
+    const e = new Engine16({ locale: o.locale, profile: o.profile });
+    Object.assign(e, {
+      ws: o.ws,
+      cmp: o.cmp,
+      base: o.base,
+      flags: [...o.flags],
+      entry: o.entry,
+      lift: o.lift !== false,
+      shift: o.shift,
+      pending: o.pending,
+      window: Number.isInteger(o.window) && o.window >= 0 && o.window < 8 ? o.window : 0,
+      error: o.error && Number.isInteger(o.error.code) ? { code: o.error.code, message: String(o.error.message) } : null,
+      tape: o.tape.filter((r) => r && typeof r.keys === 'string' && typeof r.text === 'string').map((r) => ({ keys: r.keys, label: String(r.label), value: String(r.value), text: r.text })),
+      tokens: o.tokens.map(String),
+    });
+    for (const k of ['x', 'y', 'z', 't', 'l']) e.st[k] = big(o.st[k], o.ws);
+    o.regs.slice(0, e.regs.length).forEach((v, n) => { e.regs[n] = big(v, o.ws); });
+    return e;
+  }
+}
+
+return { Engine16 };
+})();
+
+const __m_engines = (() => {
+// Escolhe o motor pelo tipo do perfil: decimal (HP 10C a 12C) ou inteiros de largura fixa (HP-16C).
+const { Engine } = __m_engine;
+const { Engine16 } = __m_engine16;
+const { DEFAULT_PROFILE, getProfile, hasProfile } = __m_profiles;
+
+function createEngine(opts = {}) {
+  const profile = opts.profile ?? DEFAULT_PROFILE;
+  return getProfile(profile).kind === 'int' ? new Engine16({ ...opts, profile }) : new Engine({ ...opts, profile });
+}
+
+function restoreEngine(json) {
+  const o = JSON.parse(json);
+  const id = o && typeof o === 'object' ? o.profile : undefined;
+  if (typeof id === 'string' && hasProfile(id) && getProfile(id).kind === 'int') return Engine16.restore(json);
+  return Engine.restore(json);
+}
+
+return { createEngine, restoreEngine };
+})();
+
 const __m_display = (() => {
 // Visor: indicadores (conforme o perfil), dígitos com ajuste de fonte, mensagem de erro e teclado do PC.
 const { getProfile } = __m_profiles;
@@ -2747,7 +3698,7 @@ function renderDisplay(el, s) {
   ensureStructure(el, getProfile(s.profile ?? '12c').indicators);
   const lit = {
     RPN: s.mode === 'rpn', ALG: s.mode === 'alg', '( )': s.parens > 0,
-    f: s.shift === 'f', g: s.shift === 'g', BEGIN: s.begin, C: s.compound, 'D.MY': s.dmy, PRGM: s.prgm, UNDO: s.undo === true,
+    f: s.shift === 'f', g: s.shift === 'g', BEGIN: s.begin, C: s.compound || s.carry === true, 'D.MY': s.dmy, PRGM: s.prgm, UNDO: s.undo === true, G: s.oor === true,
   };
   for (const span of el.querySelectorAll('[data-ind]')) {
     span.classList.toggle('on', !!lit[span.dataset.ind]);
@@ -2770,7 +3721,8 @@ function bindKeyboard(engine, onChange = () => {}, target = window) {
       ev.preventDefault();
       engine.backspace();
     } else {
-      const id = /^[0-9]$/.test(ev.key) ? ev.key : KEY_TO_ID[ev.key];
+      const hex = getProfile(engine.profile).kind === 'int' && /^[a-fA-F]$/.test(ev.key) ? 'd' + ev.key.toLowerCase() : null; // letras A-F na 16C
+      const id = hex ?? (/^[0-9]$/.test(ev.key) ? ev.key : KEY_TO_ID[ev.key]);
       if (!id) return;
       ev.preventDefault();
       engine.press(id);
@@ -2786,7 +3738,7 @@ return { INDICATORS, renderDisplay, bindKeyboard };
 
 const __m_storage = (() => {
 // Salvamento automático no aparelho (localStorage). Nada sai do dispositivo.
-const { Engine } = __m_engine;
+const { createEngine, restoreEngine } = __m_engines;
 const { DEFAULT_PROFILE, hasProfile } = __m_profiles;
 
 const STORAGE_KEY = 'calc12c.state'; // estado do perfil 12C (chave mantida para não perder o que já estava salvo)
@@ -2835,13 +3787,13 @@ function loadState(profile = loadActiveProfile()) {
   try {
     const raw = store()?.getItem(stateKey(profile));
     if (raw) {
-      const e = Engine.restore(raw);
+      const e = restoreEngine(raw);
       if (e.profile === profile) return e;
     }
   } catch {
     /* cai no estado inicial */
   }
-  return new Engine({ profile });
+  return createEngine({ profile });
 }
 
 function clearAll(profile = DEFAULT_PROFILE) {
@@ -2914,10 +3866,12 @@ function mountDrawer(ctx) {
   const tapeEl = drawer.querySelector('.tape');
 
   ctx.listeners.push((_c, s) => {
+    const int = !!s.texts; // 16C: os valores já vêm escritos na base atual e não há n, i, PV, PMT, FV
+    const regName = (n) => (int ? (n >= 16 ? 'R.' + (n - 16).toString(16) : 'R' + n.toString(16)).toUpperCase() : n >= 10 ? 'R.' + (n - 10) : 'R' + n);
     mem.innerHTML =
-      '<div class="cards">' + FIN_CARDS.map(([id, l]) => cell('card', `data-fin="${id}"`, l, fmt(s.fin[id], s))).join('') + '</div>' +
-      '<div class="regs">' + s.regs.map((v, n) => cell('reg', `data-reg="${n}"`, n >= 10 ? 'R.' + (n - 10) : 'R' + n, fmt(v, s))).join('') + '</div>' +
-      '<div class="stack">' + STACK_REGS.map(([id, l]) => cell('stk', `data-stk="${id}"`, l, fmt(s.stack[id], s))).join('') + '</div>';
+      '<div class="cards">' + (int ? '' : FIN_CARDS.map(([id, l]) => cell('card', `data-fin="${id}"`, l, fmt(s.fin[id], s))).join('')) + '</div>' +
+      '<div class="regs">' + s.regs.map((v, n) => cell('reg', `data-reg="${n}"`, regName(n), int ? s.texts.regs[n] : fmt(v, s))).join('') + '</div>' +
+      '<div class="stack">' + STACK_REGS.map(([id, l]) => cell('stk', `data-stk="${id}"`, l, int ? s.texts[id] : fmt(s.stack[id], s))).join('') + '</div>';
     tapeEl.innerHTML = '';
     s.tape.forEach((line, i) => {
       const li = document.createElement('li');
@@ -2961,7 +3915,7 @@ return { mountDrawer };
 const __m_memories = (() => {
 // Memórias em arquivo: salvar, abrir e compartilhar o estado da calculadora (registradores, financeiros,
 // fluxos de caixa, programa, pilha e fita). A versão 2 leva também o perfil e o modo (RPN/ALG); arquivos da versão 1 abrem como 12C. O arquivo só sai do aparelho se a pessoa o compartilhar.
-const { Engine } = __m_engine;
+const { restoreEngine } = __m_engines;
 
 const MEM_KIND = 'calc12c-memorias';
 const MAX_CHARS = 2000000;
@@ -2986,14 +3940,17 @@ function parseMemoryFile(text) {
   }
   if (!o || o.tipo !== MEM_KIND || !o.estado || typeof o.estado !== 'object') throw new Error('Este arquivo não é de memórias da Calc 12c.');
   try {
-    return Engine.restore(JSON.stringify(o.estado));
+    return restoreEngine(JSON.stringify(o.estado));
   } catch {
     throw new Error('O conteúdo do arquivo está inválido ou é de uma versão não suportada.');
   }
 }
 
 // Troca o estado do motor em uso pelo do motor lido (as referências ao motor continuam valendo).
+// O motor lido pode ser de outro tipo (12C ↔ 16C): troca também o protótipo, que carrega os métodos.
 function loadInto(engine, loaded) {
+  for (const k of Object.keys(engine)) delete engine[k];
+  Object.setPrototypeOf(engine, Object.getPrototypeOf(loaded));
   Object.assign(engine, loaded);
 }
 
@@ -3186,7 +4143,7 @@ const { listProfiles, allowedThemes, themeFor } = __m_profiles;
 const KEY = 'calc12c.settings';
 const THEMES = ['retro', 'platinum', 'moderno']; // 'retro' = Gold (padrão), 'platinum' = prata, 'moderno' = Retro (vidro)
 const VERSION = 5; // v2: a vibração ao tocar passou a vir ligada; v3: som, não dormir, estilo da tecla ON e banda superior; v4: cores e orientação; v5: modo desenvolvedor
-const APP_VERSION = 'V3.0';
+const APP_VERSION = 'V3.1';
 const DEV_TAPS = 7; // toques na versão para ligar o modo desenvolvedor
 const DEV_GAP_MS = 2000; // intervalo máximo entre dois toques
 const MODES = ['auto', 'escuro', 'claro'];
@@ -3923,6 +4880,73 @@ const VERSO = [
   },
 ];
 
+
+// Guia da HP-16C (inteiros de largura fixa). Cada exemplo começa pondo a calculadora em um estado conhecido:
+// "dec 16 f sto f 2" = palavra de 16 bits em complemento de 2.
+const W16 = 'dec 16 f sto f 2';
+const W8 = 'dec 8 f sto f 2';
+const VERSO_16C = [
+  {
+    id: 'base', tag: 'BASE', title: 'Bases numéricas',
+    items: [
+      {
+        id: 'base-255', title: '255 em HEX, OCT e BIN', text: 'As teclas HEX, DEC, OCT e BIN trocam só a base do visor; o número guardado é o mesmo.', ready: true,
+        variants: [
+          { label: 'HEX', keys: `${W16} 255 hex` },
+          { label: 'OCT', keys: `${W16} 255 oct` },
+          { label: 'BIN', keys: `${W16} 255 bin` },
+        ],
+      },
+      {
+        id: 'base-neg', title: '−50 em 8 bits', text: 'Em HEX, CHS troca o número pelo complemento. No complemento de 2, −50 é CE; no de 1, é CD.', ready: true,
+        variants: [
+          { label: 'Complemento de 2', keys: `${W8} 50 chs hex` },
+          { label: 'Complemento de 1', keys: 'dec 8 f sto f 1 50 chs hex' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'logic', tag: 'LÓGICA', title: 'Lógica de bits',
+    items: [
+      {
+        id: 'logic-ops', title: 'F0F0 e FF00', text: 'AND, OR e XOR combinam Y e X bit a bit; NOT inverte todos os bits de X.', ready: true,
+        variants: [
+          { label: 'AND', keys: `${W16} hex F0F0 enter FF00 f times` },
+          { label: 'OR', keys: `${W16} hex F0F0 enter FF00 f plus` },
+          { label: 'XOR', keys: `${W16} hex F0F0 enter FF00 f divide` },
+          { label: 'NOT', keys: `${W16} hex F0F0 f minus` },
+        ],
+      },
+      {
+        id: 'logic-shift', title: 'Deslocar e girar 81 (8 bits)', text: 'SL desloca para a esquerda e o bit que sai vai para o indicador C. RL gira: o bit que sai volta pela direita.', ready: true,
+        variants: [
+          { label: 'SL', keys: `${W8} hex 81 f da` },
+          { label: 'RL', keys: `${W8} hex 81 f dc` },
+          { label: 'Máscara dos 3 bits altos', keys: `${W8} hex 3 f 7` },
+          { label: 'Bits 1 em F0F', keys: `${W16} hex F0F g 7` },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'carry', tag: 'C e G', title: 'Carry e estouro',
+    items: [
+      {
+        id: 'carry-g', title: '32767 × 2 em 16 bits', text: 'O resultado não cabe: o indicador G acende. Zere o aviso com g CF 5.', ready: true,
+        variants: [{ label: 'Estouro', keys: `${W16} 32767 enter 2 times` }],
+      },
+      {
+        id: 'carry-c', title: '66 ÷ 7 em HEX', text: 'A divisão é inteira. Se sobra resto, o indicador C acende; RMD dá o resto.', ready: true,
+        variants: [
+          { label: 'Quociente', keys: `${W16} hex 66 enter 7 divide` },
+          { label: 'Resto', keys: `${W16} hex 66 enter 7 f 9` },
+        ],
+      },
+    ],
+  },
+];
+
 // Guia do verso de cada perfil.
 // O grupo ALG só existe na Platinum.
 // Na Platinum o GTO tem 3 dígitos (400 linhas): os exemplos de programa ganham um zero (GTO 04 → GTO 004).
@@ -3940,6 +4964,7 @@ const forPlatinum = (groups) => groups.map((g) => (g.id !== 'prog' ? g : {
 const VERSO_BY_PROFILE = {
   '12c': { sections: VERSO.filter((g) => g.id !== 'alg'), sigma: SIGMA_MAP },
   '12cp': { sections: forPlatinum(VERSO), sigma: SIGMA_MAP },
+  '16c': { sections: VERSO_16C, sigma: [] },
 };
 
 // Uma variante pode depender da gravação do programa: `pre` é o rótulo de outra variante do mesmo exemplo,
@@ -3954,7 +4979,7 @@ function preKeys(item, variant) {
 // Sequência completa de teclas de uma variante (prévia + própria).
 const fullKeys = (item, variant) => [preKeys(item, variant), variant.keys].filter(Boolean).join(' ');
 
-return { SIGMA_MAP, VERSO, VERSO_BY_PROFILE, preKeys, fullKeys };
+return { SIGMA_MAP, VERSO, VERSO_16C, VERSO_BY_PROFILE, preKeys, fullKeys };
 })();
 
 const __m_verso = (() => {
@@ -3964,13 +4989,16 @@ const { VERSO_BY_PROFILE, preKeys } = __m_verso_data;
 
 const STEP_MS = 140; // intervalo entre as teclas quando um exemplo é executado
 
+const HEX_TOK = /^[0-9A-F]*[A-F][0-9A-F]*$/; // número com letras maiúsculas A-F (HEX da 16C)
+const isNumTok = (t) => /^\d+(\.\d+)?$/.test(t) || HEX_TOK.test(t);
+
 // "31.052003" → "31,052003"; ids do motor → rótulo impresso na tecla; f/g + tecla viram um chip só (ex.: "g ΔDYS")
 function chipsOf(keys, keyById = KEY_BY_ID) {
   const out = [];
   const t = keys.split(/\s+/).filter(Boolean);
   for (let i = 0; i < t.length; i++) {
     const id = t[i];
-    if (/^\d+(\.\d+)?$/.test(id)) out.push({ text: id.replace('.', ','), kind: 'num' });
+    if (isNumTok(id)) out.push({ text: id.replace('.', ','), kind: 'num' });
     else if ((id === 'f' || id === 'g') && t[i + 1] && !/^\d.+/.test(t[i + 1])) { // f/g + tecla (um dígito sozinho é tecla, ex.: g 4)
       const next = keyById.get(t[++i]);
       out.push({ text: `${id} ${next[id] ?? next.label}`, kind: id });
@@ -3983,7 +5011,8 @@ function chipsOf(keys, keyById = KEY_BY_ID) {
 function expandKeys(keys) {
   const ids = [];
   for (const tok of keys.split(/\s+/).filter(Boolean)) {
-    if (/^\d+(\.\d+)?$/.test(tok)) for (const c of tok) ids.push(c === '.' ? 'dot' : c);
+    if (HEX_TOK.test(tok)) for (const c of tok) ids.push(/\d/.test(c) ? c : 'd' + c.toLowerCase()); // 16C: F0F → F, 0, F
+    else if (/^\d+(\.\d+)?$/.test(tok)) for (const c of tok) ids.push(c === '.' ? 'dot' : c);
     else ids.push(tok);
   }
   return ids;
@@ -4079,7 +5108,7 @@ return { chipsOf, expandKeys, mountVerso };
 })();
 
 const __m_app = (() => {
-const { Engine } = __m_engine;
+const { createEngine } = __m_engines;
 const { getProfile } = __m_profiles;
 const { renderDisplay, bindKeyboard } = __m_display;
 const { mountDrawer } = __m_tape;
@@ -4135,7 +5164,7 @@ function makeKey(k) {
   return b;
 }
 
-function mountApp(root, engine = new Engine()) {
+function mountApp(root, engine = createEngine()) {
   root.innerHTML = '';
   const calc = document.createElement('main');
   calc.className = 'calc';
@@ -4177,7 +5206,7 @@ function mountApp(root, engine = new Engine()) {
   // título e selo do topo seguem o perfil e o modo (RPN/ALG só nos perfis que têm os dois)
   const paintBrand = (s) => {
     const p = ctx.profile;
-    const modeLabel = p.modes.length > 1 ? s.mode.toUpperCase() : 'RPN';
+    const modeLabel = p.kind === 'int' ? p.model : p.modes.length > 1 ? s.mode.toUpperCase() : 'RPN'; // 16C: o selo mostra o modelo
     const title = brand.querySelector('.title');
     if (title.dataset.profile !== p.id) { // o título muda só quando o perfil muda
       title.dataset.profile = p.id;
@@ -4186,7 +5215,7 @@ function mountApp(root, engine = new Engine()) {
       else title.textContent = p.name;
     }
     brand.querySelector('.model').textContent = modeLabel;
-    brand.setAttribute('aria-label', `${p.name}, calculadora financeira ${modeLabel}`);
+    brand.setAttribute('aria-label', `${p.name}, calculadora ${p.kind === 'int' ? 'de programador' : 'financeira'} ${modeLabel}`);
   };
   ctx.render = () => {
     const s = engine.state;
@@ -4212,7 +5241,7 @@ function mountApp(root, engine = new Engine()) {
     b.classList.add('touch');
     b.addEventListener('animationend', () => b.classList.remove('touch'), { once: true });
   };
-  const kindOf = (id) => (id === 'enter' ? 'enter' : id === 'f' || id === 'g' ? 'fg' : /^\d$|^dot$/.test(id) ? 'num' : 'fn');
+  const kindOf = (id) => (id === 'enter' ? 'enter' : id === 'f' || id === 'g' ? 'fg' : /^\d$|^dot$|^d[a-f]$/.test(id) ? 'num' : 'fn');
   // a tecla afunda ao encostar e volta ao soltar; o som acompanha os dois momentos
   let pressed = null;
   const keyDown = (b) => {

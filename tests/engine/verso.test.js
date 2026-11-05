@@ -1,12 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Engine } from '../../src/engine/engine.js';
+import { createEngine } from '../../src/engine/engines.js';
 import { KEY_BY_ID } from '../../src/engine/keymap.js';
 import { VERSO, VERSO_BY_PROFILE, fullKeys } from '../../src/ui/verso-data.js';
 import { chipsOf, expandKeys } from '../../src/ui/verso.js';
 
 const run = (keys, profile = '12cp') => {
-  const e = new Engine({ profile });
+  const e = createEngine({ profile });
   for (const id of expandKeys(keys)) e.press(id);
   return e.state.display;
 };
@@ -118,4 +119,45 @@ test('lições de programação: a listagem do exemplo tem uma linha por linha g
     for (const id of expandKeys(it.variants[0].keys)) e.press(id);
     assert.equal(e.prog.filter(Boolean).length, it.listing.length, it.id);
   }
+});
+
+// HP-16C: resultados esperados (valores do manual: 32767 × 2 → 32766 com G; 66 ÷ 7 → E; −50 em 8 bits = CE).
+const ESPERADO_16C = {
+  'base-255|HEX': 'FF h',
+  'base-255|OCT': '377 o',
+  'base-255|BIN': '11111111 b',
+  'base-neg|Complemento de 2': 'CE h',
+  'base-neg|Complemento de 1': 'CD h',
+  'logic-ops|AND': 'F000 h',
+  'logic-ops|OR': 'FFF0 h',
+  'logic-ops|XOR': 'FF0 h',
+  'logic-ops|NOT': 'F0F h',
+  'logic-shift|SL': '2 h',
+  'logic-shift|RL': '3 h',
+  'logic-shift|Máscara dos 3 bits altos': 'E0 h',
+  'logic-shift|Bits 1 em F0F': '8 h',
+  'carry-g|Estouro': '32766 d',
+  'carry-c|Quociente': 'E h',
+  'carry-c|Resto': '4 h',
+};
+
+test('verso da 16C: todo exemplo pronto dá o resultado esperado e cada tecla existe', () => {
+  const vistos = [];
+  const keyById = createEngine({ profile: '16c' }).keyById;
+  for (const g of VERSO_BY_PROFILE['16c'].sections) {
+    for (const it of g.items) {
+      for (const v of it.variants) {
+        const chave = `${it.id}|${v.label}`;
+        for (const id of expandKeys(fullKeys(it, v))) assert.ok(keyById.has(id), `${chave}: tecla desconhecida "${id}"`);
+        assert.equal(run(fullKeys(it, v), '16c'), ESPERADO_16C[chave], chave);
+        vistos.push(chave);
+      }
+    }
+  }
+  assert.deepEqual(vistos.sort(), Object.keys(ESPERADO_16C).sort());
+});
+
+test('verso da 16C: letras A-F viram teclas e chips de número', () => {
+  assert.deepEqual(expandKeys('hex F0F enter'), ['hex', 'df', '0', 'df', 'enter']);
+  assert.deepEqual(chipsOf('hex F0F enter', createEngine({ profile: '16c' }).keyById).map((c) => c.text), ['HEX', 'F0F', 'ENTER']);
 });

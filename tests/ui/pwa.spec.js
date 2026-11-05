@@ -101,3 +101,19 @@ test('arquivo gerado funciona com a rede desligada e em horizontal', async () =>
   assert.equal(await page.locator('.mem').isVisible(), true);
   await ctx.close();
 });
+
+test('arquivo gerado abre por file:// e calcula na 16C (inteiros de 64 bits, sem erro de módulo)', async () => {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.goto(pathToFileURL(DIST).href);
+  await page.waitForFunction(() => window.calc12c);
+  await page.evaluate(() => window.calc12c.setProfile('16c'));
+  await tap(page, '2 5 5 hex');
+  assert.equal(await digits(page), 'FF h');
+  await tap(page, 'dec 3 2 7 6 7 enter 2 times');
+  assert.equal(await digits(page), '32766 d');
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
