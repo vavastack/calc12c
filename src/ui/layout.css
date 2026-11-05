@@ -6,29 +6,31 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
 /* ---- corpo da calculadora (o vidro fica só aqui e no visor) ---- */
 .calc { height: 100dvh; max-width: 560px; margin: 0 auto; display: grid;
   /* a borda da calculadora acompanha a área segura (notch, cantos, barra inferior) */
-  padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+  --pt: max(8px, env(safe-area-inset-top)); --pr: max(8px, env(safe-area-inset-right)); --pb: max(8px, env(safe-area-inset-bottom)); --pl: max(8px, env(safe-area-inset-left));
+  padding: var(--pt) var(--pr) var(--pb) var(--pl);
   grid-template-rows: auto 1fr; gap: 8px; background: var(--body); border: var(--edge-w, 1px) solid var(--edge); position: relative; isolation: isolate;
   -webkit-backdrop-filter: var(--glass); backdrop-filter: var(--glass);
   user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .calc::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: var(--glow, none); }
 .top { position: relative; z-index: 1; }
-/* placa metálica no topo, com o nome gravado */
-.brand { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; padding: 14px 18px; border-radius: 22px 22px 18px 18px;
+/* placa metálica que nasce nas bordas e se funde com o vidro embaixo */
+.brand { display: flex; align-items: center; gap: 14px; position: relative;
+  margin: calc(-1 * var(--pt)) calc(-1 * var(--pr)) 4px calc(-1 * var(--pl));
+  padding: calc(var(--pt) + 10px) calc(var(--pr) + 12px) 26px calc(var(--pl) + 12px);
   background:
-    linear-gradient(180deg, rgba(255,255,255,.38) 0%, rgba(255,255,255,0) 46%, rgba(0,0,0,.14) 100%),
+    linear-gradient(180deg, rgba(255,255,255,.45) 0%, rgba(255,255,255,0) 40%, rgba(0,0,0,.10) 75%),
     repeating-linear-gradient(90deg, rgba(255,255,255,.07) 0 1px, rgba(0,0,0,.05) 1px 2px),
     linear-gradient(100deg, var(--plate-a) 0%, var(--plate-b) 38%, var(--plate-c) 62%, var(--plate-a) 100%);
-  border: 1px solid var(--plate-edge);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.55), inset 0 -1px 0 rgba(0,0,0,.25), 0 1px 3px rgba(0,0,0,.35); }
-.brand .logo { flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: radial-gradient(circle at 35% 28%, #3a3a3a, #0b0b0b 70%); color: var(--plate-b); font-size: 25px; font-weight: 800; box-shadow: inset 0 1px 1px rgba(255,255,255,.35), 0 1px 0 var(--engrave-hi), 0 -1px 0 var(--engrave-lo); }
-.brand .logo i { font-style: italic; transform: translateX(-1px); }
-.brand .name { font-size: 28px; font-weight: 700; font-style: italic; letter-spacing: .01em; color: var(--plate-ink); white-space: nowrap;
-  /* gravado: sombra clara embaixo, escura em cima */
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.6);
+  /* a base da placa se dissolve no vidro da calculadora */
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 62%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 0%, #000 62%, transparent 100%); }
+.brand .name { font-size: 24px; font-weight: 700; letter-spacing: .01em; color: var(--plate-ink); white-space: nowrap;
   text-shadow: 0 1px 0 var(--engrave-hi), 0 -1px 0 var(--engrave-lo); }
 .brand .name i { font-style: italic; font-weight: 800; }
-.brand .rule { flex: 1; height: 2px; border-radius: 1px; background: var(--plate-ink); opacity: .7;
+.brand .rule { flex: 1; height: 2px; border-radius: 1px; background: var(--plate-ink); opacity: .75;
   box-shadow: 0 1px 0 var(--engrave-hi); }
-.brand .sub { font-size: 15px; font-weight: 700; letter-spacing: .3em; text-transform: uppercase; color: var(--plate-ink); white-space: nowrap;
+.brand .sub { font-size: 14px; font-weight: 700; letter-spacing: .3em; color: var(--plate-ink); white-space: nowrap;
   text-shadow: 0 1px 0 var(--engrave-hi), 0 -1px 0 var(--engrave-lo); }
 
 /* ---- visor ---- */
@@ -155,6 +157,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
 @media (orientation: landscape) {
   .calc { max-width: none; grid-template-columns: 230px 1fr; grid-template-rows: auto 1fr; }
   .top { grid-column: 2; grid-row: 1; }
+  .brand { margin-left: 0; padding-left: 14px; }
   .drawer-handle { height: 14px; }
   .key { padding: 3px 0 2px; }
   .key .lm { font-size: 16px; }
