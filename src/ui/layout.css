@@ -146,6 +146,8 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
 .settings select { font: inherit; font-size: 12.5px; min-height: 32px; padding: 0 28px 0 10px; border-radius: 10px; color: var(--key-text);
   background: var(--key-flat) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23999' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 9px center;
   border: 1px solid var(--key-border); -webkit-appearance: none; appearance: none; flex: none; }
+.settings .row.off { opacity: .45; }
+.settings select:disabled { cursor: not-allowed; }
 .settings input[type="checkbox"] { -webkit-appearance: none; appearance: none; flex: none; position: relative; width: 40px; height: 24px; margin: 0;
   border-radius: 12px; background: var(--key-flat); border: 1px solid var(--key-border); transition: background .2s; }
 .settings input[type="checkbox"]::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%;

@@ -243,6 +243,8 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
 .settings select { font: inherit; font-size: 12.5px; min-height: 32px; padding: 0 28px 0 10px; border-radius: 10px; color: var(--key-text);
   background: var(--key-flat) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23999' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 9px center;
   border: 1px solid var(--key-border); -webkit-appearance: none; appearance: none; flex: none; }
+.settings .row.off { opacity: .45; }
+.settings select:disabled { cursor: not-allowed; }
 .settings input[type="checkbox"] { -webkit-appearance: none; appearance: none; flex: none; position: relative; width: 40px; height: 24px; margin: 0;
   border-radius: 12px; background: var(--key-flat); border: 1px solid var(--key-border); transition: background .2s; }
 .settings input[type="checkbox"]::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%;
@@ -2074,9 +2076,9 @@ function mountSettings(ctx) {
     '<header class="settings-head"><span class="settings-title">Configurações</span>' +
     '<button type="button" class="settings-close" aria-label="Fechar configurações">✕</button></header>' +
     '<section class="group"><h3 class="group-title">Aparência</h3>' +
-    '<label class="row"><span class="txt">Tema<small>Retro tem relevo e visor luminoso; Moderno é de vidro</small></span>' +
-    '<select name="theme"><option value="retro">Retro</option><option value="moderno">Moderno</option></select></label>' +
-    '<label class="row"><span class="txt">Modo<small>Automático segue o sistema; o Retro é sempre escuro</small></span>' +
+    '<label class="row"><span class="txt">Tema<small>Clássico tem relevo e visor luminoso; Retro é de vidro</small></span>' +
+    '<select name="theme"><option value="retro">Clássico</option><option value="moderno">Retro</option></select></label>' +
+    '<label class="row"><span class="txt">Modo<small>Automático segue o sistema; o Clássico é sempre escuro</small></span>' +
     '<select name="mode"><option value="auto">Automático</option><option value="escuro">Escuro</option><option value="claro">Claro</option></select></label></section>' +
     '<section class="group"><h3 class="group-title">Efeitos</h3>' +
     '<label class="row"><span class="txt">Reduzir efeitos<small>Vidro sólido e sem reflexo: poupa bateria</small></span>' +
@@ -2088,9 +2090,17 @@ function mountSettings(ctx) {
     '<small class="motion-status" role="status"></small></section>';
   ctx.top.append(btn);
   ctx.calc.append(panel);
+  // o tema Clássico é sempre escuro: a escolha de modo fica inativa
+  const lockMode = () => {
+    const off = s.theme === 'retro';
+    const sel = panel.querySelector('[name=mode]');
+    sel.disabled = off;
+    sel.closest('.row').classList.toggle('off', off);
+  };
   const sync = () => {
     panel.querySelector('[name=theme]').value = s.theme;
     panel.querySelector('[name=mode]').value = s.mode;
+    lockMode();
     panel.querySelector('[name=reduce]').checked = effectiveReduce(s);
     panel.querySelector('[name=vibrate]').checked = s.vibrate;
   };
@@ -2118,6 +2128,7 @@ function mountSettings(ctx) {
     if (n === 'theme' || n === 'mode') s[n] = e.target.value;
     else s[n] = e.target.checked; // reduce, vibrate
     saveSettings(s);
+    lockMode();
     apply();
   });
   apply();

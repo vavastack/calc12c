@@ -180,3 +180,20 @@ test('painel de configurações: cabeçalho, grupos, interruptores e botão fech
   assert.equal(await p.locator('.settings').isHidden(), true);
   await app.close();
 });
+
+test('nomes dos temas e modo inativo no Clássico', async () => {
+  const app = await openApp(browser, server.url);
+  const p = app.page;
+  await p.locator('.settings-btn').click();
+  assert.deepEqual(await p.locator('select[name="theme"] option').allTextContents(), ['Clássico', 'Retro']);
+  assert.equal(await p.locator('select[name="theme"]').inputValue(), 'retro'); // padrão: Clássico
+  assert.equal(await p.locator('select[name="mode"]').isDisabled(), true);
+  await p.locator('select[name="theme"]').selectOption('moderno');
+  assert.equal(await p.locator('select[name="mode"]').isDisabled(), false);
+  await p.locator('select[name="mode"]').selectOption('claro');
+  assert.equal(await attr(p, 'data-theme'), 'moderno-claro');
+  await p.locator('select[name="theme"]').selectOption('retro');
+  assert.equal(await p.locator('select[name="mode"]').isDisabled(), true);
+  assert.equal(await attr(p, 'data-theme'), 'retro');
+  await app.close();
+});

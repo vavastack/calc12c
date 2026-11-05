@@ -91,9 +91,9 @@ export function mountSettings(ctx) {
     '<header class="settings-head"><span class="settings-title">Configurações</span>' +
     '<button type="button" class="settings-close" aria-label="Fechar configurações">✕</button></header>' +
     '<section class="group"><h3 class="group-title">Aparência</h3>' +
-    '<label class="row"><span class="txt">Tema<small>Retro tem relevo e visor luminoso; Moderno é de vidro</small></span>' +
-    '<select name="theme"><option value="retro">Retro</option><option value="moderno">Moderno</option></select></label>' +
-    '<label class="row"><span class="txt">Modo<small>Automático segue o sistema; o Retro é sempre escuro</small></span>' +
+    '<label class="row"><span class="txt">Tema<small>Clássico tem relevo e visor luminoso; Retro é de vidro</small></span>' +
+    '<select name="theme"><option value="retro">Clássico</option><option value="moderno">Retro</option></select></label>' +
+    '<label class="row"><span class="txt">Modo<small>Automático segue o sistema; o Clássico é sempre escuro</small></span>' +
     '<select name="mode"><option value="auto">Automático</option><option value="escuro">Escuro</option><option value="claro">Claro</option></select></label></section>' +
     '<section class="group"><h3 class="group-title">Efeitos</h3>' +
     '<label class="row"><span class="txt">Reduzir efeitos<small>Vidro sólido e sem reflexo: poupa bateria</small></span>' +
@@ -105,9 +105,17 @@ export function mountSettings(ctx) {
     '<small class="motion-status" role="status"></small></section>';
   ctx.top.append(btn);
   ctx.calc.append(panel);
+  // o tema Clássico é sempre escuro: a escolha de modo fica inativa
+  const lockMode = () => {
+    const off = s.theme === 'retro';
+    const sel = panel.querySelector('[name=mode]');
+    sel.disabled = off;
+    sel.closest('.row').classList.toggle('off', off);
+  };
   const sync = () => {
     panel.querySelector('[name=theme]').value = s.theme;
     panel.querySelector('[name=mode]').value = s.mode;
+    lockMode();
     panel.querySelector('[name=reduce]').checked = effectiveReduce(s);
     panel.querySelector('[name=vibrate]').checked = s.vibrate;
   };
@@ -135,6 +143,7 @@ export function mountSettings(ctx) {
     if (n === 'theme' || n === 'mode') s[n] = e.target.value;
     else s[n] = e.target.checked; // reduce, vibrate
     saveSettings(s);
+    lockMode();
     apply();
   });
   apply();
