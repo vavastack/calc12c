@@ -104,3 +104,20 @@ test('os rótulos f (dourado) e g (azul) aparecem na tecla', async () => {
   assert.equal(await k.locator('.lg').innerText(), '12×');
   await app.close();
 });
+
+test('altura do app segue a janela real: mudar o tamanho mantém todas as teclas visíveis', async () => {
+  const { page: p, close } = await openApp(browser, server.url, { width: 390, height: 844 });
+  for (const h of [760, 700, 640]) {
+    await p.setViewportSize({ width: 390, height: h });
+    await p.waitForFunction((v) => getComputedStyle(document.documentElement).getPropertyValue('--app-h').trim() === v + 'px', h);
+    const r = await p.evaluate(() => ({
+      calc: document.querySelector('.calc').getBoundingClientRect().height,
+      plus: document.querySelector('.key[data-id="plus"]').getBoundingClientRect().bottom,
+      zero: document.querySelector('.key[data-id="0"]').getBoundingClientRect().bottom,
+      h: innerHeight,
+    }));
+    assert.equal(Math.round(r.calc), h);
+    assert.ok(r.plus <= h && r.zero <= h, `última fileira cabe em ${h}px (fim em ${r.plus})`);
+  }
+  await close();
+});

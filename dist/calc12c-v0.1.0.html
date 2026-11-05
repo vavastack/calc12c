@@ -130,7 +130,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
   font-family: system-ui, sans-serif; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 
 /* ---- corpo da calculadora (o vidro fica só aqui e no visor) ---- */
-.calc { height: 100dvh; max-width: 560px; margin: 0 auto; display: grid;
+.calc { height: min(100dvh, var(--app-h, 100dvh)); max-width: 560px; margin: 0 auto; display: grid;
   /* a borda da calculadora acompanha a área segura (notch, cantos, barra inferior) */
   --pt: calc(max(8px, env(safe-area-inset-top)) + var(--top-extra, 0px)); --pr: max(8px, env(safe-area-inset-right)); --pb: max(8px, env(safe-area-inset-bottom)); --pl: max(8px, env(safe-area-inset-left));
   padding: var(--pt) var(--pr) var(--pb) var(--pl);
@@ -157,7 +157,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
   box-shadow: 0 1px 0 var(--engrave-hi); }
 /* selo MW / RPN: moldura preta embutida, painel metálico com disco preto e letras na cor da placa, barra RPN em preto sobre metal */
 .brand .badge { --metal: linear-gradient(135deg, var(--plate-b) 0%, var(--plate-c) 45%, var(--plate-a) 100%);
-  flex: none; display: grid; gap: 3px; width: 58px; height: 58px; box-sizing: border-box; padding: 3px;
+  flex: none; display: grid; gap: 3px; width: 52px; height: 52px; box-sizing: border-box; padding: 3px;
   grid-template-rows: 1fr auto; border-radius: 6px; border: 1px solid var(--plate-edge); background: #0b0b0c;
   box-shadow: inset 0 0 0 1px #2a2a2c, 0 1px 0 var(--engrave-hi), 0 2px 4px #0005; }
 .brand .badge .mw { display: block; min-height: 0; border-radius: 3px; background: var(--metal); overflow: hidden;
@@ -3003,8 +3003,24 @@ function registerServiceWorker() {
   navigator.serviceWorker.register('./sw.js').catch(() => {}); // sem SW o app segue funcionando
 }
 
+// Altura real da área visível: em alguns celulares (tela cheia, PWA, barra de status) o 100dvh vem maior que a janela
+// e as últimas fileiras de teclas ficam para fora. Medimos a janela de verdade e deixamos o CSS usar o menor valor.
+function trackViewportHeight() {
+  const set = () => {
+    const h = Math.round(Math.min(window.innerHeight, window.visualViewport?.height ?? Infinity));
+    if (h > 0) document.documentElement.style.setProperty('--app-h', h + 'px');
+  };
+  set();
+  window.addEventListener('resize', set);
+  window.visualViewport?.addEventListener('resize', set);
+  window.addEventListener('orientationchange', () => setTimeout(set, 250));
+  // entrar/sair da tela cheia anima: mede de novo quando o navegador termina
+  document.addEventListener('fullscreenchange', () => [100, 350, 900].forEach((ms) => setTimeout(set, ms)));
+}
+
 const root = document.getElementById('app');
 if (root) {
+  trackViewportHeight();
   window.calc12c = mountApp(root, loadState());
   registerServiceWorker();
 }

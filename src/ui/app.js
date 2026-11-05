@@ -235,8 +235,24 @@ function registerServiceWorker() {
   navigator.serviceWorker.register('./sw.js').catch(() => {}); // sem SW o app segue funcionando
 }
 
+// Altura real da área visível: em alguns celulares (tela cheia, PWA, barra de status) o 100dvh vem maior que a janela
+// e as últimas fileiras de teclas ficam para fora. Medimos a janela de verdade e deixamos o CSS usar o menor valor.
+function trackViewportHeight() {
+  const set = () => {
+    const h = Math.round(Math.min(window.innerHeight, window.visualViewport?.height ?? Infinity));
+    if (h > 0) document.documentElement.style.setProperty('--app-h', h + 'px');
+  };
+  set();
+  window.addEventListener('resize', set);
+  window.visualViewport?.addEventListener('resize', set);
+  window.addEventListener('orientationchange', () => setTimeout(set, 250));
+  // entrar/sair da tela cheia anima: mede de novo quando o navegador termina
+  document.addEventListener('fullscreenchange', () => [100, 350, 900].forEach((ms) => setTimeout(set, ms)));
+}
+
 const root = document.getElementById('app');
 if (root) {
+  trackViewportHeight();
   window.calc12c = mountApp(root, loadState());
   registerServiceWorker();
 }
