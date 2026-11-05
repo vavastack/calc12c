@@ -6,7 +6,7 @@ import { listProfiles, allowedThemes, themeFor } from '../engine/profiles.js';
 const KEY = 'calc12c.settings';
 const THEMES = ['retro', 'platinum', 'moderno']; // 'retro' = Gold (padrão), 'platinum' = prata, 'moderno' = Retro (vidro)
 const VERSION = 5; // v2: a vibração ao tocar passou a vir ligada; v3: som, não dormir, estilo da tecla ON e banda superior; v4: cores e orientação; v5: modo desenvolvedor
-const APP_VERSION = 'V3.0';
+const APP_VERSION = 'V3.1';
 const DEV_TAPS = 7; // toques na versão para ligar o modo desenvolvedor
 const DEV_GAP_MS = 2000; // intervalo máximo entre dois toques
 const MODES = ['auto', 'escuro', 'claro'];

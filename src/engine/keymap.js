@@ -58,3 +58,49 @@ export const KEY_BY_ID = new Map(KEYS.map((x) => [x.id, x]));
 const PLATINUM_LABELS = { chs: { f: 'RPN' }, eex: { f: 'ALG' }, sto: { g: '(' }, rcl: { g: ')' }, minus: { g: '←' }, divide: { g: 'UNDO' } };
 export const KEYS_PLATINUM = KEYS.map((x) => ({ ...x, ...PLATINUM_LABELS[x.id] }));
 export const KEY_BY_ID_PLATINUM = new Map(KEYS_PLATINUM.map((x) => [x.id, x]));
+
+// HP-16C: 39 teclas. O teclado de 4×10 da HP original dobra ao meio como o da 12C: colunas 1-5 em cima, 6-10 embaixo.
+// As letras A-F são teclas de dígito (ids da..df). `enabled:false` = programação e ponto flutuante (fora desta etapa).
+const off = { enabled: false };
+export const KEYS_16C = [
+  k('da', 'A', 'SL', 'LJ', 0, 0),
+  k('db', 'B', 'SR', 'ASR', 0, 1),
+  k('dc', 'C', 'RL', 'RLC', 0, 2),
+  k('dd', 'D', 'RR', 'RRC', 0, 3),
+  k('de', 'E', 'RLn', 'RLCn', 0, 4),
+  k('gsb', 'GSB', 'x≷(i)', 'RTN', 1, 0, off),
+  k('gto', 'GTO', 'x≷I', 'LBL', 1, 1, off),
+  k('hex', 'HEX', 'SHOW', 'DSZ', 1, 2),
+  k('dec', 'DEC', 'SHOW', 'ISZ', 1, 3),
+  k('oct', 'OCT', 'SHOW', '√x', 1, 4),
+  k('rs', 'R/S', '(i)', 'P/R', 2, 0, off),
+  k('sst', 'SST', 'I', 'BST', 2, 1, off),
+  k('rdown', 'R↓', 'CLEAR PRGM', 'R↑', 2, 2),
+  k('xy', 'x≷y', 'CLEAR REG', 'PSE', 2, 3),
+  k('bsp', 'BSP', 'CLEAR PREFIX', 'CLx', 2, 4),
+  k('on', 'ON', null, null, 3, 0),
+  k('f', 'f', null, null, 3, 1),
+  k('g', 'g', null, null, 3, 2),
+  k('sto', 'STO', 'WSIZE', '<', 3, 3),
+  k('rcl', 'RCL', 'FLOAT', '>', 3, 4),
+  k('df', 'F', 'RRn', 'RRCn', 4, 0),
+  k('7', '7', 'MASKL', '#B', 4, 1),
+  k('8', '8', 'MASKR', 'ABS', 4, 2),
+  k('9', '9', 'RMD', 'DBLR', 4, 3),
+  k('divide', '÷', 'XOR', 'DBL÷', 4, 4),
+  k('bin', 'BIN', 'SHOW', '1/x', 5, 0),
+  k('4', '4', 'SB', 'SF', 5, 1),
+  k('5', '5', 'CB', 'CF', 5, 2),
+  k('6', '6', 'B?', 'F?', 5, 3),
+  k('times', '×', 'AND', 'DBL×', 5, 4),
+  k('enter', 'ENTER', 'WINDOW', 'LSTx', 6, 0, { rowSpan: 2 }),
+  k('1', '1', "1's", 'x≤y', 6, 1),
+  k('2', '2', "2's", 'x<0', 6, 2),
+  k('3', '3', 'UNSGN', 'x>y', 6, 3),
+  k('minus', '−', 'NOT', 'x>0', 6, 4),
+  k('0', '0', 'MEM', 'x≠y', 7, 1),
+  k('dot', '.', 'STATUS', 'x≠0', 7, 2),
+  k('chs', 'CHS', 'EEX', 'x=y', 7, 3),
+  k('plus', '+', 'OR', 'x=0', 7, 4),
+];
+export const KEY_BY_ID_16C = new Map(KEYS_16C.map((x) => [x.id, x]));

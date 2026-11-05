@@ -56,10 +56,12 @@ export function mountDrawer(ctx) {
   const tapeEl = drawer.querySelector('.tape');
 
   ctx.listeners.push((_c, s) => {
+    const int = !!s.texts; // 16C: os valores já vêm escritos na base atual e não há n, i, PV, PMT, FV
+    const regName = (n) => (int ? (n >= 16 ? 'R.' + (n - 16).toString(16) : 'R' + n.toString(16)).toUpperCase() : n >= 10 ? 'R.' + (n - 10) : 'R' + n);
     mem.innerHTML =
-      '<div class="cards">' + FIN_CARDS.map(([id, l]) => cell('card', `data-fin="${id}"`, l, fmt(s.fin[id], s))).join('') + '</div>' +
-      '<div class="regs">' + s.regs.map((v, n) => cell('reg', `data-reg="${n}"`, n >= 10 ? 'R.' + (n - 10) : 'R' + n, fmt(v, s))).join('') + '</div>' +
-      '<div class="stack">' + STACK_REGS.map(([id, l]) => cell('stk', `data-stk="${id}"`, l, fmt(s.stack[id], s))).join('') + '</div>';
+      '<div class="cards">' + (int ? '' : FIN_CARDS.map(([id, l]) => cell('card', `data-fin="${id}"`, l, fmt(s.fin[id], s))).join('')) + '</div>' +
+      '<div class="regs">' + s.regs.map((v, n) => cell('reg', `data-reg="${n}"`, regName(n), int ? s.texts.regs[n] : fmt(v, s))).join('') + '</div>' +
+      '<div class="stack">' + STACK_REGS.map(([id, l]) => cell('stk', `data-stk="${id}"`, l, int ? s.texts[id] : fmt(s.stack[id], s))).join('') + '</div>';
     tapeEl.innerHTML = '';
     s.tape.forEach((line, i) => {
       const li = document.createElement('li');

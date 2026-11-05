@@ -121,7 +121,7 @@ test('Configurações traz o seletor de modelo com a 12C selecionada', async () 
   await p.locator('.key[data-id="on"]').click();
   const sel = p.locator('.settings select[name="profile"]');
   assert.equal(await sel.inputValue(), '12c');
-  assert.deepEqual(await sel.locator('option').allTextContents(), ['Calc 12c (clássica)', 'Calc 12c Platinum']);
+  assert.deepEqual(await sel.locator('option').allTextContents(), ['Calc 12c (clássica)', 'Calc 12c Platinum', 'Calc 16c (programador)']);
   assert.equal(await p.locator('.brand .title').innerText(), 'Calc 12c');
   await app.close();
 });
@@ -414,5 +414,84 @@ test('Platinum com 11 indicadores cabe em 320 px sem rolagem horizontal', async 
   const ind = await p.locator('.display .indicators').evaluate((e) => e.getBoundingClientRect().right);
   const disp = await p.locator('.display').evaluate((e) => e.getBoundingClientRect().right);
   assert.ok(ind <= disp + 0.5, 'indicadores passam do visor');
+  await app.close();
+});
+
+// ---------- HP-16C ----------
+const hp16 = (p) => p.evaluate(() => window.calc12c.setProfile('16c'));
+
+test('16C: selo, indicadores C e G, teclas A-F e rótulos f/g próprios', async () => {
+  const app = await openApp(browser, server.url);
+  const p = app.page;
+  await hp16(p);
+  assert.equal(await p.locator('.brand .title').innerText(), 'Calc 16c');
+  assert.equal((await p.locator('.brand .badge .model').innerText()).trim(), '16C');
+  assert.deepEqual(await p.locator('.display [data-ind]').evaluateAll((els) => els.map((e) => e.dataset.ind)), ['f', 'g', 'C', 'G', 'PRGM']);
+  assert.equal(await p.locator('button.key[data-id="da"] .lf').innerText(), 'SL');
+  assert.equal(await p.locator('button.key[data-id="da"] .lg').innerText(), 'LJ');
+  assert.equal(await p.locator('button.key[data-id="hex"] .lf').innerText(), 'SHOW');
+  assert.equal(await digits(p), '0 d');
+  assert.deepEqual(app.errors, []);
+  await app.close();
+});
+
+test('16C pela tela: 255 HEX → FF h; 32767 × 2 acende G; 66 ÷ 7 acende C', async () => {
+  const app = await openApp(browser, server.url);
+  const p = app.page;
+  await hp16(p);
+  await tap(p, '2 5 5 hex');
+  assert.equal(await digits(p), 'FF h');
+  await tap(p, 'dec 3 2 7 6 7 enter 2 times');
+  assert.equal(await digits(p), '32766 d');
+  assert.equal(await on(p, 'G'), true);
+  await tap(p, 'hex 6 6 enter 7 divide');
+  assert.equal(await digits(p), 'E h');
+  assert.equal(await on(p, 'C'), true);
+  assert.equal(await on(p, 'G'), false);
+  assert.deepEqual(app.errors, []);
+  await app.close();
+});
+
+test('16C: a gaveta mostra a pilha na base atual e 32 registradores, sem n/i/PV/PMT/FV', async () => {
+  const app = await openApp(browser, server.url);
+  const p = app.page;
+  await hp16(p);
+  await tap(p, '2 5 5 hex');
+  await tap(p, 'enter');
+  assert.equal(await p.locator('.card').count(), 0);
+  assert.equal(await p.locator('.reg').count(), 32);
+  assert.equal(await p.locator('.stk[data-stk="x"] .v').innerText(), 'FF h');
+  await app.close();
+});
+
+test('trocar entre 12C e 16C guarda o estado de cada um e refaz teclado e motor', async () => {
+  const app = await openApp(browser, server.url);
+  const p = app.page;
+  await tap(p, '7 enter 3 plus');
+  await hp16(p);
+  await tap(p, '9 hex');
+  assert.equal(await digits(p), '9 h');
+  await p.evaluate(() => window.calc12c.setProfile('12c'));
+  assert.equal(await digits(p), '10,00');
+  assert.equal(await p.locator('button.key[data-id="da"]').count(), 0);
+  await hp16(p);
+  assert.equal(await digits(p), '9 h');
+  assert.deepEqual(app.errors, []);
+  await app.close();
+});
+
+test('16C: recarregar a página mantém base, tamanho de palavra e flags', async () => {
+  const app = await openApp(browser, server.url);
+  const p = app.page;
+  await hp16(p);
+  await tap(p, '8 f sto hex 7');
+  await tap(p, 'enter');
+  await p.reload();
+  await p.waitForFunction(() => window.calc12c?.engine);
+  const st = await p.evaluate(() => window.calc12c.engine.state);
+  assert.equal(st.profile, '16c');
+  assert.equal(st.ws, 8);
+  assert.equal(st.base, 'hex');
+  assert.deepEqual(app.errors, []);
   await app.close();
 });

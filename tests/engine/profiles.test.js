@@ -59,7 +59,7 @@ test('temas por perfil: Gold na clássica, Platinum na Platinum, Retro nos dois;
 
 test('perfis desconhecidos são recusados; a lista traz os registrados', () => {
   assert.throws(() => getProfile('xyz'), /perfil desconhecido/);
-  assert.deepEqual(listProfiles().map((p) => p.id), ['12c', '12cp', 'teste']);
+  assert.deepEqual(listProfiles().map((p) => p.id), ['12c', '12cp', '16c', 'teste']);
 });
 
 test('o motor guarda o perfil, mantém no reset e restaura da serialização', () => {

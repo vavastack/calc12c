@@ -32,6 +32,7 @@ Modelo de precificação de opções europeias (Black–Scholes–Merton). Entra
 - Por isso é a mais pesada de implementar. Como estende a 11C, deve vir depois dela, e pode ser dividida em duas partes: complexos + SOLVE + integração, e depois matrizes.
 
 ## HP-16C (V3.1)
+- **Estado no app (etapa 1 pronta):** bases, bits, palavra de 1 a 64 bits, complementos, janelas, verso. Falta programação e ponto flutuante. Detalhes em `docs/HANDOFF.md`.
 - A "Computer Scientist": calculadora de programador, feita para depurar programas.
 - Bases hexadecimal, decimal, octal e binária, com conversão entre elas; tamanho de palavra configurável de 1 a 64 bits; aritmética inteira sem sinal, em complemento de 1 ou de 2.
 - Operações lógicas (AND, OR, XOR, NOT), deslocamentos e rotações de bits, máscaras; o display "rola" (janelas) para mostrar números longos.

@@ -1,5 +1,5 @@
 // Salvamento automático no aparelho (localStorage). Nada sai do dispositivo.
-import { Engine } from '../engine/engine.js';
+import { createEngine, restoreEngine } from '../engine/engines.js';
 import { DEFAULT_PROFILE, hasProfile } from '../engine/profiles.js';
 
 export const STORAGE_KEY = 'calc12c.state'; // estado do perfil 12C (chave mantida para não perder o que já estava salvo)
@@ -48,13 +48,13 @@ export function loadState(profile = loadActiveProfile()) {
   try {
     const raw = store()?.getItem(stateKey(profile));
     if (raw) {
-      const e = Engine.restore(raw);
+      const e = restoreEngine(raw);
       if (e.profile === profile) return e;
     }
   } catch {
     /* cai no estado inicial */
   }
-  return new Engine({ profile });
+  return createEngine({ profile });
 }
 
 export function clearAll(profile = DEFAULT_PROFILE) {

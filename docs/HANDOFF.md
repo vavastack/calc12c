@@ -1,4 +1,4 @@
-# Calc 12c — estado do projeto (atualizado em 05/11/2026) — V3.0 FECHADA (perfis + ALG)
+# Calc 12c — estado do projeto (atualizado em 05/11/2026) — V3.0 publicada; V3.1 (HP-16C) em andamento na branch v3.1-hp16c
 
 ## O que é
 Calculadora financeira RPN inspirada na HP 12C, em HTML único, offline, instalável (PWA).
@@ -31,7 +31,7 @@ Arquivos: `engine.js` (despacho, F_OPS/G_OPS), `keymap.js` (teclas do perfil 12C
 Build: `node scripts/build.js` junta tudo em um HTML (o empacotador só aceita `import {…} from '…';` em uma linha e `export function/const/class/let`).
 
 ## Testes
-- `npm test` → motor (314 testes). `node --test tests/ui/*.spec.js` → interface com Playwright (122). `npm run test:all` roda os dois (cerca de 1 min 30).
+- `npm test` → motor (339 testes). `node --test tests/ui/*.spec.js` → interface com Playwright (128). `npm run test:all` roda os dois (cerca de 1 min 30).
 - Tudo passa na versão atual. `tests/engine/verso.test.js` tem a tabela ESPERADO dos exemplos do verso.
 
 ## Plano da V2 — "12C completa"
@@ -49,7 +49,7 @@ Critério de pronto: testes verdes e resultados idênticos aos da HP 12C real qu
 - **V1.2 (feita em 05/11/2026):** (a) Memórias em arquivo: Configurações > Memórias salva/abre/compartilha um JSON (`tipo: calc12c-memorias`) com registradores, financeiros, fluxos de caixa, programa, pilha e fita; abrir valida tudo e recusa arquivo inválido sem mexer na calculadora; compartilhar usa `navigator.share` com arquivo e, sem suporte, baixa. (b) Editor de cores: 4 cores (placa/destaque, tecla f, tecla g, visor) viram variáveis CSS inline no `<html>` e valem para qualquer tema; "Restaurar" volta ao tema. (c) Orientação: automática/em pé/deitado via `screen.orientation.lock`, reaplicada ao abrir; no Android costuma exigir o app instalado ou tela cheia (não testado em aparelho real; o painel avisa quando o navegador recusa).
 - **V3 (plano atualizado em 05/11/2026, 10:34):** app completo, com todos os modelos, ênfase no que importa agora. Descrição de cada calculadora em `docs/CALCULADORAS.md`. Nova ordem (a 16C subiu porque é independente das demais):
   - ✅ V3.0 arquitetura de perfis + ALG fiel à 12C Platinum (feita em 05/11/2026).
-  - V3.1 HP-16C: bases, bits, motor de inteiros de largura fixa (cerca de 2 h).
+  - 🚧 V3.1 HP-16C: **etapa 1 feita** (teclado, motor de inteiros, bases, verso); falta programação e ponto flutuante. Ver "V3.1 — HP-16C" abaixo.
   - V3.2 Black-Scholes, perfil com formulário (cerca de 1 h).
   - V3.3 HP-10C e 11C, base científica RPN comum (2 a 3 h).
   - V3.4 HP-15C: complexos, matrizes, SOLVE, integração; pode ser partida em duas (4 a 6 h).
@@ -79,6 +79,15 @@ Critério de pronto: testes verdes e resultados idênticos aos da HP 12C real qu
 - Programas gravados em RPN rodam em ALG como a máquina faria (25 ENTER 3 ÷ dá 3 em ALG e 8,33 em RPN, caso do fórum do HP Museum).
 - Verso: grupo ALG com 5 exemplos executáveis (só na Platinum, via `VERSO_BY_PROFILE`); exemplos dos outros grupos passam a calculadora para RPN antes de rodar (aviso na tela).
 - **Pontos a confirmar** (o manual da Platinum só pôde ser lido em resumo; o Wanderson tem a 12C clássica e não confere o ALG na máquina): código de erro do 14º parêntese; display exato do % com + e − (o app mostra o líquido na hora); detalhes do LAST X e do histórico no ALG (manual, p. 239).
+
+## V3.1 — HP-16C (etapa 1)
+Perfil `16c` (`kind: 'int'` em `profiles.js`) com motor próprio **`engine16.js`** (`Engine16`) e aritmética em **`intmath.js`**. `engines.js` escolhe o motor pelo perfil (`createEngine`, `restoreEngine`); a interface usa só essas duas funções. `loadInto` (memories.js) troca também o protótipo, porque o mesmo objeto de motor passa de `Engine` para `Engine16` ao trocar de modelo.
+- **Valores:** BigInt "crus" (padrão de bits, 0 a 2^ws − 1); o complemento (`'2'`, `'1'`, `'u'`) só decide como o padrão é lido. Palavra de 1 a 64 bits (`f WSIZE`, 0 = 64), base HEX/DEC/OCT/BIN, flags 0 a 5 (C = flag 4, G = flag 5). Liga em DEC, 16 bits, complemento de 2. `state` traz textos prontos (`texts`) e valores como strings.
+- **Teclado** (`KEYS_16C`, ids `da`..`df` para A-F): + − × ÷, RMD, AND/OR/XOR/NOT, SL SR RL RR RLn RRn RLC RRC RLCn RRCn ASR LJ, MASKL MASKR, #B, SB CB, SF CF, ABS, √x, 1/x inteiros, DBL× DBL÷ DBLR, SHOW (f + base), STATUS, WINDOW e g < >, 1's 2's UNSGN, STO/RCL 0-F e .0-.F (32 registradores), pilha completa, LSTx, BSP. Desligadas (`enabled:false`): GSB GTO R/S SST (programação).
+- **Visor:** base em letra no fim (`FF h`), janelas de 8 dígitos (16 em BIN), zeros à esquerda com flag 3; indicadores C e G; selo do topo mostra o modelo. Fita/gaveta mostram pilha e registradores na base atual (sem n/i/PV/PMT/FV).
+- **Conferido contra o manual (exemplos):** 32767 × 2 → 32766 com G (guarda sinal e os bits baixos da grandeza); 66 ÷ 7 → E com C, E ÷ 2 → 7 sem C; 50 CHS em 8 bits = CE h, −50 d, −49 d em complemento de 1; STATUS "2-16-0000".
+- **Verso da 16C:** 3 grupos (bases, lógica de bits, carry e estouro), 16 variantes, testadas em `ESPERADO_16C`.
+- **Pendente da 16C:** programação (até 203 linhas, rótulos, GSB/GTO, DSZ/ISZ, testes x≤y...), ponto flutuante (`f FLOAT`), registrador de índice (i) e I, `B?` e `F?`, `f MEM`, tema/cores próprios, arredondamento de detalhes. **A confirmar com o manual/aparelho:** tamanho das janelas (usei 8 dígitos; 16 em BIN), carry de ×/÷ e de 1's complement, DBL×/DBL÷, valor de 1/x, estado ao ligar, comportamento de CHS durante a digitação (aqui encerra a digitação).
 
 ## Próximo passo
 V3.1 — HP-16C (bases, bits, motor de inteiros de largura fixa), em uma conversa nova. Ela será o 2º perfil: registrar em `profiles.js` com mapa de teclas próprio (sem `modes` ALG, `indicators` próprios), engine de inteiros e verso próprio. Prompt curto sugerido: "Projeto Calc 12c: https://github.com/vavastack/calc12c. Leia CLAUDE.md, docs/HANDOFF.md, docs/HISTORICO.md e docs/CALCULADORAS.md. Depois execute a V3.1 (HP-16C) conforme o plano da V3 no HANDOFF. Responda em português."
