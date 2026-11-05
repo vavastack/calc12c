@@ -33,7 +33,7 @@
   --ind-on: #f0b429; --ind-off: #55555a; --handle: #3a3a3e;
   --glass: none;
   --glow: none;
-  --reflex: linear-gradient(115deg, transparent 36%, #fff6e24d 44%, #ffffff61 51%, transparent 60%);
+  --reflex: linear-gradient(115deg, transparent 28%, #fff6e214 38%, #fff6e233 46%, #ffffff40 50%, #fff6e233 54%, #fff6e214 62%, transparent 72%);
 }
 
 /* Moderno escuro: vidro translúcido em grafite, halos dourado e azul nos cantos, reflexo suave */
@@ -58,7 +58,7 @@
   --glass: blur(14px) saturate(1.2);
   --glow: radial-gradient(260px 220px at 8% 6%, #f0b42947, transparent 70%),
           radial-gradient(300px 260px at 95% 92%, #3a8cff4d, transparent 70%);
-  --reflex: linear-gradient(115deg, transparent 36%, #ffffff4d 44%, #ffffff61 51%, transparent 60%);
+  --reflex: linear-gradient(115deg, transparent 28%, #ffffff14 38%, #ffffff33 46%, #ffffff40 50%, #ffffff33 54%, #ffffff14 62%, transparent 72%);
 }
 
 /* Moderno claro: vidro claro em champanhe e marfim, com as mesmas cores de f e g */
@@ -83,7 +83,7 @@
   --glass: blur(14px) saturate(1.1);
   --glow: radial-gradient(260px 220px at 8% 6%, #f0b42961, transparent 70%),
           radial-gradient(300px 260px at 95% 92%, #3a8cff3d, transparent 70%);
-  --reflex: linear-gradient(115deg, transparent 36%, #ffffff8c 44%, #ffffffb3 51%, transparent 60%);
+  --reflex: linear-gradient(115deg, transparent 28%, #ffffff40 38%, #ffffff73 46%, #ffffff8c 50%, #ffffff73 54%, #ffffff40 62%, transparent 72%);
 }
 
 /* Reduzir efeitos: vidro sólido, sem reflexo (liga sozinho em aparelhos simples) */
@@ -122,8 +122,8 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
   border-bottom: 1px solid var(--plate-edge);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 1px 0 var(--engrave-hi), 0 3px 6px rgba(0,0,0,.28); }
 .reflex-clip.plate { z-index: 0; -webkit-mask-image: none; mask-image: none; border-radius: 0; }
-.reflex-clip .sheen { inset: -300% -60%; mix-blend-mode: screen; }
-.reflex-clip .sheen::before { background: linear-gradient(115deg, transparent 38%, #ffffff73 45%, #fffbe8d9 50%, #ffffff59 55%, transparent 62%); }
+.reflex-clip .sheen { inset: -220px -70%; mix-blend-mode: screen; }
+.reflex-clip .sheen::before { background: linear-gradient(115deg, transparent 28%, #ffffff33 38%, #ffffff80 46%, #fffbe8e6 50%, #ffffff80 54%, #ffffff33 62%, transparent 72%); }
 .brand > :not(.reflex-clip) { position: relative; z-index: 1; }
 .brand .name { font-size: 24px; font-weight: 700; letter-spacing: .01em; color: var(--plate-ink); white-space: nowrap;
   text-shadow: 0 1px 0 var(--engrave-hi), 0 -1px 0 var(--engrave-lo); }
@@ -151,7 +151,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
 .key { grid-column: calc(var(--c) + 1); grid-row: calc(var(--r) + 1) / span var(--rs, 1);
   display: flex; flex-direction: column; justify-content: space-between; align-items: center;
   background: var(--key-bg); box-shadow: var(--key-shadow); color: var(--key-text); border: 1px solid var(--key-border); border-radius: 13px;
-  position: relative; padding: 5px 0 4px; font: inherit; overflow: hidden; min-width: 0; min-height: 0; }
+  position: relative; padding: 5px 0 4px; font: inherit; min-width: 0; min-height: 0; }
 .key:active { filter: brightness(1.25); transform: scale(.97); }
 .key .lf { color: var(--gold); font-size: clamp(8.5px, 1.15dvh, 9.5px); font-weight: 600; white-space: nowrap; line-height: 1; min-height: 10px; }
 .key .lg { color: var(--blue); font-size: clamp(8.5px, 1.15dvh, 9.5px); font-weight: 600; white-space: nowrap; line-height: 1; min-height: 10px; }
@@ -193,7 +193,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
   mask-image: linear-gradient(180deg, transparent, #000 56px, #000 calc(100% - 56px), transparent), linear-gradient(90deg, transparent, #000 44px, #000 calc(100% - 44px), transparent);
   -webkit-mask-composite: source-in; mask-composite: intersect; }
 /* reflexo: uma única camada de brilho sobre o teclado (a animação entra na Tarefa 11) */
-.reflex, .sheen { position: absolute; inset: -60%; pointer-events: none; opacity: .7;
+.reflex, .sheen { position: absolute; inset: -220px -70%; pointer-events: none; opacity: .7;
   transform: translate3d(0, 0, 0); will-change: transform, opacity; }
 /* o brilho em si fica numa camada interna que vai e volta devagar (só transform, no compositor):
    o reflexo nunca fica parado, mesmo sem sensor de movimento nem toque; a camada externa segue a inclinação/dedo */
@@ -270,19 +270,32 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
 @media (orientation: landscape) {
   .calc { max-width: none; grid-template-columns: 230px 1fr; grid-template-rows: auto 1fr; }
   .top { grid-column: 2; grid-row: 1; }
-  .brand { margin-left: 0; padding-left: 14px; }
+  /* a placa cobre a largura toda, inclusive acima dos registradores */
+  .calc { --plate-h: 40px; }
+  .brand { margin-left: calc(-1 * (var(--pl) + 238px)); padding: calc(var(--pt) + 4px) calc(var(--pr) + 14px) 6px calc(var(--pl) + 14px); margin-bottom: 8px; }
+  .brand .name { font-size: 20px; }
+  .brand .sub { font-size: 12px; }
+  .display { min-height: 60px; padding: 4px 14px; }
+  .digits { font-size: 34px; }
+  .indicators { font-size: 10px; }
+  .msg { min-height: 0; font-size: 10px; }
   .drawer-handle { height: 14px; }
-  .key { padding: 3px 0 2px; }
-  .key .lm { font-size: 16px; }
-  .key.big .lm { font-size: 19px; }
-  .key.small .lm { font-size: 13px; }
-  .key.prefix-f .lm, .key.prefix-g .lm { font-size: 19px; }
+  .key { padding: 2px 0 1px; }
+  .key .lf, .key .lg { font-size: 8px; min-height: 8px; }
+  .key .lm { font-size: 14px; }
+  .key.big .lm { font-size: 17px; }
+  .key.small .lm { font-size: 12px; }
+  .key.prefix-f .lm, .key.prefix-g .lm { font-size: 17px; }
   .drawer-handle::before { display: none; }
   .keys { grid-column: 1 / -1; grid-template-columns: repeat(10, 1fr); grid-template-rows: repeat(4, 1fr); }
   .key { grid-column: calc(var(--hc) + 1); grid-row: calc(var(--hr) + 1) / span var(--rs, 1); }
   /* painel de registradores sempre visível à esquerda do visor */
   .drawer { display: contents; }
-  .drawer .mem { grid-column: 1; grid-row: 1; align-self: start; font-size: 10px; }
+  .card, .reg, .stk { padding: 1px 4px; }
+  .card .k, .reg .k, .stk .k { font-size: 8.5px; line-height: 1.1; }
+  .card .v, .reg .v, .stk .v { font-size: 10px; line-height: 1.15; }
+  .cards, .regs, .stack, .mem { gap: 3px; }
+  .drawer .mem { grid-column: 1; grid-row: 1; align-self: start; font-size: 10px; margin-top: calc(var(--plate-h) + 8px); }
   .drawer .tape-wrap, .drawer .confirm { display: none; }
   .drawer[data-open="true"] .tape-wrap { display: grid; position: absolute; left: 238px; right: 8px; top: 110px; z-index: 5;
     background: var(--body-solid); border: 1px solid var(--edge); border-radius: 10px; padding: 8px; max-height: 50%; overflow: auto; }
