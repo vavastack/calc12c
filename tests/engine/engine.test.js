@@ -122,7 +122,7 @@ test('teclas desativadas (R/S, SST, Σ+) são ignoradas sem erro e limpam o pref
 });
 
 test('função f/g ainda não implementada é ignorada sem erro', () => {
-  const e = run(new Engine(), '5 f n');
+  const e = run(new Engine(), '5 f yx');
   assert.equal(e.state.error, null);
   assert.equal(e.state.shift, null);
   assert.equal(e.state.stack.x, 5);

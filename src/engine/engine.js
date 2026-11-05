@@ -2,6 +2,7 @@ import { KEY_BY_ID } from './keymap.js';
 import { Stack } from './stack.js';
 import { Registers } from './registers.js';
 import { CashFlows } from './cashflow.js';
+import { amortize } from './amort.js';
 import { applyOp } from './math.js';
 import { solve, simpleInterest } from './tvm.js';
 import { CalcError } from './errors.js';
@@ -27,6 +28,7 @@ export class Engine {
     this.regs = new Registers();
     this.fin = zeroFin();
     this.cf = new CashFlows(); // CFo, CFj, Nj (V2)
+    this.amortFresh = true; // nenhuma prestação amortizada desde a última mudança em n, i, PV, PMT ou FV
     this.begin = false;
     this.prgm = false; // modo de programação (indicador PRGM)
     this.prog = []; // linhas de programa (índice 0 = linha 01); null = linha vazia (GTO 00)
@@ -219,6 +221,7 @@ export class Engine {
       s.liftEnabled = true;
     }
     this.justStored = true;
+    this.amortFresh = true;
     this._record(FIN_LABEL[id]);
   }
 
@@ -229,6 +232,7 @@ export class Engine {
       s.applyUnary((x) => round10(id === 'n' ? x * 12 : x / 12));
       this.fin[id] = s.x;
       this.justStored = true;
+      this.amortFresh = true;
       return this._record(id === 'n' ? '12×' : '12÷');
     }
     if (id === '7' || id === '8') {
@@ -300,6 +304,17 @@ export class Engine {
         s.loadXYZ(round10(r.interest360), round10(-this.fin.pv), round10(r.interest365));
         return this._record('INT');
       }
+      case 'n': { // AMORT: X = nº de prestações; devolve juros (X), principal (Y) e nº de prestações (Z)
+        s.commit();
+        const count = s.x;
+        const r = amortize(this.fin, count, this.decimals, this.begin, this.amortFresh);
+        this.fin.pv = r.balance;
+        this.fin.n = round10(this.fin.n + count);
+        this.amortFresh = false;
+        s.lastX = count;
+        s.loadXYZ(r.interest, r.principal, count);
+        return this._record('AMORT');
+      }
       case 'pv': // NPV
       case 'fv': { // IRR
         s.commit();
@@ -310,6 +325,7 @@ export class Engine {
       case 'xy': // CLEAR FIN
         s.commit();
         this.fin = zeroFin();
+        this.amortFresh = true;
         return;
       case 'rdown': // CLEAR PRGM (no modo de execução só volta à linha 00)
         this.pc = 0;
@@ -322,6 +338,7 @@ export class Engine {
       case 'clx': // CLEAR REG
         this.regs.clear();
         this.cf.clear();
+        this.amortFresh = true;
         this.fin = zeroFin();
         s.clearAll();
         this.tokens = [];
@@ -663,6 +680,7 @@ export class Engine {
       regs: this.regs.values(),
       fin: this.fin,
       cf: this.cf.toJSON(),
+      amortFresh: this.amortFresh,
       begin: this.begin,
       compound: this.compound,
       dmy: this.dmy,
@@ -705,6 +723,7 @@ export class Engine {
     }
     o.regs.forEach((v, n) => e.regs.store(n, v));
     if (o.cf) e.cf = CashFlows.fromJSON(o.cf);
+    e.amortFresh = o.amortFresh !== false;
     e.fin = { n: o.fin.n, i: o.fin.i, pv: o.fin.pv, pmt: o.fin.pmt, fv: o.fin.fv };
     Object.assign(e, {
       begin: o.begin, compound: o.compound === true, dmy: o.dmy === true, prgm: o.prgm === true, prog: Array.isArray(o.prog) ? o.prog : [], pc: Number.isInteger(o.pc) && o.pc >= 0 && o.pc <= MAX_LINES ? o.pc : 0, shift: o.shift, pending: o.pending, justStored: o.justStored, decimals: o.decimals,
