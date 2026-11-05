@@ -59,7 +59,7 @@ export function mountApp(root, engine = new Engine()) {
   top.className = 'top';
   const brand = document.createElement('div');
   brand.className = 'brand';
-  brand.innerHTML = '<span class="name">Calc 12C</span><span class="sub">RPN · 4 casas</span>';
+  brand.innerHTML = '<span class="name">Calc <i>12C</i></span><span class="rule" aria-hidden="true"></span><span class="sub">RPN · 4 casas</span>';
   top.append(brand, display);
   calc.append(top, keys, notice);
   root.append(calc);

@@ -3,6 +3,7 @@
 
 /* Retro: preto e dourado, teclas com relevo, visor luminoso ciano (padrão) */
 :root, [data-theme="retro"] {
+  --plate-a:#b98a35; --plate-b:#e9c777; --plate-c:#c79a45; --plate-edge:#7a5a1c; --plate-ink:#3b2a08; --engrave-hi:rgba(255,236,180,.75); --engrave-lo:rgba(60,38,0,.55);
   --bg: #0b0b0c;
   --body: #0b0b0c; --body-solid: #0b0b0c;
   --edge: #8a6a2c; --edge-w: 2px;
@@ -26,6 +27,7 @@
 
 /* Moderno escuro: vidro translúcido em grafite, halos dourado e azul nos cantos, reflexo suave */
 [data-theme="moderno-escuro"] {
+  --plate-a:#a8895a; --plate-b:#dcc08a; --plate-c:#b99a66; --plate-edge:#6d5733; --plate-ink:#33260c; --engrave-hi:rgba(255,238,200,.65); --engrave-lo:rgba(50,34,6,.5);
   --bg: #0a0b0e;
   --body: linear-gradient(160deg, #171a21 0%, #0c0d11 60%, #0a0b0e 100%); --body-solid: #101217;
   --edge: #e8d6aa8c; --edge-w: 1.5px;
@@ -50,6 +52,7 @@
 
 /* Moderno claro: vidro claro em champanhe e marfim, com as mesmas cores de f e g */
 [data-theme="moderno-claro"] {
+  --plate-a:#d9b56a; --plate-b:#f3dba0; --plate-c:#dfbf79; --plate-edge:#a88642; --plate-ink:#4a3410; --engrave-hi:rgba(255,248,222,.85); --engrave-lo:rgba(90,60,10,.4);
   --bg: #efe5d2;
   --body: linear-gradient(160deg, #f6efe2 0%, #eadfca 100%); --body-solid: #f1e8d6;
   --edge: #96733288; --edge-w: 1.5px;
