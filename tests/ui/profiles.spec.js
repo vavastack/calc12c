@@ -280,10 +280,10 @@ test('7 toques na versão ligam o modo desenvolvedor (com contagem a partir do 3
   const p = app.page;
   await abrirConfig(p);
   const nota = p.locator('.settings .ver-note');
-  assert.match(await nota.innerText(), /V3\.0/);
+  assert.match(await nota.innerText(), /V3\.1/);
   const row = p.locator('.settings .ver-row');
   for (let i = 0; i < 2; i++) await row.click();
-  assert.match(await nota.innerText(), /V3\.0/); // até o 2º toque, nada aparece
+  assert.match(await nota.innerText(), /V3\.1/); // até o 2º toque, nada aparece
   await row.click();
   assert.match(await nota.innerText(), /Faltam 4 toques/);
   for (let i = 0; i < 3; i++) await row.click();
