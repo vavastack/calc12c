@@ -1515,7 +1515,7 @@ const { KEY_BY_ID } = __m_keymap;
 const { Stack } = __m_stack;
 const { Registers } = __m_registers;
 const { CashFlows } = __m_cashflow;
-const { amortize } = __m_amort;
+const { amortize, roundDec } = __m_amort;
 const { sl, soyd, db } = __m_depreciation;
 const { bondPrice, bondYield } = __m_bonds;
 const { applyOp } = __m_math;
@@ -1830,6 +1830,9 @@ class Engine {
         s.loadXYZ(r.interest, r.principal, count);
         return this._record('AMORT');
       }
+      case 'pmt': // RND — arredonda X às casas do visor (o valor interno passa a ser o exibido)
+        s.applyUnary((x) => roundDec(x, this.decimals));
+        return this._record('RND');
       case 'yx': { // PRICE — Y = liquidação, X = vencimento; devolve preço (X) e juros acumulados (Y)
         s.commit();
         const mat = s.x;

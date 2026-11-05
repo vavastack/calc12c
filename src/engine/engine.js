@@ -2,7 +2,7 @@ import { KEY_BY_ID } from './keymap.js';
 import { Stack } from './stack.js';
 import { Registers } from './registers.js';
 import { CashFlows } from './cashflow.js';
-import { amortize } from './amort.js';
+import { amortize, roundDec } from './amort.js';
 import { sl, soyd, db } from './depreciation.js';
 import { bondPrice, bondYield } from './bonds.js';
 import { applyOp } from './math.js';
@@ -317,6 +317,9 @@ export class Engine {
         s.loadXYZ(r.interest, r.principal, count);
         return this._record('AMORT');
       }
+      case 'pmt': // RND — arredonda X às casas do visor (o valor interno passa a ser o exibido)
+        s.applyUnary((x) => roundDec(x, this.decimals));
+        return this._record('RND');
       case 'yx': { // PRICE — Y = liquidação, X = vencimento; devolve preço (X) e juros acumulados (Y)
         s.commit();
         const mat = s.x;
