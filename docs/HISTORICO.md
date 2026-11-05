@@ -49,5 +49,8 @@ Complementa o `HANDOFF.md`: aqui ficam o caminho percorrido, as decisões do Wan
 - INT 30 dias, 7%, 450: 2,63 (360) / 452,63; 2,59 (365) / 452,59.
 - PV, n, i, FV: conferidos pelo Wanderson na HP real.
 
+## 4b. Escopo da Platinum (fechado antes da V3.1)
+400 linhas de programa com número de linha e GTO de 3 dígitos, 30 fluxos CFj, registradores .0-.9, Backspace (g −) e Undo (g ÷) com o indicador UNDO, f CLEAR PRGM em RUN mantendo a linha. Limites por perfil em `profiles.js`. 314 testes do motor e 122 de interface.
+
 ## 5. Próximos passos
 V3.0 fechada. Ver `docs/HANDOFF.md`: V3.1 (HP-16C), V3.2 (Black-Scholes), V3.3 (10C e 11C), V3.4 (15C), V3.5 (manual próprio).

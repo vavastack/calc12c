@@ -54,7 +54,7 @@ export const KEYS = [
 
 export const KEY_BY_ID = new Map(KEYS.map((x) => [x.id, x]));
 
-// 12C Platinum: f CHS = RPN, f EEX = ALG, g STO = "(" e g RCL = ")".
-const PLATINUM_LABELS = { chs: { f: 'RPN' }, eex: { f: 'ALG' }, sto: { g: '(' }, rcl: { g: ')' } };
+// 12C Platinum: f CHS = RPN, f EEX = ALG, g STO = "(" e g RCL = ")", g − = ← (Backspace), g ÷ = Undo.
+const PLATINUM_LABELS = { chs: { f: 'RPN' }, eex: { f: 'ALG' }, sto: { g: '(' }, rcl: { g: ')' }, minus: { g: '←' }, divide: { g: 'UNDO' } };
 export const KEYS_PLATINUM = KEYS.map((x) => ({ ...x, ...PLATINUM_LABELS[x.id] }));
 export const KEY_BY_ID_PLATINUM = new Map(KEYS_PLATINUM.map((x) => [x.id, x]));

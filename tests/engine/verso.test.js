@@ -5,8 +5,8 @@ import { KEY_BY_ID } from '../../src/engine/keymap.js';
 import { VERSO, VERSO_BY_PROFILE, fullKeys } from '../../src/ui/verso-data.js';
 import { chipsOf, expandKeys } from '../../src/ui/verso.js';
 
-const run = (keys) => {
-  const e = new Engine({ profile: '12cp' }); // a Platinum cobre todos os grupos, inclusive o ALG
+const run = (keys, profile = '12cp') => {
+  const e = new Engine({ profile });
   for (const id of expandKeys(keys)) e.press(id);
   return e.state.display;
 };
@@ -58,20 +58,23 @@ const ESPERADO = {
   'prog-soma|Rodar com 100': '5.050,00',
 };
 
-test('verso: todo exemplo pronto dá o resultado esperado, e só os prontos estão na tabela', () => {
-  const vistos = new Set();
-  for (const g of VERSO) {
-    for (const it of g.items) {
-      for (const v of it.variants) {
-        if (!it.ready) continue;
-        const chave = `${it.id}|${v.label}`;
-        assert.ok(chave in ESPERADO, `exemplo sem resultado esperado: ${chave}`);
-        assert.equal(run(fullKeys(it, v)), ESPERADO[chave], chave);
-        vistos.add(chave);
+test('verso: todo exemplo pronto dá o resultado esperado nos dois perfis, e só os prontos estão na tabela', () => {
+  for (const profile of ['12c', '12cp']) {
+    const vistos = new Set();
+    for (const g of VERSO_BY_PROFILE[profile].sections) {
+      for (const it of g.items) {
+        for (const v of it.variants) {
+          if (!it.ready) continue;
+          const chave = `${it.id}|${v.label}`;
+          assert.ok(chave in ESPERADO, `exemplo sem resultado esperado: ${chave}`);
+          assert.equal(run(fullKeys(it, v), profile), ESPERADO[chave], `${profile} ${chave}`);
+          vistos.add(chave);
+        }
       }
     }
+    const esperadas = Object.keys(ESPERADO).filter((k) => profile === '12cp' || !k.startsWith('alg-'));
+    assert.deepEqual([...vistos].sort(), esperadas.sort(), profile);
   }
-  assert.deepEqual([...vistos].sort(), Object.keys(ESPERADO).sort());
 });
 
 test('verso: a clássica não tem o grupo ALG e a Platinum tem todos', () => {

@@ -77,7 +77,7 @@ test('o modo ALG e a conta pendente sobrevivem a recarregar a página', async ()
   await app.close();
 });
 
-test('os dez indicadores cabem no visor e a página não ganha rolagem lateral em telas estreitas', async () => {
+test('os onze indicadores cabem no visor e a página não ganha rolagem lateral em telas estreitas', async () => {
   for (const width of [320, 360, 390]) {
     const app = await openApp(browser, server.url, { width, height: 740 });
     await platinum(app.page);
@@ -346,5 +346,73 @@ test('ligar o modo desenvolvedor não troca o tema: o padrão de cada modelo con
   assert.equal(await p.evaluate(() => window.calc12c.settings.get().theme), null);
   await p.evaluate(() => window.calc12c.setProfile('12c'));
   assert.equal(await tema(), 'retro');
+  await app.close();
+});
+
+// ---------- escopo da Platinum: Undo, Backspace, registradores .0-.9, linhas de 3 dígitos ----------
+test('Platinum: indicador UNDO acende depois de CLx e g Undo recupera o número', async () => {
+  const app = await openApp(browser, server.url);
+  const p = app.page;
+  await platinum(p);
+  assert.equal(await on(p, 'UNDO'), false);
+  await tap(p, '4 2 enter clx');
+  assert.equal(await on(p, 'UNDO'), true);
+  assert.equal(await digits(p), '0,00');
+  await tap(p, 'g divide');
+  assert.equal(await digits(p), '42,00');
+  assert.equal(await on(p, 'UNDO'), false);
+  assert.deepEqual(app.errors, []);
+  await app.close();
+});
+
+test('Platinum: g − apaga o último dígito e as teclas mostram ← e UNDO em azul', async () => {
+  const app = await openApp(browser, server.url);
+  const p = app.page;
+  await platinum(p);
+  assert.equal(await p.locator('button.key[data-id="minus"] .lg').innerText(), '←');
+  assert.equal(await p.locator('button.key[data-id="divide"] .lg').innerText(), 'UNDO');
+  await tap(p, '1 2 3 g minus');
+  assert.equal(await digits(p), '12');
+  await app.close();
+});
+
+test('clássica: sem indicador UNDO e sem rótulos ← e UNDO', async () => {
+  const app = await openApp(browser, server.url);
+  const p = app.page;
+  assert.equal(await p.locator('.display [data-ind="UNDO"]').count(), 0);
+  assert.equal(await p.locator('button.key[data-id="minus"] .lg').innerText(), '');
+  await app.close();
+});
+
+test('Platinum: a lista de registradores da fita mostra R0-R9 e R.0-R.9', async () => {
+  const app = await openApp(browser, server.url);
+  const p = app.page;
+  await platinum(p);
+  await tap(p, '9 sto dot 5');
+  assert.equal(await p.locator('.reg').count(), 20);
+  assert.equal(await p.locator('.reg[data-reg="15"] .k').innerText(), 'R.5');
+  assert.equal(await p.locator('.reg[data-reg="15"] .v').innerText(), '9,00');
+  await app.close();
+});
+
+test('Platinum: linha do programa com 3 dígitos no visor', async () => {
+  const app = await openApp(browser, server.url);
+  const p = app.page;
+  await platinum(p);
+  await tap(p, 'f rs f rdown 5');
+  assert.match(await digits(p), /^001–/);
+  await app.close();
+});
+
+test('Platinum com 11 indicadores cabe em 320 px sem rolagem horizontal', async () => {
+  const app = await openApp(browser, server.url);
+  const p = app.page;
+  await p.setViewportSize({ width: 320, height: 640 });
+  await platinum(p);
+  const over = await p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  assert.ok(over <= 0, 'sobra ' + over + 'px');
+  const ind = await p.locator('.display .indicators').evaluate((e) => e.getBoundingClientRect().right);
+  const disp = await p.locator('.display').evaluate((e) => e.getBoundingClientRect().right);
+  assert.ok(ind <= disp + 0.5, 'indicadores passam do visor');
   await app.close();
 });

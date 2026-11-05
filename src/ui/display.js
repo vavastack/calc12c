@@ -27,7 +27,7 @@ export function renderDisplay(el, s) {
   ensureStructure(el, getProfile(s.profile ?? '12c').indicators);
   const lit = {
     RPN: s.mode === 'rpn', ALG: s.mode === 'alg', '( )': s.parens > 0,
-    f: s.shift === 'f', g: s.shift === 'g', BEGIN: s.begin, C: s.compound, 'D.MY': s.dmy, PRGM: s.prgm,
+    f: s.shift === 'f', g: s.shift === 'g', BEGIN: s.begin, C: s.compound, 'D.MY': s.dmy, PRGM: s.prgm, UNDO: s.undo === true,
   };
   for (const span of el.querySelectorAll('[data-ind]')) {
     span.classList.toggle('on', !!lit[span.dataset.ind]);

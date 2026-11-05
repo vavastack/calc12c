@@ -1,13 +1,17 @@
 import { CalcError } from './errors.js';
 
-// Registradores de armazenamento R0 a R9.
+// Registradores de armazenamento: R0 a R9 e, na Platinum, também .0 a .9 (índices 10 a 19).
 export class Registers {
-  constructor() {
-    this._r = new Array(10).fill(0);
+  constructor(count = 10) {
+    this._r = new Array(count).fill(0);
+  }
+
+  get size() {
+    return this._r.length;
   }
 
   _check(n) {
-    if (!Number.isInteger(n) || n < 0 || n > 9) throw new CalcError(6);
+    if (!Number.isInteger(n) || n < 0 || n >= this._r.length) throw new CalcError(6);
   }
 
   store(n, v) {

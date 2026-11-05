@@ -28,12 +28,12 @@ test('o perfil 12c (clássica) é o padrão: RPN só, 7 indicadores, teclas sem 
   assert.equal(p.title, undefined);
 });
 
-test('o perfil 12cp (Platinum): RPN e ALG, 10 indicadores, rótulos f RPN/ALG e g ( ), título em duas linhas', () => {
+test('o perfil 12cp (Platinum): RPN e ALG, 11 indicadores, rótulos f RPN/ALG e g ( ), título em duas linhas', () => {
   const p = getProfile('12cp');
   assert.equal(p.keys, KEYS_PLATINUM);
   assert.equal(p.keys.length, 39);
   assert.deepEqual(p.modes, ['rpn', 'alg']);
-  assert.deepEqual(p.indicators, ['RPN', 'ALG', '( )', 'f', 'g', 'BEGIN', 'D.MY', 'C', 'USER', 'PRGM']);
+  assert.deepEqual(p.indicators, ['RPN', 'ALG', '( )', 'UNDO', 'f', 'g', 'BEGIN', 'D.MY', 'C', 'USER', 'PRGM']);
   assert.equal(p.keyById.get('chs').f, 'RPN');
   assert.equal(p.keyById.get('eex').f, 'ALG');
   assert.equal(p.keyById.get('sto').g, '(');

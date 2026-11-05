@@ -13,6 +13,11 @@ const BRACKETS_12C = [
   { label: '', r: 6, c0: 0, c1: 0, hr: 2, hc0: 5, hc1: 5, cls: 'pfx' }, // PREFIX: no retrato tem a linha própria; na paisagem a do CLEAR já a cobre
 ];
 
+// Limites e comportamentos que variam entre os modelos (a clássica é o padrão):
+// maxLines = linhas de programa; maxFlows = fluxos CFj além do CFo; regCount = registradores (10 = R0-R9, 20 = + .0-.9);
+// undo = teclas g ← (Backspace) e g Undo; clearPrgmKeepsPc = f CLEAR PRGM em RUN não leva à linha 00.
+const LIMITS_12C = { maxLines: 99, maxFlows: 20, regCount: 10, undo: false, clearPrgmKeepsPc: false };
+
 const PROFILES = new Map();
 
 // Temas: 'retro' = Gold, 'platinum' = prata, 'moderno' = Retro (vidro). Cada perfil só mostra os seus (Gold na clássica,
@@ -25,7 +30,7 @@ export function registerProfile(p) {
   for (const f of ['id', 'name', 'model', 'keys', 'keyById', 'modes', 'indicators', 'brackets', 'themes', 'defaultTheme']) {
     if (p[f] === undefined) throw new Error(`perfil sem ${f}`);
   }
-  PROFILES.set(p.id, { defaultMode: p.modes[0], label: p.name, ...p });
+  PROFILES.set(p.id, { defaultMode: p.modes[0], label: p.name, ...LIMITS_12C, ...p });
 }
 
 export function hasProfile(id) {
@@ -79,7 +84,12 @@ registerProfile({
   keys: KEYS_PLATINUM,
   keyById: KEY_BY_ID_PLATINUM,
   modes: ['rpn', 'alg'],
-  indicators: ['RPN', 'ALG', '( )', ...INDICATORS_CLASSIC],
+  indicators: ['RPN', 'ALG', '( )', 'UNDO', ...INDICATORS_CLASSIC],
+  maxLines: 400,
+  maxFlows: 30,
+  regCount: 20,
+  undo: true,
+  clearPrgmKeepsPc: true,
   brackets: BRACKETS_12C,
   themes: ['platinum', 'moderno'],
   defaultTheme: 'platinum',

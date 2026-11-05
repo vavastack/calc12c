@@ -2,11 +2,12 @@ import { CalcError } from './errors.js';
 import { firstRoot, POS, NEG } from './tvm.js';
 
 // Fluxos de caixa da HP 12C: CFo + até 20 fluxos CFj, cada um repetido Nj vezes (1 a 99).
-export const MAX_FLOWS = 20;
+export const MAX_FLOWS = 20; // padrão (clássica); a Platinum aceita 30
 export const MAX_NJ = 99;
 
 export class CashFlows {
-  constructor() {
+  constructor(maxFlows = MAX_FLOWS) {
+    this.max = maxFlows;
     this.cf0 = 0;
     this.flows = []; // { amt, nj }
   }
@@ -17,7 +18,7 @@ export class CashFlows {
   }
 
   addFlow(x) {
-    if (this.flows.length >= MAX_FLOWS) throw new CalcError(6);
+    if (this.flows.length >= this.max) throw new CalcError(6);
     this.flows.push({ amt: x, nj: 1 });
   }
 
@@ -78,14 +79,14 @@ export class CashFlows {
     return { cf0: this.cf0, flows: this.flows.map((f) => ({ amt: f.amt, nj: f.nj })) };
   }
 
-  static valid(o) {
+  static valid(o, max = MAX_FLOWS) {
     const num = (v) => typeof v === 'number' && Number.isFinite(v);
-    return !!o && num(o.cf0) && Array.isArray(o.flows) && o.flows.length <= MAX_FLOWS
+    return !!o && num(o.cf0) && Array.isArray(o.flows) && o.flows.length <= max
       && o.flows.every((f) => f && num(f.amt) && Number.isInteger(f.nj) && f.nj >= 1 && f.nj <= MAX_NJ);
   }
 
-  static fromJSON(o) {
-    const c = new CashFlows();
+  static fromJSON(o, max = MAX_FLOWS) {
+    const c = new CashFlows(max);
     c.cf0 = o.cf0;
     c.flows = o.flows.map((f) => ({ amt: f.amt, nj: f.nj }));
     return c;

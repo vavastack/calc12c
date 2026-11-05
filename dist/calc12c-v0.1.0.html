@@ -181,9 +181,9 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
 .indicators { display: flex; gap: 10px; font-size: 11px; font-weight: 700; align-items: center; }
 .indicators [data-ind] { color: var(--ind-off); white-space: nowrap; }
 .indicators [data-ind].on { color: var(--ind-on); }
-/* com RPN, ALG e ( ) são dez indicadores: em telas estreitas encolhem para caber sem rolagem lateral */
-@media (max-width: 420px) { .indicators { gap: 6px; font-size: 10px; } .fmt-toggle { padding: 1px 6px; } }
-@media (max-width: 350px) { .indicators { gap: 4px; font-size: 9px; } .fmt-toggle { font-size: 9px; padding: 0 4px; } }
+/* com RPN, ALG, ( ) e UNDO são onze indicadores: em telas estreitas encolhem para caber sem rolagem lateral */
+@media (max-width: 420px) { .indicators { gap: 4px; font-size: 9px; } .fmt-toggle { padding: 1px 6px; } }
+@media (max-width: 350px) { .indicators { gap: 3px; font-size: 8px; } .fmt-toggle { font-size: 8px; padding: 0 3px; } .display { padding-left: 10px; padding-right: 10px; } }
 .fmt-toggle { margin-left: auto; font: inherit; font-size: 11px; border: 1px solid currentColor; background: transparent;
   color: inherit; border-radius: 8px; padding: 1px 8px; opacity: .7; }
 .digits { font-family: "Share Tech Mono", ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 1px; font-size: 44px; text-align: right; white-space: nowrap;
@@ -499,8 +499,8 @@ const KEYS = [
 
 const KEY_BY_ID = new Map(KEYS.map((x) => [x.id, x]));
 
-// 12C Platinum: f CHS = RPN, f EEX = ALG, g STO = "(" e g RCL = ")".
-const PLATINUM_LABELS = { chs: { f: 'RPN' }, eex: { f: 'ALG' }, sto: { g: '(' }, rcl: { g: ')' } };
+// 12C Platinum: f CHS = RPN, f EEX = ALG, g STO = "(" e g RCL = ")", g − = ← (Backspace), g ÷ = Undo.
+const PLATINUM_LABELS = { chs: { f: 'RPN' }, eex: { f: 'ALG' }, sto: { g: '(' }, rcl: { g: ')' }, minus: { g: '←' }, divide: { g: 'UNDO' } };
 const KEYS_PLATINUM = KEYS.map((x) => ({ ...x, ...PLATINUM_LABELS[x.id] }));
 const KEY_BY_ID_PLATINUM = new Map(KEYS_PLATINUM.map((x) => [x.id, x]));
 
@@ -523,6 +523,11 @@ const BRACKETS_12C = [
   { label: '', r: 6, c0: 0, c1: 0, hr: 2, hc0: 5, hc1: 5, cls: 'pfx' }, // PREFIX: no retrato tem a linha própria; na paisagem a do CLEAR já a cobre
 ];
 
+// Limites e comportamentos que variam entre os modelos (a clássica é o padrão):
+// maxLines = linhas de programa; maxFlows = fluxos CFj além do CFo; regCount = registradores (10 = R0-R9, 20 = + .0-.9);
+// undo = teclas g ← (Backspace) e g Undo; clearPrgmKeepsPc = f CLEAR PRGM em RUN não leva à linha 00.
+const LIMITS_12C = { maxLines: 99, maxFlows: 20, regCount: 10, undo: false, clearPrgmKeepsPc: false };
+
 const PROFILES = new Map();
 
 // Temas: 'retro' = Gold, 'platinum' = prata, 'moderno' = Retro (vidro). Cada perfil só mostra os seus (Gold na clássica,
@@ -535,7 +540,7 @@ function registerProfile(p) {
   for (const f of ['id', 'name', 'model', 'keys', 'keyById', 'modes', 'indicators', 'brackets', 'themes', 'defaultTheme']) {
     if (p[f] === undefined) throw new Error(`perfil sem ${f}`);
   }
-  PROFILES.set(p.id, { defaultMode: p.modes[0], label: p.name, ...p });
+  PROFILES.set(p.id, { defaultMode: p.modes[0], label: p.name, ...LIMITS_12C, ...p });
 }
 
 function hasProfile(id) {
@@ -589,7 +594,12 @@ registerProfile({
   keys: KEYS_PLATINUM,
   keyById: KEY_BY_ID_PLATINUM,
   modes: ['rpn', 'alg'],
-  indicators: ['RPN', 'ALG', '( )', ...INDICATORS_CLASSIC],
+  indicators: ['RPN', 'ALG', '( )', 'UNDO', ...INDICATORS_CLASSIC],
+  maxLines: 400,
+  maxFlows: 30,
+  regCount: 20,
+  undo: true,
+  clearPrgmKeepsPc: true,
   brackets: BRACKETS_12C,
   themes: ['platinum', 'moderno'],
   defaultTheme: 'platinum',
@@ -921,14 +931,18 @@ return { ERRORS, CalcError };
 const __m_registers = (() => {
 const { CalcError } = __m_errors;
 
-// Registradores de armazenamento R0 a R9.
+// Registradores de armazenamento: R0 a R9 e, na Platinum, também .0 a .9 (índices 10 a 19).
 class Registers {
-  constructor() {
-    this._r = new Array(10).fill(0);
+  constructor(count = 10) {
+    this._r = new Array(count).fill(0);
+  }
+
+  get size() {
+    return this._r.length;
   }
 
   _check(n) {
-    if (!Number.isInteger(n) || n < 0 || n > 9) throw new CalcError(6);
+    if (!Number.isInteger(n) || n < 0 || n >= this._r.length) throw new CalcError(6);
   }
 
   store(n, v) {
@@ -1097,11 +1111,12 @@ const { CalcError } = __m_errors;
 const { firstRoot, POS, NEG } = __m_tvm;
 
 // Fluxos de caixa da HP 12C: CFo + até 20 fluxos CFj, cada um repetido Nj vezes (1 a 99).
-const MAX_FLOWS = 20;
+const MAX_FLOWS = 20; // padrão (clássica); a Platinum aceita 30
 const MAX_NJ = 99;
 
 class CashFlows {
-  constructor() {
+  constructor(maxFlows = MAX_FLOWS) {
+    this.max = maxFlows;
     this.cf0 = 0;
     this.flows = []; // { amt, nj }
   }
@@ -1112,7 +1127,7 @@ class CashFlows {
   }
 
   addFlow(x) {
-    if (this.flows.length >= MAX_FLOWS) throw new CalcError(6);
+    if (this.flows.length >= this.max) throw new CalcError(6);
     this.flows.push({ amt: x, nj: 1 });
   }
 
@@ -1173,14 +1188,14 @@ class CashFlows {
     return { cf0: this.cf0, flows: this.flows.map((f) => ({ amt: f.amt, nj: f.nj })) };
   }
 
-  static valid(o) {
+  static valid(o, max = MAX_FLOWS) {
     const num = (v) => typeof v === 'number' && Number.isFinite(v);
-    return !!o && num(o.cf0) && Array.isArray(o.flows) && o.flows.length <= MAX_FLOWS
+    return !!o && num(o.cf0) && Array.isArray(o.flows) && o.flows.length <= max
       && o.flows.every((f) => f && num(f.amt) && Number.isInteger(f.nj) && f.nj >= 1 && f.nj <= MAX_NJ);
   }
 
-  static fromJSON(o) {
-    const c = new CashFlows();
+  static fromJSON(o, max = MAX_FLOWS) {
+    const c = new CashFlows(max);
     c.cf0 = o.cf0;
     c.flows = o.flows.map((f) => ({ amt: f.amt, nj: f.nj }));
     return c;
@@ -1568,7 +1583,7 @@ const { KEY_BY_ID } = __m_keymap;
 
 // Códigos de tecla da HP 12C: linha (1 a 4, de cima) e posição na linha (1 a 9; 0 = décima), como no manual.
 // Dígitos têm como código o próprio dígito. O teclado vertical (5×8) é a HP original (4×10) dobrada ao meio.
-const MAX_LINES = 99;
+const MAX_LINES = 99; // padrão (clássica); a Platinum tem 400 (profiles.js)
 
 function keyCode(id) {
   if (/^[0-9]$/.test(id)) return Number(id);
@@ -1581,15 +1596,16 @@ function keyCode(id) {
 const OP_CODE = { plus: 40, minus: 30, times: 20, divide: 10 };
 
 // Linha de programa: { s: null|'f'|'g', id, arg?, op? }
-function lineCodes(line) {
-  if (!line) return ['43', '33', '00']; // linha vazia = GTO 00
+function lineCodes(line, width = 2) {
+  if (!line) return ['43', '33', '0'.repeat(width)]; // linha vazia = GTO 00
   if (line.id === 'sto' || line.id === 'rcl') {
     const out = [line.id === 'sto' ? 44 : 45];
     if (line.op) out.push(OP_CODE[line.op]);
-    out.push(/^[0-9]$/.test(line.arg) ? line.arg : keyCode(line.arg));
+    if (/^\.[0-9]$/.test(line.arg)) out.push(48, line.arg[1]); // registrador .d: código da tecla "." (48) e o dígito
+    else out.push(/^[0-9]$/.test(line.arg) ? line.arg : keyCode(line.arg));
     return out.map(String);
   }
-  if (line.s === 'g' && line.id === 'rdown') return ['43', '33', String(line.arg ?? '00')];
+  if (line.s === 'g' && line.id === 'rdown') return ['43', '33', String(line.arg ?? '0'.repeat(width))];
   const out = [];
   if (line.s === 'f') out.push(42);
   if (line.s === 'g') out.push(43);
@@ -1597,10 +1613,10 @@ function lineCodes(line) {
   return out.map(String);
 }
 
-function lineText(n, line) {
-  const nn = String(n).padStart(2, '0');
+function lineText(n, line, width = 2) {
+  const nn = String(n).padStart(width, '0');
   if (n === 0) return nn + '–';
-  const c = lineCodes(line);
+  const c = lineCodes(line, width);
   const body = c[0] === '43' && c[1] === '33' ? `43, 33 ${c[2]}` : c.join(' ');
   return `${nn}–  ${body}`;
 }
@@ -1608,7 +1624,7 @@ function lineText(n, line) {
 // Linhas e registradores mostrados por g MEM: a memória cresce de 7 em 7 linhas (cada 7 linhas = 1 registrador).
 function memoryText(count) {
   const lines = count <= 8 ? 8 : 8 + 7 * Math.ceil((count - 8) / 7);
-  const regs = 20 - (lines - 8) / 7;
+  const regs = Math.max(0, 20 - (lines - 8) / 7);
   return `P-${String(lines).padStart(2, '0')} r-${String(regs).padStart(2, '0')}`;
 }
 
@@ -1701,7 +1717,7 @@ const { bondPrice, bondYield } = __m_bonds;
 const { applyOp, compute, percentOf, divide100 } = __m_math;
 const { solve, simpleInterest } = __m_tvm;
 const { CalcError } = __m_errors;
-const { MAX_LINES, lineText, memoryText, validLine } = __m_program;
+const { lineText, memoryText, validLine } = __m_program;
 const { addDays, daysBetween, formatDate } = __m_dates;
 const { accumulate, means, deviations, weightedMean, estimateX, estimateY } = __m_stats;
 const { round10, formatNumber } = __m_number;
@@ -1715,6 +1731,7 @@ const OPKEYS = ['plus', 'minus', 'times', 'divide'];
 const ALG_OPS = ['plus', 'minus', 'times', 'divide', 'yx']; // operações de dois números do modo ALG
 const STAT_G = { '0': 'mean', dot: 'sd', '6': 'wmean', '1': 'estx', '2': 'esty', sigma: 'sigmaminus' };
 const G_OPS = { yx: 'sqrt', recip: 'expx', pctT: 'ln', dpct: 'frac', pct: 'intg', 3: 'fact' };
+const regName = (n) => (n >= 10 ? '.' + (n - 10) : String(n));
 const isDigit = (id) => /^[0-9]$/.test(id);
 const zeroFin = () => ({ n: 0, i: 0, pv: 0, pmt: 0, fv: 0 });
 
@@ -1725,9 +1742,12 @@ class Engine {
     this.mode = opts.mode && def.modes.includes(opts.mode) ? opts.mode : def.defaultMode; // 'rpn' | 'alg'
     this.alg = new AlgState(); // operações pendentes do modo ALG
     this.stack = new Stack();
-    this.regs = new Registers();
+    this.regs = new Registers(def.regCount);
+    this.maxLines = def.maxLines; // linhas de programa do modelo (99 ou 400)
+    this.lineWidth = String(def.maxLines).length; // dígitos do número da linha e do GTO (2 ou 3)
+    this.undoSnap = null; // Platinum: estado antes da última limpeza, para g Undo
     this.fin = zeroFin();
-    this.cf = new CashFlows(); // CFo, CFj, Nj (V2)
+    this.cf = new CashFlows(def.maxFlows); // CFo, CFj, Nj (V2)
     this.amortFresh = true; // nenhuma prestação amortizada desde a última mudança em n, i, PV, PMT ou FV
     this.begin = false;
     this.prgm = false; // modo de programação (indicador PRGM)
@@ -1776,6 +1796,7 @@ class Engine {
       error: this.error ? { ...this.error } : null,
       tape: this.tape.map((l) => ({ ...l })),
       pending: this.pending,
+      undo: this.undoSnap !== null,
     };
   }
 
@@ -1806,16 +1827,42 @@ class Engine {
       this.shift = id;
       return;
     }
+    const prof = getProfile(this.profile);
+    if (prof.undo && this.shift === 'g' && id === 'divide' && !this.prgm && !this.pending) return this._undo(); // g Undo
+    const snap = prof.undo && this._clears(key) ? this.serialize() : null;
     try {
       this._dispatch(key);
+      if (prof.undo) this.undoSnap = snap;
     } catch (e) {
       if (!(e instanceof CalcError)) throw e;
+      this.undoSnap = null;
       this.error = { code: e.code, message: e.message };
       this.alg.clearPending(); // um erro cancela as operações pendentes do ALG
       this.shift = null;
       this.pending = null;
       this.tokens = [];
     }
+  }
+
+  // A tecla (com o prefixo atual) apaga dados? São as limpezas que a Platinum deixa desfazer com g Undo.
+  _clears(key) {
+    if (this.prgm || this.pending) return false;
+    const id = key.id;
+    if (this.shift === null) return id === 'clx';
+    if (this.shift === 'g') return id === 'minus'; // g ←
+    return id === 'clx' || id === 'sst' || id === 'xy'; // f CLEAR REG, Σ, FIN
+  }
+
+  // g Undo: devolve o estado de antes da última limpeza. Sem limpeza recente, não faz nada.
+  _undo() {
+    this.shift = null;
+    const snap = this.undoSnap;
+    this.undoSnap = null;
+    if (!snap) return;
+    const r = Engine.restore(snap);
+    r.shift = null;
+    r.pending = null;
+    Object.assign(this, r);
   }
 
   // Limpar tudo: pilha, registradores, financeiros, fita; mantém o formato (pt-BR / en-US).
@@ -1859,7 +1906,8 @@ class Engine {
     a.fresh = false;
     a.wasClx = a.clxPrev;
     a.clxPrev = false;
-    const entryKey = shift === null && (isDigit(key.id) || key.id === 'dot' || key.id === 'eex' || key.id === 'chs');
+    const backspace = shift === 'g' && key.id === 'minus' && getProfile(this.profile).undo;
+    const entryKey = backspace || (shift === null && (isDigit(key.id) || key.id === 'dot' || key.id === 'eex' || key.id === 'chs'));
     if (!entryKey && s.entering) this.tokens.push(s.entryText());
     const wasStored = this.justStored;
     this.justStored = false;
@@ -1969,9 +2017,13 @@ class Engine {
       this.justStored = wasStored;
       return;
     }
+    if (id === 'minus' && getProfile(this.profile).undo) {
+      s.backspace(); // g ←: apaga o último dígito; fora da digitação, zera X
+      return;
+    }
     if (id === 'sst') {
       this.pc = Math.max(0, this.pc - 1); // g BST
-      this.dateText = lineText(this.pc, this.prog[this.pc - 1]);
+      this.dateText = lineText(this.pc, this.prog[this.pc - 1], this.lineWidth);
       return;
     }
     if (id === 'rdown') {
@@ -2078,8 +2130,8 @@ class Engine {
         this.fin = zeroFin();
         this.amortFresh = true;
         return;
-      case 'rdown': // CLEAR PRGM (no modo de execução só volta à linha 00)
-        this.pc = 0;
+      case 'rdown': // CLEAR PRGM (no modo de execução a clássica volta à linha 00; a Platinum mantém a linha atual)
+        if (!getProfile(this.profile).clearPrgmKeepsPc) this.pc = 0;
         return;
       case 'sst': // CLEAR Σ: zera R1..R6, a pilha e o visor
         this.alg.clearPending();
@@ -2263,7 +2315,7 @@ class Engine {
   }
 
   _gotoLine(nn) {
-    if (nn > MAX_LINES) throw new CalcError(4);
+    if (nn > this.maxLines) throw new CalcError(4);
     this.pc = nn;
   }
 
@@ -2273,12 +2325,12 @@ class Engine {
     const v = { plus: cur + x, minus: cur - x, times: cur * x, divide: cur / x }[opId];
     if (!Number.isFinite(v)) throw new CalcError(opId === 'divide' ? 0 : 1);
     this.regs.store(n, round10(v));
-    this._record(`STO ${{ plus: '+', minus: '−', times: '×', divide: '÷' }[opId]} ${n}`);
+    this._record(`STO ${{ plus: '+', minus: '−', times: '×', divide: '÷' }[opId]} ${regName(n)}`);
   }
 
   // Grava uma instrução na linha seguinte à atual (sobrescreve a linha: a memória é de tamanho fixo, como na HP).
   _storeLine(line) {
-    if (this.pc >= MAX_LINES) throw new CalcError(4);
+    if (this.pc >= this.maxLines) throw new CalcError(4);
     while (this.prog.length < this.pc) this.prog.push(null);
     this.prog[this.pc] = line;
     this.pc += 1;
@@ -2289,36 +2341,42 @@ class Engine {
     const id = key.id;
     const isD = isDigit(id);
     if (this.pending) {
-      const mode = this.pending;
+      const full = this.pending;
       this.pending = null;
-      if (mode === 'sto' && OPKEYS.includes(id)) {
+      const dotted = full.endsWith('.'); // registrador .d (Platinum)
+      const mode = dotted ? full.slice(0, -1) : full;
+      const arg = (dotted ? '.' : '') + id;
+      if (id === 'dot' && !dotted && this.regs.size > 10 && ['sto', 'rcl', 'stoop'].includes(mode)) {
+        this.pending = mode + '.';
+      } else if (mode === 'sto' && !dotted && OPKEYS.includes(id)) {
         this.pending = 'stoop';
         this.stoOp = id;
-      } else if (mode === 'stoop' && isD) this._storeLine({ s: null, id: 'sto', op: this.stoOp, arg: id });
-      else if (mode === 'sto' && (isD || id === 'eex')) this._storeLine({ s: null, id: 'sto', arg: id });
-      else if (mode === 'rcl' && (isD || FIN.includes(id))) this._storeLine({ s: null, id: 'rcl', arg: id });
+      } else if (mode === 'stoop' && isD) this._storeLine({ s: null, id: 'sto', op: this.stoOp, arg });
+      else if (mode === 'sto' && (isD || (!dotted && id === 'eex'))) this._storeLine({ s: null, id: 'sto', arg });
+      else if (mode === 'rcl' && (isD || (!dotted && FIN.includes(id)))) this._storeLine({ s: null, id: 'rcl', arg });
       else if (mode === 'gto' && id === 'dot' && this.gtoDigits === '') {
         this.pending = 'gotoline'; // GTO . nn: só vai até a linha, sem gravar
       } else if (mode === 'gotoline' && isD) {
         this.gtoDigits += id;
-        if (this.gtoDigits.length < 2) this.pending = 'gotoline';
+        if (this.gtoDigits.length < this.lineWidth) this.pending = 'gotoline';
         else this._gotoLine(Number(this.gtoDigits));
       } else if (mode === 'gto' && isD) {
         this.gtoDigits += id;
-        if (this.gtoDigits.length < 2) this.pending = 'gto';
+        if (this.gtoDigits.length < this.lineWidth) this.pending = 'gto';
         else this._storeLine({ s: 'g', id: 'rdown', arg: this.gtoDigits });
       }
       this.dateText = null;
       return;
     }
     if (id === 'on') return;
+    if (shift === 'g' && (id === 'minus' || id === 'divide') && getProfile(this.profile).undo) return; // g ← e g Undo não se gravam
     if (shift === 'f' && id === 'rdown') {
       this.prog = []; // CLEAR PRGM
       this.pc = 0;
       return;
     }
     if (shift === null && id === 'sst') {
-      this.pc = Math.min(MAX_LINES, this.pc + 1);
+      this.pc = Math.min(this.maxLines, this.pc + 1);
       return;
     }
     if (shift === 'g' && id === 'sst') {
@@ -2347,7 +2405,7 @@ class Engine {
     }
     if (s === 'g' && id === 'rdown') {
       const nn = Number(line.arg);
-      if (nn > MAX_LINES) throw new CalcError(4);
+      if (nn > this.maxLines) throw new CalcError(4);
       return { goto: nn };
     }
     if (s === 'g' && id === 'xy') {
@@ -2362,10 +2420,9 @@ class Engine {
       this.stack.commit();
       this.pending = id;
       this.shift = null;
-      if (line.op) {
-        this._finishPending(this.keyById.get(line.op));
-        this._finishPending(this.keyById.get(line.arg));
-      } else this._finishPending(this.keyById.get(line.arg));
+      if (line.op) this._finishPending(this.keyById.get(line.op));
+      if (line.arg.startsWith('.')) this._finishPending(this.keyById.get('dot'));
+      this._finishPending(this.keyById.get(line.arg.slice(-1)));
       return null;
     }
     if (id === 'sst' || id === 'on' || id === 'f' || id === 'g') return null;
@@ -2378,7 +2435,7 @@ class Engine {
   _step() {
     this.pc += 1;
     const line = this.pc <= this.prog.length ? this.prog[this.pc - 1] : null;
-    if (!line || this.pc > MAX_LINES) {
+    if (!line || this.pc > this.maxLines) {
       this.pc = 0; // linha vazia = GTO 00: volta ao início e para
       return 'halt';
     }
@@ -2505,27 +2562,33 @@ class Engine {
   }
 
   _finishPending(key) {
-    const mode = this.pending;
+    const full = this.pending;
     this.pending = null;
+    const dotted = full.endsWith('.'); // registrador .d (Platinum): índices 10 a 19
+    const mode = dotted ? full.slice(0, -1) : full;
     const s = this.stack;
     const id = key.id;
-    if (mode === 'stoop' && isDigit(id)) {
-      this._stoArith(this.stoOp, Number(id));
+    if (id === 'dot' && !dotted && this.regs.size > 10 && ['sto', 'rcl', 'stoop'].includes(mode)) {
+      this.pending = mode + '.'; // STO . / RCL . / STO + . : o próximo dígito escolhe .0 a .9
+    } else if (mode === 'stoop' && isDigit(id)) {
+      this._stoArith(this.stoOp, Number(id) + (dotted ? 10 : 0));
     } else if (mode === 'gto' && isDigit(id)) {
       this.gtoDigits += id;
-      if (this.gtoDigits.length < 2) this.pending = 'gto';
+      if (this.gtoDigits.length < this.lineWidth) this.pending = 'gto';
       else this._gotoLine(Number(this.gtoDigits));
     } else if (isDigit(id)) {
-      const n = Number(id);
+      const n = Number(id) + (dotted ? 10 : 0);
       if (mode === 'sto') {
         s.commit();
         this.regs.store(n, s.x);
         s.liftEnabled = true;
-        this._record(`STO ${n}`);
+        this._record(`STO ${regName(n)}`);
       } else {
         s.recall(this.regs.recall(n));
-        this._record(`RCL ${n}`);
+        this._record(`RCL ${regName(n)}`);
       }
+    } else if (dotted) {
+      // depois de "." só vale um dígito; qualquer outra tecla cancela
     } else if (mode === 'sto' && OPKEYS.includes(id)) {
       this.pending = 'stoop'; // STO + − × ÷ n
       this.stoOp = id;
@@ -2574,7 +2637,7 @@ class Engine {
 
   _display() {
     if (this.error) return 'Error ' + this.error.code;
-    if (this.prgm) return this.dateText ?? lineText(this.pc, this.prog[this.pc - 1]);
+    if (this.prgm) return this.dateText ?? lineText(this.pc, this.prog[this.pc - 1], this.lineWidth);
     if (this.dateText && !this.stack.entering) return this.dateText;
     return this.stack.entering ? this._fmtEntry() : this._fmt(this.stack.x);
   }
@@ -2614,19 +2677,20 @@ class Engine {
     const num = (v) => typeof v === 'number' && Number.isFinite(v);
     const str = (v) => typeof v === 'string';
     if (!o || typeof o !== 'object' || o.v !== VERSION) throw bad();
-    if (!Array.isArray(o.regs) || o.regs.length !== 10 || !o.regs.every(num)) throw bad();
+    if (!Array.isArray(o.regs) || (o.regs.length !== 10 && o.regs.length !== 20) || !o.regs.every(num)) throw bad();
     if (!o.fin || !FIN.every((k) => num(o.fin[k]))) throw bad();
     if (typeof o.begin !== 'boolean' || typeof o.justStored !== 'boolean') throw bad();
-    if (![null, 'f', 'g'].includes(o.shift) || ![null, 'sto', 'rcl', 'stoop', 'gto', 'gotoline'].includes(o.pending)) throw bad();
+    if (![null, 'f', 'g'].includes(o.shift) || ![null, 'sto', 'rcl', 'stoop', 'sto.', 'rcl.', 'stoop.', 'gto', 'gotoline'].includes(o.pending)) throw bad();
     if (!Number.isInteger(o.decimals) || o.decimals < 0 || o.decimals > 9) throw bad();
     if (o.locale !== 'br' && o.locale !== 'us') throw bad();
     if (o.error !== null && !(o.error && Number.isInteger(o.error.code) && o.error.code >= 0 && o.error.code <= 9 && str(o.error.message))) throw bad();
     if (!Array.isArray(o.tape) || !o.tape.every((l) => l && str(l.keys) && str(l.label) && num(l.value) && str(l.text))) throw bad();
     if (!Array.isArray(o.tokens) || !o.tokens.every(str)) throw bad();
-    if (o.prog !== undefined && !(Array.isArray(o.prog) && o.prog.length <= MAX_LINES && o.prog.every(validLine))) throw bad();
-    if (o.cf !== undefined && !CashFlows.valid(o.cf)) throw bad();
     const profile = o.profile ?? DEFAULT_PROFILE; // estados antigos não tinham perfil: eram da 12C
     if (typeof profile !== 'string' || !hasProfile(profile)) throw bad();
+    const def = getProfile(profile);
+    if (o.prog !== undefined && !(Array.isArray(o.prog) && o.prog.length <= def.maxLines && o.prog.every(validLine))) throw bad();
+    if (o.cf !== undefined && !CashFlows.valid(o.cf, def.maxFlows)) throw bad();
     if (o.mode !== undefined && !['rpn', 'alg'].includes(o.mode)) throw bad(); // modo sem suporte no perfil (ex.: ALG na clássica) volta ao padrão
     if (o.alg !== undefined && !AlgState.valid(o.alg)) throw bad();
     const e = new Engine({ locale: o.locale, profile, mode: o.mode });
@@ -2636,12 +2700,12 @@ class Engine {
     } catch {
       throw bad();
     }
-    o.regs.forEach((v, n) => e.regs.store(n, v));
-    if (o.cf) e.cf = CashFlows.fromJSON(o.cf);
+    o.regs.forEach((v, n) => n < e.regs.size && e.regs.store(n, v)); // estados de 10 registradores abrem na Platinum com 20
+    if (o.cf) e.cf = CashFlows.fromJSON(o.cf, def.maxFlows);
     e.amortFresh = o.amortFresh !== false;
     e.fin = { n: o.fin.n, i: o.fin.i, pv: o.fin.pv, pmt: o.fin.pmt, fv: o.fin.fv };
     Object.assign(e, {
-      begin: o.begin, compound: o.compound === true, dmy: o.dmy === true, prgm: o.prgm === true, prog: Array.isArray(o.prog) ? o.prog : [], pc: Number.isInteger(o.pc) && o.pc >= 0 && o.pc <= MAX_LINES ? o.pc : 0, shift: o.shift, pending: o.pending, justStored: o.justStored, decimals: o.decimals,
+      begin: o.begin, compound: o.compound === true, dmy: o.dmy === true, prgm: o.prgm === true, prog: Array.isArray(o.prog) ? o.prog : [], pc: Number.isInteger(o.pc) && o.pc >= 0 && o.pc <= def.maxLines ? o.pc : 0, shift: o.shift, pending: o.pending, justStored: o.justStored, decimals: o.decimals,
       error: o.error ? { code: o.error.code, message: o.error.message } : null,
       tape: o.tape.map((l) => ({ keys: l.keys, label: l.label, value: l.value, text: l.text })),
       tokens: [...o.tokens],
@@ -2683,7 +2747,7 @@ function renderDisplay(el, s) {
   ensureStructure(el, getProfile(s.profile ?? '12c').indicators);
   const lit = {
     RPN: s.mode === 'rpn', ALG: s.mode === 'alg', '( )': s.parens > 0,
-    f: s.shift === 'f', g: s.shift === 'g', BEGIN: s.begin, C: s.compound, 'D.MY': s.dmy, PRGM: s.prgm,
+    f: s.shift === 'f', g: s.shift === 'g', BEGIN: s.begin, C: s.compound, 'D.MY': s.dmy, PRGM: s.prgm, UNDO: s.undo === true,
   };
   for (const span of el.querySelectorAll('[data-ind]')) {
     span.classList.toggle('on', !!lit[span.dataset.ind]);
@@ -2852,7 +2916,7 @@ function mountDrawer(ctx) {
   ctx.listeners.push((_c, s) => {
     mem.innerHTML =
       '<div class="cards">' + FIN_CARDS.map(([id, l]) => cell('card', `data-fin="${id}"`, l, fmt(s.fin[id], s))).join('') + '</div>' +
-      '<div class="regs">' + s.regs.map((v, n) => cell('reg', `data-reg="${n}"`, 'R' + n, fmt(v, s))).join('') + '</div>' +
+      '<div class="regs">' + s.regs.map((v, n) => cell('reg', `data-reg="${n}"`, n >= 10 ? 'R.' + (n - 10) : 'R' + n, fmt(v, s))).join('') + '</div>' +
       '<div class="stack">' + STACK_REGS.map(([id, l]) => cell('stk', `data-stk="${id}"`, l, fmt(s.stack[id], s))).join('') + '</div>';
     tapeEl.innerHTML = '';
     s.tape.forEach((line, i) => {
@@ -3861,9 +3925,21 @@ const VERSO = [
 
 // Guia do verso de cada perfil.
 // O grupo ALG só existe na Platinum.
+// Na Platinum o GTO tem 3 dígitos (400 linhas): os exemplos de programa ganham um zero (GTO 04 → GTO 004).
+const widenGto = (str) => str.replace(/(g rdown) (\d) (\d)(?!\d)/g, '$1 0 $2 $3').replace(/GTO (\d\d)(?!\d)/g, 'GTO 0$1');
+const forPlatinum = (groups) => groups.map((g) => (g.id !== 'prog' ? g : {
+  ...g,
+  items: g.items.map((it) => ({
+    ...it,
+    text: widenGto(it.text),
+    listing: it.listing?.map(widenGto),
+    variants: it.variants.map((v) => ({ ...v, keys: widenGto(v.keys) })),
+  })),
+}));
+
 const VERSO_BY_PROFILE = {
   '12c': { sections: VERSO.filter((g) => g.id !== 'alg'), sigma: SIGMA_MAP },
-  '12cp': { sections: VERSO, sigma: SIGMA_MAP },
+  '12cp': { sections: forPlatinum(VERSO), sigma: SIGMA_MAP },
 };
 
 // Uma variante pode depender da gravação do programa: `pre` é o rótulo de outra variante do mesmo exemplo,

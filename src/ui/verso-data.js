@@ -175,9 +175,21 @@ export const VERSO = [
 
 // Guia do verso de cada perfil.
 // O grupo ALG só existe na Platinum.
+// Na Platinum o GTO tem 3 dígitos (400 linhas): os exemplos de programa ganham um zero (GTO 04 → GTO 004).
+const widenGto = (str) => str.replace(/(g rdown) (\d) (\d)(?!\d)/g, '$1 0 $2 $3').replace(/GTO (\d\d)(?!\d)/g, 'GTO 0$1');
+const forPlatinum = (groups) => groups.map((g) => (g.id !== 'prog' ? g : {
+  ...g,
+  items: g.items.map((it) => ({
+    ...it,
+    text: widenGto(it.text),
+    listing: it.listing?.map(widenGto),
+    variants: it.variants.map((v) => ({ ...v, keys: widenGto(v.keys) })),
+  })),
+}));
+
 export const VERSO_BY_PROFILE = {
   '12c': { sections: VERSO.filter((g) => g.id !== 'alg'), sigma: SIGMA_MAP },
-  '12cp': { sections: VERSO, sigma: SIGMA_MAP },
+  '12cp': { sections: forPlatinum(VERSO), sigma: SIGMA_MAP },
 };
 
 // Uma variante pode depender da gravação do programa: `pre` é o rótulo de outra variante do mesmo exemplo,
