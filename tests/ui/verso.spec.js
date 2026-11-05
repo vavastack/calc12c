@@ -75,12 +75,20 @@ test('verso: Executar digita as teclas e deixa o resultado no visor', async () =
   await close();
 });
 
-test('verso: exemplos de funções ainda não implementadas aparecem como "em breve" e não executam', async () => {
+test('verso: na V2 todos os exemplos estão liberados (nenhum "em breve")', async () => {
   const { page: p, close } = await openApp(browser, server.url);
   await hold(p);
-  const off = p.locator('.verso .run:disabled');
-  assert.ok((await off.count()) >= 5);
-  assert.equal(await off.first().innerText(), 'Em breve');
+  assert.equal(await p.locator('.verso .run:disabled').count(), 0);
+  assert.ok((await p.locator('.verso [data-run]').count()) >= 20);
+  await close();
+});
+
+test('verso: executar o AMORT mostra os juros do 1º ano', async () => {
+  const { page: p, close } = await openApp(browser, server.url);
+  await hold(p);
+  const idx = await p.evaluate(() => [...document.querySelectorAll('.verso [data-run]:not([disabled])')].findIndex((b) => b.closest('.variant').querySelector('.v-label').textContent === 'Juros pagos'));
+  await p.locator('.verso [data-run]:not([disabled])').nth(idx).click();
+  await p.waitForFunction(() => window.calc12c.engine.state.display === '-2.608,19');
   await close();
 });
 

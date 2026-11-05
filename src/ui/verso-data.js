@@ -1,6 +1,6 @@
 // Guia do verso: exemplos de uso (sequências de teclas) escritos para este app, em português.
 // `keys` usa os ids do motor (ver keymap.js); números entram dígito a dígito, com "." para a vírgula decimal.
-// `ready:false` = função ainda não implementada (aparece como "em breve").
+// `ready:false` = exemplo ainda sem função correspondente (aparece como "em breve"); na V2 todos estão prontos.
 
 export const SIGMA_MAP = [
   ['n', 'R1'], ['Σx', 'R2'], ['Σx²', 'R3'], ['Σy', 'R4'], ['Σy²', 'R5'], ['Σxy', 'R6'],
@@ -46,11 +46,12 @@ export const VERSO = [
     id: 'amort', tag: 'AMORT', title: 'Amortização',
     items: [
       {
-        id: 'amort-1', title: 'Financiamento de 50.000 em 30 anos a 5,25% a.a.', text: 'Juros e principal pagos nas 12 primeiras parcelas.', ready: false,
+        id: 'amort-1', title: 'Financiamento de 50.000 em 30 anos a 5,25% a.a.', text: 'Prestação e, nas 12 primeiras parcelas, juros, principal e saldo. Repetir 12 f AMORT segue para o 2º ano.', ready: true,
         variants: [
-          { label: 'Prepara', keys: 'f xy 30 g n 5.25 g i 50000 pv pmt 0 n' },
-          { label: 'Juros pagos', keys: '12 f n' },
-          { label: 'Principal pago', keys: '12 f n xy' },
+          { label: 'Prestação', keys: 'f xy 30 g n 5.25 g i 50000 pv pmt' },
+          { label: 'Juros pagos', keys: 'f xy 30 g n 5.25 g i 50000 pv pmt 0 n 12 f n' },
+          { label: 'Principal pago', keys: 'f xy 30 g n 5.25 g i 50000 pv pmt 0 n 12 f n xy' },
+          { label: 'Saldo devedor', keys: 'f xy 30 g n 5.25 g i 50000 pv pmt 0 n 12 f n rcl pv' },
         ],
       },
     ],
@@ -59,11 +60,15 @@ export const VERSO = [
     id: 'bond', tag: 'BOND', title: 'Títulos',
     items: [
       {
-        id: 'bond-price', title: 'YTM 6%, cupom 4,75%, de 28/04/2004 a 15/11/2013', text: 'Preço a partir da taxa.', ready: false,
-        variants: [{ label: 'D.MY', keys: 'g 4 6 i 4.75 pmt 28.042004 enter 15.112013 f yx' }],
+        id: 'bond-price', title: 'Taxa 6%, cupom 4,75%, de 28/04/2004 a 15/11/2013', text: 'Preço (sem juros acumulados) por 100 de face e, com x≷y, os juros acumulados.', ready: true,
+        variants: [
+          { label: 'D.MY · preço', keys: 'g 4 6 i 4.75 pmt 28.042004 enter 15.112013 f yx' },
+          { label: 'D.MY · juros acumulados', keys: 'g 4 6 i 4.75 pmt 28.042004 enter 15.112013 f yx xy' },
+          { label: 'M.DY · preço', keys: 'g 5 6 i 4.75 pmt 4.282004 enter 11.152013 f yx' },
+        ],
       },
       {
-        id: 'bond-ytm', title: 'Preço 99,16, cupom 4,75%, de 28/04/2004 a 15/11/2013', text: 'Taxa a partir do preço.', ready: false,
+        id: 'bond-ytm', title: 'Preço 99,16, cupom 4,75%, de 28/04/2004 a 15/11/2013', text: 'Taxa anual a partir do preço.', ready: true,
         variants: [{ label: 'D.MY', keys: 'g 4 99.16 pv 4.75 pmt 28.042004 enter 15.112013 f recip' }],
       },
     ],
@@ -72,7 +77,7 @@ export const VERSO = [
     id: 'depr', tag: 'DEPR', title: 'Depreciação',
     items: [
       {
-        id: 'depr-1', title: 'Custo 10.000, residual 500, vida 5 anos, ano 1', text: 'Linha reta, soma dos dígitos e saldo decrescente (125%).', ready: false,
+        id: 'depr-1', title: 'Custo 10.000, residual 500, vida 5 anos, ano 1', text: 'Linha reta, soma dos dígitos e saldo decrescente (125%).', ready: true,
         variants: [
           { label: 'Linha reta', keys: '10000 pv 500 fv 5 n 1 f pctT' },
           { label: 'Soma dos dígitos', keys: '10000 pv 500 fv 5 n 1 f dpct' },

@@ -23,6 +23,17 @@ const ESPERADO = {
   'int-simple|Principal + juros (360)': '452,63',
   'int-simple|Juros (365)': '2,59',
   'int-simple|Principal + juros (365)': '452,59',
+  'amort-1|Prestação': '-276,10',
+  'amort-1|Juros pagos': '-2.608,19',
+  'amort-1|Principal pago': '-705,01',
+  'amort-1|Saldo devedor': '49.294,99',
+  'bond-price|D.MY · preço': '91,01',
+  'bond-price|D.MY · juros acumulados': '2,15',
+  'bond-price|M.DY · preço': '91,01',
+  'bond-ytm|D.MY': '4,86',
+  'depr-1|Linha reta': '1.900,00',
+  'depr-1|Soma dos dígitos': '3.166,67',
+  'depr-1|Saldo decrescente': '2.500,00',
 };
 
 test('verso: todo exemplo pronto dá o resultado esperado, e só os prontos estão na tabela', () => {

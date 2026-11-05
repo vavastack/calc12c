@@ -34,10 +34,10 @@ Build: `node scripts/build.js` junta tudo em um HTML (o empacotador só aceita `
 Ordem combinada, com números de teste para o Wanderson conferir na HP real depois de cada bloco:
 1. ✅ (conferido) Fluxo de caixa: CFo, CFj, Nj (g PV/PMT/FV), NPV (f PV), IRR (f FV). Até 20 fluxos; Nj repete.
 2. ✅ (conferido) AMORT (f n): amortização por intervalo, mostrando juros, principal e saldo.
-3. ✅ (feito, falta conferir na HP) Depreciação: SL (f %T), SOYD (f Δ%), DB (f %).
-4. Títulos: PRICE (f yᵡ), YTM (f 1/x) — datas no modo atual (D.MY/M.DY).
+3. ✅ (conferido) Depreciação: SL (f %T), SOYD (f Δ%), DB (f %).
+4. ✅ (feito, falta conferir na HP) Títulos: PRICE (f yᵡ), YTM (f 1/x) — datas no modo atual (D.MY/M.DY).
 5. RND (f PMT); depois ALG se couber.
-6. Liberar os exemplos "Em breve" do verso (grupos amort, bond, depr) e cobrir com testes.
+6. ✅ (feito) Liberar os exemplos "Em breve" do verso (grupos amort, bond, depr) e cobrir com testes.
 Critério de pronto: testes verdes e resultados idênticos aos da HP 12C real que o Wanderson tem em mãos.
 
 ## Depois da V2

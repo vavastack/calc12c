@@ -76,3 +76,20 @@ export function formatDate({ y, m, d }, wd, dmy, locale) {
   const [a, b] = dmy ? [two(d), two(m)] : [two(m), two(d)];
   return `${a}${sep}${b}${sep}${y} ${wd}`;
 }
+
+// Dias na base 30/360 (regra da HP) entre duas datas já decompostas ({ y, m, d }); a mais antiga primeiro.
+export function days360(a, b) {
+  const z1 = a.d === 31 ? 30 : a.d;
+  const z2 = b.d === 31 && (a.d === 30 || a.d === 31) ? 30 : b.d;
+  const f = (p, z) => 360 * p.y + 30 * p.m + z;
+  return f(b, z2) - f(a, z1);
+}
+
+// Data de cupom: a de vencimento menos `months` meses; fim de mês acompanha fim de mês.
+export function shiftMonths({ y, m, d }, months) {
+  const total = y * 12 + (m - 1) + months;
+  const ny = Math.floor(total / 12);
+  const nm = (total % 12) + 1;
+  const last = daysIn(ny, nm);
+  return { y: ny, m: nm, d: d === daysIn(y, m) ? last : Math.min(d, last) };
+}

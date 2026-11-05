@@ -4,6 +4,7 @@ import { Registers } from './registers.js';
 import { CashFlows } from './cashflow.js';
 import { amortize } from './amort.js';
 import { sl, soyd, db } from './depreciation.js';
+import { bondPrice, bondYield } from './bonds.js';
 import { applyOp } from './math.js';
 import { solve, simpleInterest } from './tvm.js';
 import { CalcError } from './errors.js';
@@ -315,6 +316,22 @@ export class Engine {
         s.lastX = count;
         s.loadXYZ(r.interest, r.principal, count);
         return this._record('AMORT');
+      }
+      case 'yx': { // PRICE — Y = liquidação, X = vencimento; devolve preço (X) e juros acumulados (Y)
+        s.commit();
+        const mat = s.x;
+        const r = bondPrice(s.y, mat, this.fin.pmt, this.fin.i, this.dmy);
+        s.lastX = mat;
+        s.loadXYZ(r.price, r.accrued, s.z);
+        return this._record('PRICE');
+      }
+      case 'recip': { // YTM — preço em PV; devolve a taxa anual em X
+        s.commit();
+        const mat = s.x;
+        const y = bondYield(s.y, mat, this.fin.pmt, this.fin.pv, this.dmy);
+        s.lastX = mat;
+        s.loadXYZ(y, s.y, s.z);
+        return this._record('YTM');
       }
       case 'pctT': // SL
       case 'dpct': // SOYD

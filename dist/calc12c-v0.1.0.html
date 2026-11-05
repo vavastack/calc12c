@@ -1134,6 +1134,183 @@ function db(fin, year) {
 return { sl, soyd, db };
 })();
 
+const __m_dates = (() => {
+const { CalcError } = __m_errors;
+
+// Funções de calendário da HP 12C: datas de 15/10/1582 a 25/11/4046 (calendário gregoriano).
+// Uma data é um número: M.DDAAAA (formato mês-dia-ano) ou DD.MMAAAA (dia-mês-ano).
+
+const MIN = 2299161; // 15/10/1582
+const MAX = 2299161 + (jdn(4046, 11, 25) - 2299161);
+
+function jdn(y, m, d) {
+  const a = Math.floor((14 - m) / 12);
+  const yy = y + 4800 - a;
+  const mm = m + 12 * a - 3;
+  return d + Math.floor((153 * mm + 2) / 5) + 365 * yy + Math.floor(yy / 4) - Math.floor(yy / 100) + Math.floor(yy / 400) - 32045;
+}
+
+function fromJdn(j) {
+  const a = j + 32044;
+  const b = Math.floor((4 * a + 3) / 146097);
+  const c = a - Math.floor((146097 * b) / 4);
+  const d = Math.floor((4 * c + 3) / 1461);
+  const e = c - Math.floor((1461 * d) / 4);
+  const m = Math.floor((5 * e + 2) / 153);
+  return {
+    d: e - Math.floor((153 * m + 2) / 5) + 1,
+    m: m + 3 - 12 * Math.floor(m / 10),
+    y: 100 * b + d - 4800 + Math.floor(m / 10),
+  };
+}
+
+const daysIn = (y, m) => [31, (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0 ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m - 1];
+
+// Número digitado → data. Erro 8 se for inválida ou fora do intervalo.
+function parseDate(x, dmy) {
+  const lead = Math.floor(x + 1e-9);
+  const rest = Math.round((x - lead) * 1e6);
+  const mid = Math.floor(rest / 10000);
+  const y = rest % 10000;
+  const m = dmy ? mid : lead;
+  const d = dmy ? lead : mid;
+  if (!(m >= 1 && m <= 12 && d >= 1 && y >= 1582) || d > daysIn(y, m)) throw new CalcError(8);
+  const j = jdn(y, m, d);
+  if (j < MIN || j > MAX) throw new CalcError(8);
+  return { y, m, d, j };
+}
+
+function encodeDate({ y, m, d }, dmy) {
+  const [a, b] = dmy ? [d, m] : [m, d];
+  return Math.round((a + b / 100 + y / 1e6) * 1e6) / 1e6;
+}
+
+// 1 = segunda-feira … 7 = domingo.
+const weekday = (j) => (j % 7) + 1;
+
+function addDays(x, days, dmy) {
+  const a = parseDate(x, dmy);
+  const j = a.j + Math.trunc(days);
+  if (j < MIN || j > MAX) throw new CalcError(8);
+  const r = fromJdn(j);
+  return { value: encodeDate(r, dmy), parts: r, weekday: weekday(j) };
+}
+
+// Dias exatos e dias na base 30/360 entre duas datas (a mais antiga primeiro).
+function daysBetween(x1, x2, dmy) {
+  const a = parseDate(x1, dmy);
+  const b = parseDate(x2, dmy);
+  const z1 = a.d === 31 ? 30 : a.d;
+  const z2 = b.d === 31 && (a.d === 30 || a.d === 31) ? 30 : b.d;
+  const f = (p, z) => 360 * p.y + 30 * p.m + z;
+  return { actual: b.j - a.j, commercial: f(b, z2) - f(a, z1) };
+}
+
+// "11,09,2004 6": campos separados por vírgula (pt-BR) ou hífen (en-US) e o dia da semana no fim.
+function formatDate({ y, m, d }, wd, dmy, locale) {
+  const sep = locale === 'br' ? ',' : '-';
+  const two = (n) => String(n).padStart(2, '0');
+  const [a, b] = dmy ? [two(d), two(m)] : [two(m), two(d)];
+  return `${a}${sep}${b}${sep}${y} ${wd}`;
+}
+
+// Dias na base 30/360 (regra da HP) entre duas datas já decompostas ({ y, m, d }); a mais antiga primeiro.
+function days360(a, b) {
+  const z1 = a.d === 31 ? 30 : a.d;
+  const z2 = b.d === 31 && (a.d === 30 || a.d === 31) ? 30 : b.d;
+  const f = (p, z) => 360 * p.y + 30 * p.m + z;
+  return f(b, z2) - f(a, z1);
+}
+
+// Data de cupom: a de vencimento menos `months` meses; fim de mês acompanha fim de mês.
+function shiftMonths({ y, m, d }, months) {
+  const total = y * 12 + (m - 1) + months;
+  const ny = Math.floor(total / 12);
+  const nm = (total % 12) + 1;
+  const last = daysIn(ny, nm);
+  return { y: ny, m: nm, d: d === daysIn(y, m) ? last : Math.min(d, last) };
+}
+
+return { parseDate, encodeDate, weekday, addDays, daysBetween, formatDate, days360, shiftMonths };
+})();
+
+const __m_bonds = (() => {
+const { CalcError } = __m_errors;
+const { round10 } = __m_number;
+const { parseDate, days360, shiftMonths } = __m_dates;
+
+// Títulos da HP 12C: cupons semestrais, valor de face 100, base 30/360 (E = 180 dias).
+// Entradas: PMT = cupom anual (%), i = taxa anual (%), PV = preço (só YTM),
+// Y = data de liquidação, X = data de vencimento.
+const E = 180;
+
+function schedule(settle, maturity, dmy) {
+  const s = parseDate(settle, dmy);
+  const m = parseDate(maturity, dmy);
+  if (m.j <= s.j) throw new CalcError(8);
+  const key = (p) => p.y * 10000 + p.m * 100 + p.d;
+  let k = 0;
+  let prev = m;
+  let next = m;
+  while (key(prev) > key(s)) {
+    next = prev;
+    k += 1;
+    prev = shiftMonths(m, -6 * k);
+  }
+  const a = days360(prev, s);
+  return { n: k, a, dsc: E - a };
+}
+
+function priceFor(sc, coupon, yieldPct) {
+  const r = yieldPct / 200;
+  if (r <= -1) throw new CalcError(5);
+  const cpn = coupon / 2;
+  const accrued = (cpn * sc.a) / E;
+  const t = sc.dsc / E;
+  let price;
+  if (sc.n === 1) {
+    price = (100 + cpn) / (1 + t * r) - accrued;
+  } else {
+    price = 100 / Math.pow(1 + r, sc.n - 1 + t);
+    for (let j = 1; j <= sc.n; j++) price += cpn / Math.pow(1 + r, j - 1 + t);
+    price -= accrued;
+  }
+  if (!Number.isFinite(price)) throw new CalcError(5);
+  return { price, accrued };
+}
+
+// f PRICE: preço (sem juros acumulados) e juros acumulados por 100 de face.
+function bondPrice(settle, maturity, coupon, yieldPct, dmy) {
+  if (coupon < 0) throw new CalcError(5);
+  const sc = schedule(settle, maturity, dmy);
+  const r = priceFor(sc, coupon, yieldPct);
+  return { price: round10(r.price), accrued: round10(r.accrued) };
+}
+
+// f YTM: taxa anual (%) que leva ao preço dado (sem juros acumulados).
+function bondYield(settle, maturity, coupon, price, dmy) {
+  if (coupon < 0 || !(price > 0)) throw new CalcError(5);
+  const sc = schedule(settle, maturity, dmy);
+  const fn = (y) => priceFor(sc, coupon, y).price - price;
+  let lo = -99; // %
+  let hi = 10000;
+  let flo = fn(lo);
+  if (Math.sign(flo) === Math.sign(fn(hi))) throw new CalcError(5);
+  for (let it = 0; it < 300; it++) {
+    const mid = (lo + hi) / 2;
+    const fm = fn(mid);
+    if (fm === 0 || hi - lo < 1e-13) return round10(mid);
+    if (Math.sign(fm) === Math.sign(flo)) {
+      lo = mid;
+      flo = fm;
+    } else hi = mid;
+  }
+  return round10((lo + hi) / 2);
+}
+
+return { bondPrice, bondYield };
+})();
+
 const __m_math = (() => {
 const { CalcError } = __m_errors;
 const { round10 } = __m_number;
@@ -1268,89 +1445,6 @@ function validLine(l) {
 return { MAX_LINES, keyCode, lineCodes, lineText, memoryText, validLine };
 })();
 
-const __m_dates = (() => {
-const { CalcError } = __m_errors;
-
-// Funções de calendário da HP 12C: datas de 15/10/1582 a 25/11/4046 (calendário gregoriano).
-// Uma data é um número: M.DDAAAA (formato mês-dia-ano) ou DD.MMAAAA (dia-mês-ano).
-
-const MIN = 2299161; // 15/10/1582
-const MAX = 2299161 + (jdn(4046, 11, 25) - 2299161);
-
-function jdn(y, m, d) {
-  const a = Math.floor((14 - m) / 12);
-  const yy = y + 4800 - a;
-  const mm = m + 12 * a - 3;
-  return d + Math.floor((153 * mm + 2) / 5) + 365 * yy + Math.floor(yy / 4) - Math.floor(yy / 100) + Math.floor(yy / 400) - 32045;
-}
-
-function fromJdn(j) {
-  const a = j + 32044;
-  const b = Math.floor((4 * a + 3) / 146097);
-  const c = a - Math.floor((146097 * b) / 4);
-  const d = Math.floor((4 * c + 3) / 1461);
-  const e = c - Math.floor((1461 * d) / 4);
-  const m = Math.floor((5 * e + 2) / 153);
-  return {
-    d: e - Math.floor((153 * m + 2) / 5) + 1,
-    m: m + 3 - 12 * Math.floor(m / 10),
-    y: 100 * b + d - 4800 + Math.floor(m / 10),
-  };
-}
-
-const daysIn = (y, m) => [31, (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0 ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m - 1];
-
-// Número digitado → data. Erro 8 se for inválida ou fora do intervalo.
-function parseDate(x, dmy) {
-  const lead = Math.floor(x + 1e-9);
-  const rest = Math.round((x - lead) * 1e6);
-  const mid = Math.floor(rest / 10000);
-  const y = rest % 10000;
-  const m = dmy ? mid : lead;
-  const d = dmy ? lead : mid;
-  if (!(m >= 1 && m <= 12 && d >= 1 && y >= 1582) || d > daysIn(y, m)) throw new CalcError(8);
-  const j = jdn(y, m, d);
-  if (j < MIN || j > MAX) throw new CalcError(8);
-  return { y, m, d, j };
-}
-
-function encodeDate({ y, m, d }, dmy) {
-  const [a, b] = dmy ? [d, m] : [m, d];
-  return Math.round((a + b / 100 + y / 1e6) * 1e6) / 1e6;
-}
-
-// 1 = segunda-feira … 7 = domingo.
-const weekday = (j) => (j % 7) + 1;
-
-function addDays(x, days, dmy) {
-  const a = parseDate(x, dmy);
-  const j = a.j + Math.trunc(days);
-  if (j < MIN || j > MAX) throw new CalcError(8);
-  const r = fromJdn(j);
-  return { value: encodeDate(r, dmy), parts: r, weekday: weekday(j) };
-}
-
-// Dias exatos e dias na base 30/360 entre duas datas (a mais antiga primeiro).
-function daysBetween(x1, x2, dmy) {
-  const a = parseDate(x1, dmy);
-  const b = parseDate(x2, dmy);
-  const z1 = a.d === 31 ? 30 : a.d;
-  const z2 = b.d === 31 && (a.d === 30 || a.d === 31) ? 30 : b.d;
-  const f = (p, z) => 360 * p.y + 30 * p.m + z;
-  return { actual: b.j - a.j, commercial: f(b, z2) - f(a, z1) };
-}
-
-// "11,09,2004 6": campos separados por vírgula (pt-BR) ou hífen (en-US) e o dia da semana no fim.
-function formatDate({ y, m, d }, wd, dmy, locale) {
-  const sep = locale === 'br' ? ',' : '-';
-  const two = (n) => String(n).padStart(2, '0');
-  const [a, b] = dmy ? [two(d), two(m)] : [two(m), two(d)];
-  return `${a}${sep}${b}${sep}${y} ${wd}`;
-}
-
-return { parseDate, encodeDate, weekday, addDays, daysBetween, formatDate };
-})();
-
 const __m_stats = (() => {
 const { CalcError } = __m_errors;
 const { round10 } = __m_number;
@@ -1423,6 +1517,7 @@ const { Registers } = __m_registers;
 const { CashFlows } = __m_cashflow;
 const { amortize } = __m_amort;
 const { sl, soyd, db } = __m_depreciation;
+const { bondPrice, bondYield } = __m_bonds;
 const { applyOp } = __m_math;
 const { solve, simpleInterest } = __m_tvm;
 const { CalcError } = __m_errors;
@@ -1734,6 +1829,22 @@ class Engine {
         s.lastX = count;
         s.loadXYZ(r.interest, r.principal, count);
         return this._record('AMORT');
+      }
+      case 'yx': { // PRICE — Y = liquidação, X = vencimento; devolve preço (X) e juros acumulados (Y)
+        s.commit();
+        const mat = s.x;
+        const r = bondPrice(s.y, mat, this.fin.pmt, this.fin.i, this.dmy);
+        s.lastX = mat;
+        s.loadXYZ(r.price, r.accrued, s.z);
+        return this._record('PRICE');
+      }
+      case 'recip': { // YTM — preço em PV; devolve a taxa anual em X
+        s.commit();
+        const mat = s.x;
+        const y = bondYield(s.y, mat, this.fin.pmt, this.fin.pv, this.dmy);
+        s.lastX = mat;
+        s.loadXYZ(y, s.y, s.z);
+        return this._record('YTM');
       }
       case 'pctT': // SL
       case 'dpct': // SOYD
@@ -2878,7 +2989,7 @@ return { startReflex };
 const __m_verso_data = (() => {
 // Guia do verso: exemplos de uso (sequências de teclas) escritos para este app, em português.
 // `keys` usa os ids do motor (ver keymap.js); números entram dígito a dígito, com "." para a vírgula decimal.
-// `ready:false` = função ainda não implementada (aparece como "em breve").
+// `ready:false` = exemplo ainda sem função correspondente (aparece como "em breve"); na V2 todos estão prontos.
 
 const SIGMA_MAP = [
   ['n', 'R1'], ['Σx', 'R2'], ['Σx²', 'R3'], ['Σy', 'R4'], ['Σy²', 'R5'], ['Σxy', 'R6'],
@@ -2924,11 +3035,12 @@ const VERSO = [
     id: 'amort', tag: 'AMORT', title: 'Amortização',
     items: [
       {
-        id: 'amort-1', title: 'Financiamento de 50.000 em 30 anos a 5,25% a.a.', text: 'Juros e principal pagos nas 12 primeiras parcelas.', ready: false,
+        id: 'amort-1', title: 'Financiamento de 50.000 em 30 anos a 5,25% a.a.', text: 'Prestação e, nas 12 primeiras parcelas, juros, principal e saldo. Repetir 12 f AMORT segue para o 2º ano.', ready: true,
         variants: [
-          { label: 'Prepara', keys: 'f xy 30 g n 5.25 g i 50000 pv pmt 0 n' },
-          { label: 'Juros pagos', keys: '12 f n' },
-          { label: 'Principal pago', keys: '12 f n xy' },
+          { label: 'Prestação', keys: 'f xy 30 g n 5.25 g i 50000 pv pmt' },
+          { label: 'Juros pagos', keys: 'f xy 30 g n 5.25 g i 50000 pv pmt 0 n 12 f n' },
+          { label: 'Principal pago', keys: 'f xy 30 g n 5.25 g i 50000 pv pmt 0 n 12 f n xy' },
+          { label: 'Saldo devedor', keys: 'f xy 30 g n 5.25 g i 50000 pv pmt 0 n 12 f n rcl pv' },
         ],
       },
     ],
@@ -2937,11 +3049,15 @@ const VERSO = [
     id: 'bond', tag: 'BOND', title: 'Títulos',
     items: [
       {
-        id: 'bond-price', title: 'YTM 6%, cupom 4,75%, de 28/04/2004 a 15/11/2013', text: 'Preço a partir da taxa.', ready: false,
-        variants: [{ label: 'D.MY', keys: 'g 4 6 i 4.75 pmt 28.042004 enter 15.112013 f yx' }],
+        id: 'bond-price', title: 'Taxa 6%, cupom 4,75%, de 28/04/2004 a 15/11/2013', text: 'Preço (sem juros acumulados) por 100 de face e, com x≷y, os juros acumulados.', ready: true,
+        variants: [
+          { label: 'D.MY · preço', keys: 'g 4 6 i 4.75 pmt 28.042004 enter 15.112013 f yx' },
+          { label: 'D.MY · juros acumulados', keys: 'g 4 6 i 4.75 pmt 28.042004 enter 15.112013 f yx xy' },
+          { label: 'M.DY · preço', keys: 'g 5 6 i 4.75 pmt 4.282004 enter 11.152013 f yx' },
+        ],
       },
       {
-        id: 'bond-ytm', title: 'Preço 99,16, cupom 4,75%, de 28/04/2004 a 15/11/2013', text: 'Taxa a partir do preço.', ready: false,
+        id: 'bond-ytm', title: 'Preço 99,16, cupom 4,75%, de 28/04/2004 a 15/11/2013', text: 'Taxa anual a partir do preço.', ready: true,
         variants: [{ label: 'D.MY', keys: 'g 4 99.16 pv 4.75 pmt 28.042004 enter 15.112013 f recip' }],
       },
     ],
@@ -2950,7 +3066,7 @@ const VERSO = [
     id: 'depr', tag: 'DEPR', title: 'Depreciação',
     items: [
       {
-        id: 'depr-1', title: 'Custo 10.000, residual 500, vida 5 anos, ano 1', text: 'Linha reta, soma dos dígitos e saldo decrescente (125%).', ready: false,
+        id: 'depr-1', title: 'Custo 10.000, residual 500, vida 5 anos, ano 1', text: 'Linha reta, soma dos dígitos e saldo decrescente (125%).', ready: true,
         variants: [
           { label: 'Linha reta', keys: '10000 pv 500 fv 5 n 1 f pctT' },
           { label: 'Soma dos dígitos', keys: '10000 pv 500 fv 5 n 1 f dpct' },
