@@ -133,6 +133,7 @@ test('com a permissão concedida, a inclinação do aparelho move a camada', asy
   await page.locator('.settings button.motion').click();
   await page.waitForTimeout(100);
   const antes = await tf(page);
+  await page.evaluate(() => window.dispatchEvent(Object.assign(new Event('deviceorientation'), { gamma: 0, beta: 50 })));
   await page.evaluate(() => window.dispatchEvent(Object.assign(new Event('deviceorientation'), { gamma: 35, beta: 50 })));
   await page.waitForFunction((a) => document.querySelector('.reflex').style.transform !== a, antes);
   await ctx.close();
@@ -180,6 +181,7 @@ test('o sensor de inclinação liga sozinho (ou no primeiro toque, se o sistema 
   await modern(p);
   await p.locator('.brand').click(); // um toque basta para quem precisa de permissão
   await p.waitForTimeout(150);
+  await p.evaluate(() => window.dispatchEvent(Object.assign(new Event('deviceorientation'), { gamma: 0, beta: 50 })));
   await p.evaluate(() => window.dispatchEvent(Object.assign(new Event('deviceorientation'), { gamma: 20, beta: 70 })));
   await p.waitForTimeout(700);
   const t = await p.locator('.reflex').evaluate((e) => e.style.transform);
@@ -207,3 +209,33 @@ for (const [t, m] of [['retro', 'auto'], ['moderno', 'escuro'], ['moderno', 'cla
     await app.close();
   });
 }
+
+test('calibração: a primeira leitura vira o centro, qualquer que seja o jeito de segurar', async () => {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  await ctx.addInitScript(() => {
+    window.DeviceOrientationEvent = class extends Event {
+      static requestPermission() { return Promise.resolve('granted'); }
+    };
+  });
+  const p = await ctx.newPage();
+  await p.goto(server.url + '/src/ui/index.html');
+  await p.waitForSelector('button.key');
+  await modern(p);
+  await p.locator('.settings-btn').click();
+  await p.locator('.settings button.motion').click();
+  await p.waitForTimeout(100);
+  const tilt = (g, b) => p.evaluate(([g, b]) => window.dispatchEvent(Object.assign(new Event('deviceorientation'), { gamma: g, beta: b })), [g, b]);
+  const pos = () => p.locator('.reflex').evaluate((e) => {
+    const m = new DOMMatrixReadOnly(getComputedStyle(e).transform);
+    return [m.m41, m.m42];
+  });
+  await tilt(12, 75); // segurando bem inclinado: não pode empurrar o reflexo para o limite
+  await p.waitForTimeout(700);
+  const [x0, y0] = await pos();
+  assert.ok(Math.abs(x0) < 5 && Math.abs(y0) < 5, `centro esperado, veio ${x0},${y0}`);
+  await tilt(30, 75); // +18° para o lado: vai ao limite horizontal
+  await p.waitForTimeout(900);
+  const [x1] = await pos();
+  assert.ok(x1 > 60, `deveria deslocar para o lado, veio ${x1}`);
+  await ctx.close();
+});

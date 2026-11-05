@@ -5,6 +5,8 @@ const RANGE_Y = 120;
 const SMOOTH = 0.18; // amortecimento por quadro
 const MIN_DELTA = 0.01; // variação mínima do alvo para valer a pena atualizar
 const EPS = 0.002;
+const TILT_SPAN = 18; // graus de inclinação, a partir da posição neutra, que levam o reflexo ao limite
+const BASE_FOLLOW = 0.004; // a posição neutra acompanha devagar como você segura o aparelho (~4 s)
 
 export function startReflex(layer) {
   let target = { x: 0, y: 0 };
@@ -13,6 +15,7 @@ export function startReflex(layer) {
   let stopped = false;
   let motionOn = false;
   let tiltSeen = false;
+  let base = null; // posição neutra: a primeira leitura (e a seguinte a cada calibração)
 
   const frame = () => {
     raf = 0;
@@ -39,7 +42,19 @@ export function startReflex(layer) {
   const onTilt = (e) => {
     if (e.gamma == null && e.beta == null) return;
     tiltSeen = true;
-    aim((e.gamma ?? 0) / 25, ((e.beta ?? 50) - 50) / 25); // ~25° de inclinação já leva o reflexo ao limite
+    const g = e.gamma ?? 0;
+    const b = e.beta ?? 50;
+    if (!base) base = { g, b }; // calibração automática: o jeito atual de segurar vira o "centro"
+    base.g += (g - base.g) * BASE_FOLLOW;
+    base.b += (b - base.b) * BASE_FOLLOW;
+    let dx = g - base.g;
+    let dy = b - base.b;
+    // em paisagem os eixos do sensor giram junto com a tela
+    const ang = ((window.screen?.orientation?.angle ?? 0) + 360) % 360;
+    if (ang === 90) [dx, dy] = [dy, -dx];
+    else if (ang === 270) [dx, dy] = [-dy, dx];
+    else if (ang === 180) [dx, dy] = [-dx, -dy];
+    aim(dx / TILT_SPAN, dy / TILT_SPAN);
   };
   const onVisibility = () => {
     if (document.hidden && raf) {
@@ -61,8 +76,14 @@ export function startReflex(layer) {
     get needsPermission() {
       return typeof window.DeviceOrientationEvent?.requestPermission === 'function';
     },
+    // recalibra: o jeito como você segura o aparelho agora passa a ser o centro
+    calibrate() {
+      base = null;
+    },
     async enableMotion() {
-      if (motionOn || stopped) return false;
+      if (stopped) return false;
+      base = null;
+      if (motionOn) return true;
       const D = window.DeviceOrientationEvent;
       if (!D) return false;
       try {

@@ -151,7 +151,7 @@ export function mountSettings(ctx) {
     // o Chrome só envia a inclinação em páginas seguras (https); em arquivo local pode não chegar nada
     await new Promise((r) => setTimeout(r, 1500));
     status.textContent = ctx.reflex?.tiltSeen
-      ? 'Movimento ativo: incline o aparelho.'
+      ? 'Movimento ativo e calibrado na posição atual: incline o aparelho.'
       : 'Este modo de abertura não envia a inclinação (precisa de https). O brilho segue o toque e se move sozinho.';
   });
   btn.addEventListener('click', () => {
