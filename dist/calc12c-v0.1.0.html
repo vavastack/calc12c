@@ -115,6 +115,26 @@
   --reflex: linear-gradient(115deg, transparent 28%, #ffffff40 38%, #ffffff73 46%, #ffffff8c 50%, #ffffff73 54%, #ffffff40 62%, transparent 72%);
 }
 
+/* Retro na Platinum: a mesma vidraça, mas em prata em vez de dourado */
+[data-model="12cp"][data-theme^="moderno"] {
+  --plate-a:#8f959d; --plate-b:#e6e9ee; --plate-c:#aeb4bc; --plate-edge:#555a62; --plate-ink:#1f2227; --engrave-hi:rgba(255,255,255,.8); --engrave-lo:rgba(10,12,16,.5);
+  --badge-a:#f2f4f7; --badge-b:#a9afb8; --badge-c:#dfe3e8; --badge-d:#8a9099; --badge-ink:#dfe3e8;
+  --keyf-text:#15171a; --flash-f:#ffffffe6;
+}
+[data-model="12cp"][data-theme="moderno-escuro"] {
+  --edge:#d5dae28c; --brand:#dfe3e8; --gold:#e3e6ea; --blue:#9fb3c6; --ind-on:#e3e6ea;
+  --keyf-bg: linear-gradient(#f2f4f7b0, #aeb4bc66); --keyf-border:#e6e9ee8c; --keyf-shadow: inset 0 1px 0 #ffffff66, 0 4px 12px #aeb4bc40;
+  --keyg-bg: linear-gradient(#8e9aa8ad, #4b5560a0); --keyg-border:#b4bdc899; --keyg-shadow: inset 0 1px 0 #ffffff55, 0 4px 12px #4b556059; --flash-g:#d3dce6e6;
+  --glow: radial-gradient(260px 220px at 8% 6%, #ffffff2e, transparent 70%), radial-gradient(300px 260px at 95% 92%, #8e9aa83d, transparent 70%);
+}
+[data-model="12cp"][data-theme="moderno-claro"] {
+  --edge:#6c727a88; --brand:#3a3f46; --gold:#3a3f46; --blue:#2d4f78; --ind-on:#d9dde3;
+  --keyf-bg: linear-gradient(#f7f8fafa, #b9bfc7cc); --keyf-border:#8b929ab3; --keyf-text:#15171a; --keyf-shadow: inset 0 1px 0 #ffffffb3, 0 3px 8px #6c727a40;
+  --keyg-bg: linear-gradient(#a9b6c4fa, #6b7a8bd1); --keyg-border:#5d6a79a0; --keyg-text:#0d1620; --keyg-shadow: inset 0 1px 0 #ffffffb3, 0 3px 8px #4b556047; --flash-g:#dfe7efF2;
+  --key-flat:#eceef1; --key-bg: linear-gradient(#ffffffe0, #ffffff75); --key-border:#5b60683a; --bg:#e6e8ec; --body: linear-gradient(160deg, #f1f3f6 0%, #dde0e5 100%); --body-solid:#e9ebef; --handle:#b4b9c1; --sub:#5b6068; --hint:#5b6068;
+  --glow: radial-gradient(260px 220px at 8% 6%, #ffffff80, transparent 70%), radial-gradient(300px 260px at 95% 92%, #8e9aa83d, transparent 70%);
+}
+
 /* Reduzir efeitos: vidro sólido, sem reflexo (liga sozinho em aparelhos simples) */
 [data-reduce="true"] {
   --glass: none;
@@ -341,7 +361,8 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
   .card .k, .reg .k, .stk .k { font-size: 8.5px; line-height: 1.1; }
   .card .v, .reg .v, .stk .v { font-size: 10px; line-height: 1.15; }
   .cards, .regs, .stack, .mem { gap: 3px; }
-  .drawer .mem { grid-column: 1; grid-row: 1; align-self: start; font-size: 10px; margin-top: calc(var(--plate-h) + 8px); }
+  /* o painel rola em vez de crescer: com 20 registradores (Platinum) ele espremia o teclado */
+  .drawer .mem { grid-column: 1; grid-row: 1; align-self: start; font-size: 10px; margin-top: calc(var(--plate-h) + 8px); max-height: max(100px, 26vh); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
   .drawer .tape-wrap, .drawer .confirm { display: none; }
   .drawer[data-open="true"] .tape-wrap { display: grid; position: absolute; left: 238px; right: 8px; top: 110px; z-index: 5;
     background: var(--body-solid); border: 1px solid var(--edge); border-radius: 10px; padding: 8px; max-height: 50%; overflow: auto; }
@@ -5213,6 +5234,7 @@ function mountApp(root, engine = createEngine()) {
     const title = brand.querySelector('.title');
     if (title.dataset.profile !== p.id) { // o título muda só quando o perfil muda
       title.dataset.profile = p.id;
+      document.documentElement.setAttribute('data-model', p.id); // o tema Retro usa prata na Platinum
       title.classList.toggle('two', !!p.title);
       if (p.title) title.innerHTML = `<span class="l1">${p.title[0]}</span><small class="l2">${p.title[1]}</small>`; // ex.: Platinum com 12c embaixo
       else title.textContent = p.name;

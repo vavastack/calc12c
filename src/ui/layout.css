@@ -215,7 +215,8 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
   .card .k, .reg .k, .stk .k { font-size: 8.5px; line-height: 1.1; }
   .card .v, .reg .v, .stk .v { font-size: 10px; line-height: 1.15; }
   .cards, .regs, .stack, .mem { gap: 3px; }
-  .drawer .mem { grid-column: 1; grid-row: 1; align-self: start; font-size: 10px; margin-top: calc(var(--plate-h) + 8px); }
+  /* o painel rola em vez de crescer: com 20 registradores (Platinum) ele espremia o teclado */
+  .drawer .mem { grid-column: 1; grid-row: 1; align-self: start; font-size: 10px; margin-top: calc(var(--plate-h) + 8px); max-height: max(100px, 26vh); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
   .drawer .tape-wrap, .drawer .confirm { display: none; }
   .drawer[data-open="true"] .tape-wrap { display: grid; position: absolute; left: 238px; right: 8px; top: 110px; z-index: 5;
     background: var(--body-solid); border: 1px solid var(--edge); border-radius: 10px; padding: 8px; max-height: 50%; overflow: auto; }

@@ -496,3 +496,35 @@ test('16C: recarregar a página mantém base, tamanho de palavra e flags', async
   assert.deepEqual(app.errors, []);
   await app.close();
 });
+
+// ---------- Retro na Platinum e modo horizontal ----------
+test('Retro na Platinum usa prata; no Gold continua dourado', async () => {
+  const app = await openApp(browser, server.url);
+  const p = app.page;
+  await p.evaluate(() => window.calc12c.setProfile('12cp'));
+  await p.evaluate(() => window.calc12c.settings.open());
+  await p.locator('.settings select[name="theme"]').selectOption('moderno');
+  await p.waitForFunction(() => document.documentElement.getAttribute('data-theme').startsWith('moderno'));
+  const cor = () => p.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--plate-b').trim());
+  assert.equal(await cor(), '#e6e9ee');
+  await p.evaluate(() => window.calc12c.setProfile('12c'));
+  assert.notEqual(await cor(), '#e6e9ee');
+  assert.deepEqual(app.errors, []);
+  await app.close();
+});
+
+test('horizontal 851×393: Platinum mantém o teclado do tamanho do clássico', async () => {
+  const h = async (id) => {
+    const app = await openApp(browser, server.url, { width: 851, height: 393 });
+    await app.page.evaluate((x) => window.calc12c.setProfile(x), id);
+    const r = await app.page.evaluate(() => ({
+      keys: document.querySelector('.keys').getBoundingClientRect().height,
+      mem: document.querySelector('.mem').getBoundingClientRect().bottom,
+    }));
+    await app.close();
+    return r;
+  };
+  const c = await h('12c'), pl = await h('12cp');
+  assert.ok(pl.keys >= 190, `teclado com ${pl.keys}px`);
+  assert.ok(Math.abs(pl.keys - c.keys) < 6);
+});

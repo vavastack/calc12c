@@ -100,6 +100,7 @@ export function mountApp(root, engine = createEngine()) {
     const title = brand.querySelector('.title');
     if (title.dataset.profile !== p.id) { // o título muda só quando o perfil muda
       title.dataset.profile = p.id;
+      document.documentElement.setAttribute('data-model', p.id); // o tema Retro usa prata na Platinum
       title.classList.toggle('two', !!p.title);
       if (p.title) title.innerHTML = `<span class="l1">${p.title[0]}</span><small class="l2">${p.title[1]}</small>`; // ex.: Platinum com 12c embaixo
       else title.textContent = p.name;
