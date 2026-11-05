@@ -165,6 +165,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
   background: var(--key-flat) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23999' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 9px center;
   border: 1px solid var(--key-border); -webkit-appearance: none; appearance: none; flex: none; }
 .settings .row.off { opacity: .45; }
+.settings input[type="color"] { flex: none; width: 44px; height: 30px; padding: 2px; border: 1px solid var(--key-border); border-radius: 8px; background: var(--key-flat); cursor: pointer; }
 .settings select:disabled { cursor: not-allowed; }
 .settings input[type="checkbox"] { -webkit-appearance: none; appearance: none; flex: none; position: relative; width: 40px; height: 24px; margin: 0;
   border-radius: 12px; background: var(--key-flat); border: 1px solid var(--key-border); transition: background .2s; }

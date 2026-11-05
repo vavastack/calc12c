@@ -1,17 +1,21 @@
 // Temas e configurações. Só variáveis de cor mudam; o teclado e o motor nunca.
 import { makeWake, wakeSupported } from './extras.js';
+import { COLOR_KEYS, validHex, customVars } from './colors.js';
+import { buildMemoryFile, parseMemoryFile, loadInto } from './memories.js';
 const KEY = 'calc12c.settings';
 const THEMES = ['retro', 'platinum', 'moderno']; // 'retro' = Gold (padrão), 'platinum' = prata, 'moderno' = Retro (vidro)
-const VERSION = 3; // v2: a vibração ao tocar passou a vir ligada; v3: som, não dormir, estilo da tecla ON e banda superior
+const VERSION = 4; // v2: a vibração ao tocar passou a vir ligada; v3: som, não dormir, estilo da tecla ON e banda superior; v4: cores e orientação
 const MODES = ['auto', 'escuro', 'claro'];
 const ON_STYLES = ['menu', 'on'];
+const ORIENTS = ['auto', 'portrait', 'landscape'];
+const noColors = () => ({ plate: null, f: null, g: null, display: null });
 
 const lowEnd = () => (navigator.hardwareConcurrency ?? 8) <= 2 || (navigator.deviceMemory ?? 8) <= 2 ||
   matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 export function defaultSettings() {
   // reduce: null = automático (liga sozinho em aparelhos simples); true/false = escolha do usuário
-  return { v: VERSION, theme: 'retro', mode: 'auto', reduce: null, vibrate: true, sound: 'off', wake: false, onStyle: 'on', topPad: 0 };
+  return { v: VERSION, theme: 'retro', mode: 'auto', reduce: null, vibrate: true, sound: 'off', wake: false, onStyle: 'on', topPad: 0, colors: noColors(), orient: 'auto' };
 }
 
 export function loadSettings() {
@@ -31,6 +35,8 @@ export function loadSettings() {
       wake: o.wake === true,
       onStyle: ON_STYLES.includes(o.onStyle) ? o.onStyle : d.onStyle,
       topPad: Number.isFinite(o.topPad) ? Math.min(32, Math.max(0, Math.round(o.topPad))) : 0,
+      colors: Object.fromEntries(COLOR_KEYS.map((k) => [k, validHex(o.colors?.[k]) ? o.colors[k].toLowerCase() : null])),
+      orient: ORIENTS.includes(o.orient) ? o.orient : 'auto',
     };
   } catch {
     return d; // ausente, corrompido ou armazenamento bloqueado
@@ -86,6 +92,29 @@ export function applyTheme(theme, mode, reduceEffects) {
 
 const SOUNDS = ['off', 'soft', 'mech'];
 
+// Cores personalizadas ficam como estilo direto no <html> e vencem as do tema; sem cor escolhida, a variável some.
+let appliedColors = [];
+export function applyColors(colors) {
+  const root = document.documentElement;
+  const vars = customVars(colors);
+  for (const name of appliedColors) if (!(name in vars)) root.style.removeProperty(name);
+  for (const [name, value] of Object.entries(vars)) root.style.setProperty(name, value);
+  appliedColors = Object.keys(vars);
+}
+
+// Trava (ou libera) a orientação da tela. No Android costuma exigir o app instalado ou a tela cheia.
+export async function lockOrientation(mode) {
+  const so = window.screen?.orientation;
+  if (!so?.lock) return 'unsupported';
+  try {
+    if (mode === 'auto') so.unlock?.();
+    else await so.lock(mode);
+    return 'ok';
+  } catch {
+    return 'blocked';
+  }
+}
+
 export function mountSettings(ctx) {
   let s = loadSettings();
   const wake = makeWake();
@@ -96,6 +125,7 @@ export function mountSettings(ctx) {
     ctx.setOnStyle?.(s.onStyle);
     ctx.calc.style.setProperty('--top-extra', s.topPad + 'px');
     wake(s.wake && wakeSupported());
+    applyColors(s.colors);
   };
   const fsOk = !!document.fullscreenEnabled && !window.matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches;
   const panel = document.createElement('section');
@@ -113,6 +143,13 @@ export function mountSettings(ctx) {
     '<select name="onStyle"><option value="on">ON</option><option value="menu">Menu (≡)</option></select></label>' +
     '<label class="row"><span class="txt">Altura da banda superior<small>Desce a placa metálica (notch ou barra de status)</small></span>' +
     '<input type="range" name="topPad" min="0" max="32" step="2"></label></section>' +
+    '<section class="group"><h3 class="group-title">Cores</h3>' +
+    '<label class="row"><span class="txt">Placa e destaque<small>Faixa metálica, título e bordas</small></span><input type="color" name="color-plate"></label>' +
+    '<label class="row"><span class="txt">Tecla f<small>Teclas e rótulos dourados</small></span><input type="color" name="color-f"></label>' +
+    '<label class="row"><span class="txt">Tecla g<small>Teclas e rótulos azuis</small></span><input type="color" name="color-g"></label>' +
+    '<label class="row"><span class="txt">Visor<small>Cor dos números e dos indicadores</small></span><input type="color" name="color-display"></label>' +
+    '<div class="row"><span class="txt">Voltar às cores do tema<small>As cores escolhidas valem para qualquer tema</small></span>' +
+    '<button type="button" class="mini reset-colors">Restaurar</button></div></section>' +
     '<section class="group"><h3 class="group-title">Números e teclas</h3>' +
     '<label class="row"><span class="txt">Separador decimal<small>Como os números aparecem no visor</small></span>' +
     '<select name="locale"><option value="br">1.234,56 (pt-BR)</option><option value="us">1,234.56 (en-US)</option></select></label>' +
@@ -122,10 +159,19 @@ export function mountSettings(ctx) {
     '<select name="sound"><option value="off">Desligado</option><option value="soft">Suave</option><option value="mech">Mecânico</option></select></label></section>' +
     '<section class="group"><h3 class="group-title">Tela</h3>' +
     (fsOk ? '<div class="row"><span class="txt">Tela cheia</span><button type="button" class="mini fs-btn" aria-pressed="false">Entrar</button></div>' : '') +
+    '<label class="row"><span class="txt">Orientação<small class="orient-note">Automática gira com o aparelho; travar funciona no app instalado ou em tela cheia</small></span>' +
+    '<select name="orient"><option value="auto">Automática</option><option value="portrait">Em pé</option><option value="landscape">Deitado</option></select></label>' +
     '<label class="row"><span class="txt">Manter a tela acesa<small class="wake-note">Evita que a tela apague enquanto você usa</small></span>' +
     '<input type="checkbox" name="wake" role="switch"></label>' +
     '<label class="row"><span class="txt">Reduzir efeitos<small>Vidro sólido e sem reflexo: poupa bateria</small></span>' +
     '<input type="checkbox" name="reduce" role="switch"></label></section>' +
+    '<section class="group"><h3 class="group-title">Memórias</h3>' +
+    '<div class="row"><span class="txt">Salvar em arquivo<small>Registradores, financeiros, fluxos de caixa, programa e fita</small></span>' +
+    '<button type="button" class="mini mem-save">Salvar</button></div>' +
+    '<div class="row"><span class="txt">Abrir arquivo<small>Substitui o que está na calculadora</small></span>' +
+    '<button type="button" class="mini mem-open">Abrir</button><input type="file" class="mem-file" accept=".json,application/json" hidden></div>' +
+    '<div class="row"><span class="txt">Compartilhar<small>Envia o arquivo por um app do aparelho</small></span>' +
+    '<button type="button" class="mini mem-share">Enviar</button></div></section>' +
     '<section class="group"><h3 class="group-title">Brilho</h3>' +
     '<button type="button" class="motion">Testar movimento do aparelho</button>' +
     '<small class="motion-status" role="status"></small></section>' +
@@ -167,6 +213,13 @@ export function mountSettings(ctx) {
     panel.querySelector('[name=reduce]').checked = effectiveReduce(s);
     panel.querySelector('[name=vibrate]').checked = s.vibrate;
     panel.querySelector('[name=sound]').value = s.sound;
+    panel.querySelector('[name=orient]').value = s.orient;
+    const cs = getComputedStyle(document.documentElement);
+    const fallback = { plate: '--brand', f: '--gold', g: '--blue', display: '--display-text' };
+    for (const k of COLOR_KEYS) {
+      const shown = s.colors[k] ?? cs.getPropertyValue(fallback[k]).trim();
+      panel.querySelector(`[name=color-${k}]`).value = validHex(shown) ? shown.toLowerCase() : '#888888';
+    }
     const w = panel.querySelector('[name=wake]');
     w.checked = s.wake && wakeOk;
     w.disabled = !wakeOk;
@@ -226,9 +279,86 @@ export function mountSettings(ctx) {
       ? 'Movimento ativo e calibrado na posição atual: incline o aparelho.'
       : 'Este modo de abertura não envia a inclinação (precisa de https). O brilho se move sozinho, devagar.';
   });
-  const themeless = new Set(['vibrate', 'sound', 'wake', 'onStyle', 'topPad']);
+  // ---- cores ----
+  const onColor = (e) => {
+    const k = e.target.name.slice(6);
+    if (!COLOR_KEYS.includes(k) || !validHex(e.target.value)) return;
+    s.colors[k] = e.target.value.toLowerCase();
+    saveSettings(s);
+    applyColors(s.colors);
+  };
+  panel.querySelector('.reset-colors').addEventListener('click', () => {
+    s.colors = noColors();
+    saveSettings(s);
+    applyColors(s.colors);
+    sync();
+  });
+  // ---- orientação ----
+  const orientNote = panel.querySelector('.orient-note');
+  const orientDefault = orientNote.textContent;
+  const setOrient = async (mode, fromUser) => {
+    const r = await lockOrientation(mode);
+    if (r === 'ok' || mode === 'auto') orientNote.textContent = orientDefault;
+    else if (fromUser) orientNote.textContent = r === 'unsupported' ? 'Este navegador não permite travar a orientação.' : 'Não foi possível travar aqui: instale o app ou entre em tela cheia e tente de novo.';
+  };
+  // ---- memórias em arquivo ----
+  const fileInput = panel.querySelector('.mem-file');
+  const asFile = () => {
+    const { name, text } = buildMemoryFile(ctx.engine);
+    return new File([text], name, { type: 'application/json' });
+  };
+  const download = (file) => {
+    const url = URL.createObjectURL(file);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = file.name;
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  panel.querySelector('.mem-save').addEventListener('click', () => {
+    const f = asFile();
+    download(f);
+    ctx.showNotice(`Memórias salvas: ${f.name}`);
+  });
+  panel.querySelector('.mem-share').addEventListener('click', async () => {
+    const f = asFile();
+    try {
+      if (navigator.canShare?.({ files: [f] })) await navigator.share({ files: [f], title: 'Memórias da Calc 12c' });
+      else {
+        download(f); // sem compartilhamento neste navegador: baixa o arquivo
+        ctx.showNotice(`Compartilhar não está disponível aqui; arquivo baixado: ${f.name}`);
+      }
+    } catch (err) {
+      if (err?.name !== 'AbortError') ctx.showNotice('Não foi possível compartilhar as memórias.');
+    }
+  });
+  panel.querySelector('.mem-open').addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', async () => {
+    const f = fileInput.files?.[0];
+    fileInput.value = '';
+    if (!f) return;
+    try {
+      loadInto(ctx.engine, parseMemoryFile(await f.text()));
+      ctx.render();
+      sync();
+      ctx.showNotice(`Memórias carregadas: ${f.name}`);
+    } catch (err) {
+      ctx.showNotice(err.message);
+    }
+  });
+
+  const themeless = new Set(['vibrate', 'sound', 'wake', 'onStyle', 'topPad', 'orient']);
   const onInput = (e) => {
     const n = e.target.name;
+    if (n?.startsWith('color-')) return; // tratado por onColor
+    if (n === 'orient') {
+      s.orient = e.target.value;
+      saveSettings(s);
+      setOrient(s.orient, true);
+      return;
+    }
     if (n === 'locale') {
       ctx.engine.setLocale(e.target.value);
       ctx.render();
@@ -249,7 +379,8 @@ export function mountSettings(ctx) {
     }
   };
   panel.addEventListener('change', onInput);
-  panel.addEventListener('input', (e) => e.target.name === 'topPad' && onInput(e)); // a banda sobe e desce enquanto arrasta
+  panel.addEventListener('input', (e) => (e.target.name?.startsWith('color-') ? onColor(e) : e.target.name === 'topPad' && onInput(e))); // a banda sobe e desce enquanto arrasta
   apply();
+  if (s.orient !== 'auto') setOrient(s.orient, false); // reaplica a trava guardada
   return { get: () => ({ ...s }), open, close, toggle: () => (panel.hidden ? open() : close()), isOpen: () => !panel.hidden };
 }

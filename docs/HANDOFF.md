@@ -26,7 +26,7 @@ Arquivos: `engine.js` (despacho, F_OPS/G_OPS), `keymap.js` (ids das teclas), `tv
 **Ainda NÃO implementado:** programação (PRGM, R/S, SST, GTO...) e estatística avançada estão desabilitadas na V1 (teclas mostram aviso).
 
 ## UI (src/ui)
-`app.js` (montagem, teclas, ON, colchetes `BRACKETS`, som/vibração/animação), `settings.js` (configurações em localStorage `calc12c.settings`, VERSION 3), `extras.js` (`makeSound`, wake lock), `verso.js` + `verso-data.js` (verso; exemplo com `ready:false` mostraria "Em breve", hoje nenhum), `tape.js`, `display.js`, `reflex.js`, `layout.css`, `themes.css`, `sw.js`, `manifest.webmanifest`.
+`app.js` (montagem, teclas, ON, colchetes `BRACKETS`, som/vibração/animação), `settings.js` (configurações em localStorage `calc12c.settings`, VERSION 4: cores e orientação), `colors.js` (editor de cores: funções puras que geram as variáveis CSS), `memories.js` (memórias em arquivo), `extras.js` (`makeSound`, wake lock), `verso.js` + `verso-data.js` (verso; exemplo com `ready:false` mostraria "Em breve", hoje nenhum), `tape.js`, `display.js`, `reflex.js`, `layout.css`, `themes.css`, `sw.js`, `manifest.webmanifest`.
 Build: `node scripts/build.js` junta tudo em um HTML (o empacotador só aceita `import {…} from '…';` em uma linha e `export function/const/class/let`).
 
 ## Testes
@@ -45,7 +45,7 @@ Critério de pronto: testes verdes e resultados idênticos aos da HP 12C real qu
 
 ## Depois da V2
 - **V2.1 (feita em 05/11/2026):** grupo "Programação" (tag PRGM) no verso com 5 lições executáveis: dobro, custo líquido do manual, média, prestação com teclas financeiras e soma 1..n com laço (GTO e x=0). Variantes com `pre` gravam o programa rápido e depois animam a execução; `fullKeys` em `verso-data.js` junta as teclas; o verso sai do modo PRGM antes de rodar; cada lição mostra a listagem das linhas (`listing`). Resultados na tabela ESPERADO.
-- V1.2: salvar/carregar/compartilhar memórias em arquivo, editor de cores, orientação no Android.
+- **V1.2 (feita em 05/11/2026):** (a) Memórias em arquivo: Configurações > Memórias salva/abre/compartilha um JSON (`tipo: calc12c-memorias`) com registradores, financeiros, fluxos de caixa, programa, pilha e fita; abrir valida tudo e recusa arquivo inválido sem mexer na calculadora; compartilhar usa `navigator.share` com arquivo e, sem suporte, baixa. (b) Editor de cores: 4 cores (placa/destaque, tecla f, tecla g, visor) viram variáveis CSS inline no `<html>` e valem para qualquer tema; "Restaurar" volta ao tema. (c) Orientação: automática/em pé/deitado via `screen.orientation.lock`, reaplicada ao abrir; no Android costuma exigir o app instalado ou tela cheia (não testado em aparelho real; o painel avisa quando o navegador recusa).
 - Perfis/arquitetura de calculadoras: Black-Scholes, 10C, 11C, 16C, 15C e modo ALG (algébrico, como na 12C Platinum: parênteses e ENTER fazendo o papel de "=") como mais uma opção de cálculo (V3).
 - Integração futura como módulo da Pista Financeira.
 

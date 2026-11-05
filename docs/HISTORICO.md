@@ -14,6 +14,8 @@ Complementa o `HANDOFF.md`: aqui ficam o caminho percorrido, as decisões do Wan
 
 9. **V2 (05/11/2026):** fluxo de caixa, AMORT, depreciação, títulos, RND e verso liberado, tudo conferido por ele na HP real. Correção extra do `bisect` para taxas negativas. A V2 foi fechada.
 
+10. **V2.1 e V1.2 (05/11/2026):** guia de programação no verso (5 lições executáveis) e, em seguida, memórias em arquivo, editor de cores e orientação. Pedido dele: fazer os dois em sequência depois de fechar a V2.
+
 ## 2. Decisões do Wanderson (valem daqui para frente)
 - Seguir o nosso layout, não o do Touch RPN; copiar só as linhas de ligação das fórmulas.
 - Toque na ON = configurações; segurar = verso. ON sempre escrito "ON" por padrão.
