@@ -192,7 +192,8 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
   background: var(--key-bg); box-shadow: var(--key-shadow); color: var(--key-text); border: 1px solid var(--key-border); border-radius: var(--key-radius, 13px);
   position: relative; padding: 5px 0 4px; font: inherit; min-width: 0; min-height: 0; }
 .face { display: none; }
-.key:active { filter: brightness(1.25); transform: scale(.97); }
+.key { transition: transform .16s cubic-bezier(.3,1.6,.5,1), filter .16s; }
+.key.down { filter: brightness(1.18); transform: translateY(1.5px) scale(.965); transition-duration: .035s; }
 .key .lf { color: var(--gold); font-size: clamp(8.5px, 1.15dvh, 9.5px); font-weight: 600; white-space: nowrap; line-height: 1; min-height: 10px; }
 .key .lg { color: var(--blue); font-size: clamp(8.5px, 1.15dvh, 9.5px); font-weight: 600; white-space: nowrap; line-height: 1; min-height: 10px; }
 .key .lm { font-size: clamp(14px, 2.1dvh, 18px); font-weight: 500; flex: 1; display: flex; align-items: center; line-height: 1; padding: 1px 0; }
@@ -224,7 +225,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
 @keyframes glow-key { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes glow-label { 0% { opacity: .2; } 35% { opacity: 1; } 55% { opacity: .55; } 100% { opacity: 1; } }
 /* o brilho de f e g é só opacidade (barato): continua no modo "reduzir efeitos"; só o sistema com movimento reduzido o desliga */
-@media (prefers-reduced-motion: reduce) { .key.touch::after, .key.flash::after, .key.flash::before, .calc .key .lf, .calc .key .lg { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .key, .key .face, .key .lm { transition: none !important; } .key.touch::after, .key.flash::after, .key.flash::before, .calc .key .lf, .calc .key .lg { animation: none !important; } }
 
 /* o reflexo cobre todo o vidro (placa, visor e teclado); a .sheen reforça só a placa, na mesma direção */
 .reflex-clip { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 3; }
@@ -349,6 +350,12 @@ html:not([data-theme^="moderno"]) .key .face { display: block; position: absolut
   border-radius: var(--key-radius); background: var(--key-bg); border: 1px solid var(--key-border); box-shadow: var(--key-shadow); }
 html:not([data-theme^="moderno"]) .key.prefix-f .face { background: var(--keyf-bg); border-color: var(--keyf-border); box-shadow: var(--keyf-shadow); }
 html:not([data-theme^="moderno"]) .key.prefix-g .face { background: var(--keyg-bg); border-color: var(--keyg-border); box-shadow: var(--keyg-shadow); }
+/* Gold e Platinum: só a face escura afunda; os rótulos acompanham e a sombra de baixo some, como numa tecla de verdade */
+html:not([data-theme^="moderno"]) .key.down { transform: none; filter: none; }
+html:not([data-theme^="moderno"]) .key .face { transition: transform .16s cubic-bezier(.3,1.6,.5,1), box-shadow .16s, filter .16s; }
+html:not([data-theme^="moderno"]) .key .lm { transition: transform .16s cubic-bezier(.3,1.6,.5,1); }
+html:not([data-theme^="moderno"]) .key.down .face { transform: translateY(2px); box-shadow: 0 0 0 transparent, inset 0 2px 4px #0009; filter: brightness(.88); transition-duration: .035s; }
+html:not([data-theme^="moderno"]) .key.down .lm { transform: translateY(2px); transition-duration: .035s; }
 html:not([data-theme^="moderno"]) .key::after { top: var(--face-top); }
 html:not([data-theme^="moderno"]) .key::before { top: calc(var(--face-top) - 2px); }
 html:not([data-theme^="moderno"]) .key .lg:empty { display: none; }
@@ -2127,30 +2134,84 @@ return { mountDrawer };
 const __m_extras = (() => {
 // Extras das configurações: som de tecla (Web Audio) e "não dormir" (Screen Wake Lock). Tudo opcional e sem rede.
 
-// Clique curto e discreto. O contexto de áudio só nasce no primeiro toque (o navegador exige um gesto do usuário).
-function makeClick() {
+// Som das teclas, sintetizado no navegador (sem arquivos de áudio, tudo offline). Dois momentos: ao apertar e ao soltar.
+// Modos: 'soft' = clique macio; 'mech' = estalo de tecla mecânica com um "toc" grave. O contexto de áudio só nasce no primeiro toque.
+function makeSound() {
   let ac = null;
-  return () => {
-    try {
-      const AC = window.AudioContext ?? window.webkitAudioContext;
-      if (!AC) return;
-      ac ??= new AC();
-      if (ac.state === 'suspended') ac.resume();
-      const t = ac.currentTime;
-      const osc = ac.createOscillator();
-      const gain = ac.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(1900, t);
-      osc.frequency.exponentialRampToValueAtTime(700, t + 0.025);
-      gain.gain.setValueAtTime(0.0001, t);
-      gain.gain.exponentialRampToValueAtTime(0.07, t + 0.003);
-      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.03);
-      osc.connect(gain).connect(ac.destination);
-      osc.start(t);
-      osc.stop(t + 0.035);
-    } catch {
-      /* sem áudio: o app segue funcionando */
+  let noise = null;
+  let mode = 'off';
+  const PERFIL = { enter: { f: 0.72, g: 1.25 }, fg: { f: 0.85, g: 0.75 }, num: { f: 1, g: 1 }, fn: { f: 1.08, g: 1 } };
+  const prepare = () => {
+    const AC = window.AudioContext ?? window.webkitAudioContext;
+    if (!AC) return false;
+    if (!ac) {
+      ac = new AC();
+      noise = ac.createBuffer(1, Math.floor(ac.sampleRate * 0.06), ac.sampleRate);
+      const d = noise.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     }
+    if (ac.state === 'suspended') ac.resume();
+    return true;
+  };
+  const env = (g, t, peak, dur) => {
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + 0.002);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  };
+  return {
+    get mode() {
+      return mode;
+    },
+    set(m) {
+      mode = m === 'soft' || m === 'mech' ? m : 'off';
+    },
+    // kind: enter | fg | num | fn   phase: down | up
+    play(kind = 'num', phase = 'down') {
+      if (mode === 'off') return;
+      try {
+        if (!prepare()) return;
+        const { f, g } = PERFIL[kind] ?? PERFIL.num;
+        const down = phase === 'down';
+        const t = ac.currentTime;
+        if (mode === 'soft') {
+          const osc = ac.createOscillator();
+          const gain = ac.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime((down ? 1900 : 2300) * f, t);
+          osc.frequency.exponentialRampToValueAtTime((down ? 700 : 1100) * f, t + 0.025);
+          env(gain, t, (down ? 0.07 : 0.03) * g, 0.03);
+          osc.connect(gain).connect(ac.destination);
+          osc.start(t);
+          osc.stop(t + 0.04);
+          return;
+        }
+        // mecânico: estalo filtrado (ruído) + toc grave só ao apertar
+        const src = ac.createBufferSource();
+        const bp = ac.createBiquadFilter();
+        const gn = ac.createGain();
+        src.buffer = noise;
+        bp.type = 'bandpass';
+        bp.frequency.value = (down ? 2600 : 3600) * f;
+        bp.Q.value = 1.3;
+        env(gn, t, (down ? 0.2 : 0.09) * g, down ? 0.025 : 0.018);
+        src.connect(bp).connect(gn).connect(ac.destination);
+        src.start(t);
+        src.stop(t + 0.05);
+        if (down) {
+          const th = ac.createOscillator();
+          const tg = ac.createGain();
+          th.type = 'sine';
+          th.frequency.setValueAtTime(170 * f, t);
+          th.frequency.exponentialRampToValueAtTime(80 * f, t + 0.045);
+          env(tg, t, 0.16 * g, 0.05);
+          th.connect(tg).connect(ac.destination);
+          th.start(t);
+          th.stop(t + 0.06);
+        }
+      } catch {
+        /* sem áudio: o app segue funcionando */
+      }
+    },
   };
 }
 
@@ -2184,7 +2245,7 @@ function makeWake() {
   };
 }
 
-return { makeClick, wakeSupported, makeWake };
+return { makeSound, wakeSupported, makeWake };
 })();
 
 const __m_settings = (() => {
@@ -2201,7 +2262,7 @@ const lowEnd = () => (navigator.hardwareConcurrency ?? 8) <= 2 || (navigator.dev
 
 function defaultSettings() {
   // reduce: null = automático (liga sozinho em aparelhos simples); true/false = escolha do usuário
-  return { v: VERSION, theme: 'retro', mode: 'auto', reduce: null, vibrate: true, sound: false, wake: false, onStyle: 'on', topPad: 0 };
+  return { v: VERSION, theme: 'retro', mode: 'auto', reduce: null, vibrate: true, sound: 'off', wake: false, onStyle: 'on', topPad: 0 };
 }
 
 function loadSettings() {
@@ -2216,7 +2277,8 @@ function loadSettings() {
       reduce: typeof o.reduce === 'boolean' ? o.reduce : null,
       // quem salvou antes da versão 2 passa a ter a vibração ligada (dá para desligar nas configurações)
       vibrate: (o.v ?? 1) < 2 ? true : o.vibrate === true,
-      sound: o.sound === true,
+      // antes era liga/desliga: quem tinha ligado fica no som suave
+      sound: o.sound === true ? 'soft' : SOUNDS.includes(o.sound) ? o.sound : 'off',
       wake: o.wake === true,
       onStyle: ON_STYLES.includes(o.onStyle) ? o.onStyle : d.onStyle,
       topPad: Number.isFinite(o.topPad) ? Math.min(32, Math.max(0, Math.round(o.topPad))) : 0,
@@ -2273,13 +2335,15 @@ function applyTheme(theme, mode, reduceEffects) {
   }
 }
 
+const SOUNDS = ['off', 'soft', 'mech'];
+
 function mountSettings(ctx) {
   let s = loadSettings();
   const wake = makeWake();
   const apply = () => {
     applyTheme(s.theme, s.mode, effectiveReduce(s));
     ctx.vibrate = s.vibrate;
-    ctx.sound = s.sound;
+    ctx.sounder.set(s.sound);
     ctx.setOnStyle?.(s.onStyle);
     ctx.calc.style.setProperty('--top-extra', s.topPad + 'px');
     wake(s.wake && wakeSupported());
@@ -2305,8 +2369,8 @@ function mountSettings(ctx) {
     '<select name="locale"><option value="br">1.234,56 (pt-BR)</option><option value="us">1,234.56 (en-US)</option></select></label>' +
     '<label class="row"><span class="txt">Vibração leve ao tocar<small>Só em aparelhos que permitem vibrar</small></span>' +
     '<input type="checkbox" name="vibrate" role="switch"></label>' +
-    '<label class="row"><span class="txt">Som de tecla<small>Clique curto a cada toque</small></span>' +
-    '<input type="checkbox" name="sound" role="switch"></label></section>' +
+    '<label class="row"><span class="txt">Som de tecla<small>Um som ao apertar e outro ao soltar</small></span>' +
+    '<select name="sound"><option value="off">Desligado</option><option value="soft">Suave</option><option value="mech">Mecânico</option></select></label></section>' +
     '<section class="group"><h3 class="group-title">Tela</h3>' +
     (fsOk ? '<div class="row"><span class="txt">Tela cheia</span><button type="button" class="mini fs-btn" aria-pressed="false">Entrar</button></div>' : '') +
     '<label class="row"><span class="txt">Manter a tela acesa<small class="wake-note">Evita que a tela apague enquanto você usa</small></span>' +
@@ -2353,7 +2417,7 @@ function mountSettings(ctx) {
     lockMode();
     panel.querySelector('[name=reduce]').checked = effectiveReduce(s);
     panel.querySelector('[name=vibrate]').checked = s.vibrate;
-    panel.querySelector('[name=sound]').checked = s.sound;
+    panel.querySelector('[name=sound]').value = s.sound;
     const w = panel.querySelector('[name=wake]');
     w.checked = s.wake && wakeOk;
     w.disabled = !wakeOk;
@@ -2421,9 +2485,9 @@ function mountSettings(ctx) {
       ctx.render();
       return;
     }
-    if (n === 'theme' || n === 'mode' || n === 'onStyle') s[n] = e.target.value;
+    if (n === 'theme' || n === 'mode' || n === 'onStyle' || n === 'sound') s[n] = e.target.value;
     else if (n === 'topPad') s.topPad = Number(e.target.value);
-    else s[n] = e.target.checked; // reduce, vibrate, sound, wake
+    else s[n] = e.target.checked; // reduce, vibrate, wake
     saveSettings(s);
     lockMode();
     // troca de tema com fusão suave (View Transitions); sem suporte ou com movimento reduzido, troca direto
@@ -2774,7 +2838,7 @@ const { loadState, saveState } = __m_storage;
 const { mountSettings } = __m_settings;
 const { startReflex } = __m_reflex;
 const { mountVerso } = __m_verso;
-const { makeClick } = __m_extras;
+const { makeSound } = __m_extras;
 
 const NOTICE_MS = 2200;
 
@@ -2862,7 +2926,7 @@ function mountApp(root, engine = new Engine()) {
     timer = setTimeout(() => (notice.hidden = true), NOTICE_MS);
   };
 
-  const ctx = { root, calc, top, display, keys, notice, engine, showNotice, listeners: [], vibrate: false, sound: false, clickSound: makeClick() };
+  const ctx = { root, calc, top, display, keys, notice, engine, showNotice, listeners: [], vibrate: false, sounder: makeSound() };
   ctx.render = () => {
     const s = engine.state;
     renderDisplay(display, s);
@@ -2874,6 +2938,7 @@ function mountApp(root, engine = new Engine()) {
     engine.setLocale(engine.locale === 'br' ? 'us' : 'br');
     ctx.render();
   });
+  const haptic = (ms) => ctx.vibrate && navigator.vibrate && navigator.vibrate(ms);
   // efeito do toque: realce só dentro da tecla, a partir de onde o dedo encostou (ou do centro, quando vem de um exemplo)
   const tapFx = (b, x = 50, y = 50) => {
     b.style.setProperty('--tx', x.toFixed(1) + '%');
@@ -2883,12 +2948,36 @@ function mountApp(root, engine = new Engine()) {
     b.classList.add('touch');
     b.addEventListener('animationend', () => b.classList.remove('touch'), { once: true });
   };
+  const kindOf = (id) => (id === 'enter' ? 'enter' : id === 'f' || id === 'g' ? 'fg' : /^\d$|^dot$/.test(id) ? 'num' : 'fn');
+  // a tecla afunda ao encostar e volta ao soltar; o som acompanha os dois momentos
+  let pressed = null;
+  const keyDown = (b) => {
+    b.classList.add('down');
+    ctx.sounder.play(kindOf(b.dataset.id), 'down');
+  };
+  const keyUp = (b) => {
+    b.classList.remove('down');
+    ctx.sounder.play(kindOf(b.dataset.id), 'up');
+  };
   keys.addEventListener('pointerdown', (ev) => {
     const b = ev.target.closest('button.key');
-    if (!b || !KEYS.find((x) => x.id === b.dataset.id)?.enabled) return;
+    const k = b && KEYS.find((x) => x.id === b.dataset.id);
+    if (!k?.enabled) return;
     const r = b.getBoundingClientRect();
     tapFx(b, ((ev.clientX - r.left) / r.width) * 100, ((ev.clientY - r.top) / r.height) * 100);
+    if (pressed) pressed.classList.remove('down');
+    pressed = b;
+    keyDown(b);
+    if (k.id !== 'on') haptic(8); // vibra já ao encostar, como uma tecla de verdade
   });
+  const release = () => {
+    if (!pressed) return;
+    keyUp(pressed);
+    pressed = null;
+  };
+  window.addEventListener('pointerup', release, true);
+  window.addEventListener('pointercancel', release, true);
+  window.addEventListener('blur', release);
   // aperta uma tecla do motor (usada pelo teclado da tela e pelos exemplos do verso)
   ctx.pressKey = (id) => {
     const b = keys.querySelector(`button.key[data-id="${id}"]`);
@@ -2916,10 +3005,13 @@ function mountApp(root, engine = new Engine()) {
     }
   };
   ctx.tapFx = (id) => {
+    // usado pelos exemplos do verso: a tecla afunda e volta sozinha, com o mesmo som do toque
     const b = keys.querySelector(`button.key[data-id="${id}"]`);
-    if (b) tapFx(b);
+    if (!b) return;
+    tapFx(b);
+    keyDown(b);
+    setTimeout(() => keyUp(b), 90);
   };
-  const haptic = (ms) => ctx.vibrate && navigator.vibrate && navigator.vibrate(ms);
   // tecla ON: um toque abre/fecha as configurações; segurar abre/fecha o verso (guia de fórmulas)
   const HOLD_MS = 500;
   let holdTimer;
@@ -2955,18 +3047,13 @@ function mountApp(root, engine = new Engine()) {
     const k = KEYS.find((x) => x.id === b.dataset.id);
     if (k.id === 'on') {
       if (held) held = false; // o segurar já abriu o verso; o clique que vem ao soltar não faz mais nada
-      else {
-        haptic(8);
-        ctx.onTap();
-      }
+      else ctx.onTap();
       return;
     }
     if (!k.enabled) {
       showNotice('Programação e estatística: não disponível nesta versão.');
       return;
     }
-    haptic(8);
-    if (ctx.sound) ctx.clickSound();
     ctx.pressKey(k.id);
   });
   bindKeyboard(engine, ctx.render);

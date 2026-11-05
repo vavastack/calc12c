@@ -6,7 +6,7 @@ import { loadState, saveState } from './storage.js';
 import { mountSettings } from './settings.js';
 import { startReflex } from './reflex.js';
 import { mountVerso } from './verso.js';
-import { makeClick } from './extras.js';
+import { makeSound } from './extras.js';
 
 const NOTICE_MS = 2200;
 
@@ -94,7 +94,7 @@ export function mountApp(root, engine = new Engine()) {
     timer = setTimeout(() => (notice.hidden = true), NOTICE_MS);
   };
 
-  const ctx = { root, calc, top, display, keys, notice, engine, showNotice, listeners: [], vibrate: false, sound: false, clickSound: makeClick() };
+  const ctx = { root, calc, top, display, keys, notice, engine, showNotice, listeners: [], vibrate: false, sounder: makeSound() };
   ctx.render = () => {
     const s = engine.state;
     renderDisplay(display, s);
@@ -106,6 +106,7 @@ export function mountApp(root, engine = new Engine()) {
     engine.setLocale(engine.locale === 'br' ? 'us' : 'br');
     ctx.render();
   });
+  const haptic = (ms) => ctx.vibrate && navigator.vibrate && navigator.vibrate(ms);
   // efeito do toque: realce só dentro da tecla, a partir de onde o dedo encostou (ou do centro, quando vem de um exemplo)
   const tapFx = (b, x = 50, y = 50) => {
     b.style.setProperty('--tx', x.toFixed(1) + '%');
@@ -115,12 +116,36 @@ export function mountApp(root, engine = new Engine()) {
     b.classList.add('touch');
     b.addEventListener('animationend', () => b.classList.remove('touch'), { once: true });
   };
+  const kindOf = (id) => (id === 'enter' ? 'enter' : id === 'f' || id === 'g' ? 'fg' : /^\d$|^dot$/.test(id) ? 'num' : 'fn');
+  // a tecla afunda ao encostar e volta ao soltar; o som acompanha os dois momentos
+  let pressed = null;
+  const keyDown = (b) => {
+    b.classList.add('down');
+    ctx.sounder.play(kindOf(b.dataset.id), 'down');
+  };
+  const keyUp = (b) => {
+    b.classList.remove('down');
+    ctx.sounder.play(kindOf(b.dataset.id), 'up');
+  };
   keys.addEventListener('pointerdown', (ev) => {
     const b = ev.target.closest('button.key');
-    if (!b || !KEYS.find((x) => x.id === b.dataset.id)?.enabled) return;
+    const k = b && KEYS.find((x) => x.id === b.dataset.id);
+    if (!k?.enabled) return;
     const r = b.getBoundingClientRect();
     tapFx(b, ((ev.clientX - r.left) / r.width) * 100, ((ev.clientY - r.top) / r.height) * 100);
+    if (pressed) pressed.classList.remove('down');
+    pressed = b;
+    keyDown(b);
+    if (k.id !== 'on') haptic(8); // vibra já ao encostar, como uma tecla de verdade
   });
+  const release = () => {
+    if (!pressed) return;
+    keyUp(pressed);
+    pressed = null;
+  };
+  window.addEventListener('pointerup', release, true);
+  window.addEventListener('pointercancel', release, true);
+  window.addEventListener('blur', release);
   // aperta uma tecla do motor (usada pelo teclado da tela e pelos exemplos do verso)
   ctx.pressKey = (id) => {
     const b = keys.querySelector(`button.key[data-id="${id}"]`);
@@ -148,10 +173,13 @@ export function mountApp(root, engine = new Engine()) {
     }
   };
   ctx.tapFx = (id) => {
+    // usado pelos exemplos do verso: a tecla afunda e volta sozinha, com o mesmo som do toque
     const b = keys.querySelector(`button.key[data-id="${id}"]`);
-    if (b) tapFx(b);
+    if (!b) return;
+    tapFx(b);
+    keyDown(b);
+    setTimeout(() => keyUp(b), 90);
   };
-  const haptic = (ms) => ctx.vibrate && navigator.vibrate && navigator.vibrate(ms);
   // tecla ON: um toque abre/fecha as configurações; segurar abre/fecha o verso (guia de fórmulas)
   const HOLD_MS = 500;
   let holdTimer;
@@ -187,18 +215,13 @@ export function mountApp(root, engine = new Engine()) {
     const k = KEYS.find((x) => x.id === b.dataset.id);
     if (k.id === 'on') {
       if (held) held = false; // o segurar já abriu o verso; o clique que vem ao soltar não faz mais nada
-      else {
-        haptic(8);
-        ctx.onTap();
-      }
+      else ctx.onTap();
       return;
     }
     if (!k.enabled) {
       showNotice('Programação e estatística: não disponível nesta versão.');
       return;
     }
-    haptic(8);
-    if (ctx.sound) ctx.clickSound();
     ctx.pressKey(k.id);
   });
   bindKeyboard(engine, ctx.render);

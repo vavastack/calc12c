@@ -66,7 +66,8 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
   background: var(--key-bg); box-shadow: var(--key-shadow); color: var(--key-text); border: 1px solid var(--key-border); border-radius: var(--key-radius, 13px);
   position: relative; padding: 5px 0 4px; font: inherit; min-width: 0; min-height: 0; }
 .face { display: none; }
-.key:active { filter: brightness(1.25); transform: scale(.97); }
+.key { transition: transform .16s cubic-bezier(.3,1.6,.5,1), filter .16s; }
+.key.down { filter: brightness(1.18); transform: translateY(1.5px) scale(.965); transition-duration: .035s; }
 .key .lf { color: var(--gold); font-size: clamp(8.5px, 1.15dvh, 9.5px); font-weight: 600; white-space: nowrap; line-height: 1; min-height: 10px; }
 .key .lg { color: var(--blue); font-size: clamp(8.5px, 1.15dvh, 9.5px); font-weight: 600; white-space: nowrap; line-height: 1; min-height: 10px; }
 .key .lm { font-size: clamp(14px, 2.1dvh, 18px); font-weight: 500; flex: 1; display: flex; align-items: center; line-height: 1; padding: 1px 0; }
@@ -98,7 +99,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
 @keyframes glow-key { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes glow-label { 0% { opacity: .2; } 35% { opacity: 1; } 55% { opacity: .55; } 100% { opacity: 1; } }
 /* o brilho de f e g é só opacidade (barato): continua no modo "reduzir efeitos"; só o sistema com movimento reduzido o desliga */
-@media (prefers-reduced-motion: reduce) { .key.touch::after, .key.flash::after, .key.flash::before, .calc .key .lf, .calc .key .lg { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .key, .key .face, .key .lm { transition: none !important; } .key.touch::after, .key.flash::after, .key.flash::before, .calc .key .lf, .calc .key .lg { animation: none !important; } }
 
 /* o reflexo cobre todo o vidro (placa, visor e teclado); a .sheen reforça só a placa, na mesma direção */
 .reflex-clip { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 3; }
@@ -223,6 +224,12 @@ html:not([data-theme^="moderno"]) .key .face { display: block; position: absolut
   border-radius: var(--key-radius); background: var(--key-bg); border: 1px solid var(--key-border); box-shadow: var(--key-shadow); }
 html:not([data-theme^="moderno"]) .key.prefix-f .face { background: var(--keyf-bg); border-color: var(--keyf-border); box-shadow: var(--keyf-shadow); }
 html:not([data-theme^="moderno"]) .key.prefix-g .face { background: var(--keyg-bg); border-color: var(--keyg-border); box-shadow: var(--keyg-shadow); }
+/* Gold e Platinum: só a face escura afunda; os rótulos acompanham e a sombra de baixo some, como numa tecla de verdade */
+html:not([data-theme^="moderno"]) .key.down { transform: none; filter: none; }
+html:not([data-theme^="moderno"]) .key .face { transition: transform .16s cubic-bezier(.3,1.6,.5,1), box-shadow .16s, filter .16s; }
+html:not([data-theme^="moderno"]) .key .lm { transition: transform .16s cubic-bezier(.3,1.6,.5,1); }
+html:not([data-theme^="moderno"]) .key.down .face { transform: translateY(2px); box-shadow: 0 0 0 transparent, inset 0 2px 4px #0009; filter: brightness(.88); transition-duration: .035s; }
+html:not([data-theme^="moderno"]) .key.down .lm { transform: translateY(2px); transition-duration: .035s; }
 html:not([data-theme^="moderno"]) .key::after { top: var(--face-top); }
 html:not([data-theme^="moderno"]) .key::before { top: calc(var(--face-top) - 2px); }
 html:not([data-theme^="moderno"]) .key .lg:empty { display: none; }

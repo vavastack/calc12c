@@ -125,19 +125,19 @@ test('configurações novas: estilo da tecla ON, separador decimal, som, não do
   await p.selectOption('[name=locale]', 'us');
   assert.equal(await p.evaluate(() => window.calc12c.engine.locale), 'us');
   await p.selectOption('[name=locale]', 'br');
-  await p.locator('[name=sound]').check();
-  assert.equal(await p.evaluate(() => window.calc12c.sound), true);
+  await p.selectOption('[name=sound]', 'mech');
+  assert.equal(await p.evaluate(() => window.calc12c.sounder.mode), 'mech');
   await p.locator('[name=topPad]').fill('20');
   assert.equal(await p.evaluate(() => getComputedStyle(document.querySelector('.calc')).getPropertyValue('--top-extra').trim()), '20px');
   const saved = await p.evaluate(() => JSON.parse(localStorage.getItem('calc12c.settings')));
-  assert.equal(saved.sound, true);
+  assert.equal(saved.sound, 'mech');
   assert.equal(saved.topPad, 20);
   assert.equal(saved.v, 3);
   // redefinir: dois toques, volta ao padrão e mantém a memória da calculadora
   await p.locator('.reset-settings').click();
   assert.equal(await p.locator('.reset-settings').innerText(), 'Toque de novo');
   await p.locator('.reset-settings').click();
-  assert.equal(await p.evaluate(() => window.calc12c.sound), false);
+  assert.equal(await p.evaluate(() => window.calc12c.sounder.mode), 'off');
   assert.equal(await p.evaluate(() => getComputedStyle(document.querySelector('.calc')).getPropertyValue('--top-extra').trim()), '0px');
   assert.deepEqual(errors, []);
   await close();
@@ -151,7 +151,24 @@ test('configurações v2 salvas continuam valendo: a vibração desligada não v
   const s = await p.evaluate(() => window.calc12c.settings.get());
   assert.equal(s.theme, 'platinum');
   assert.equal(s.vibrate, false);
-  assert.equal(s.sound, false);
+  assert.equal(s.sound, 'off');
   assert.equal(s.onStyle, 'on');
+  await close();
+});
+
+test('a tecla afunda ao encostar e volta ao soltar; som antigo ligado vira suave', async () => {
+  const { page: p, close } = await openApp(browser, server.url);
+  const b = p.locator('.key[data-id="7"]');
+  const box = await b.boundingBox();
+  await p.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await p.mouse.down();
+  assert.equal(await b.evaluate((e) => e.classList.contains('down')), true);
+  await p.mouse.up();
+  assert.equal(await b.evaluate((e) => e.classList.contains('down')), false);
+  assert.equal(await p.locator('.display').innerText().then((t) => t.includes('7')), true);
+  await p.evaluate(() => localStorage.setItem('calc12c.settings', JSON.stringify({ v: 3, theme: 'retro', mode: 'auto', sound: true })));
+  await p.reload();
+  await p.waitForSelector('button.key');
+  assert.equal(await p.evaluate(() => window.calc12c.sounder.mode), 'soft');
   await close();
 });

@@ -11,7 +11,7 @@ const lowEnd = () => (navigator.hardwareConcurrency ?? 8) <= 2 || (navigator.dev
 
 export function defaultSettings() {
   // reduce: null = automático (liga sozinho em aparelhos simples); true/false = escolha do usuário
-  return { v: VERSION, theme: 'retro', mode: 'auto', reduce: null, vibrate: true, sound: false, wake: false, onStyle: 'on', topPad: 0 };
+  return { v: VERSION, theme: 'retro', mode: 'auto', reduce: null, vibrate: true, sound: 'off', wake: false, onStyle: 'on', topPad: 0 };
 }
 
 export function loadSettings() {
@@ -26,7 +26,8 @@ export function loadSettings() {
       reduce: typeof o.reduce === 'boolean' ? o.reduce : null,
       // quem salvou antes da versão 2 passa a ter a vibração ligada (dá para desligar nas configurações)
       vibrate: (o.v ?? 1) < 2 ? true : o.vibrate === true,
-      sound: o.sound === true,
+      // antes era liga/desliga: quem tinha ligado fica no som suave
+      sound: o.sound === true ? 'soft' : SOUNDS.includes(o.sound) ? o.sound : 'off',
       wake: o.wake === true,
       onStyle: ON_STYLES.includes(o.onStyle) ? o.onStyle : d.onStyle,
       topPad: Number.isFinite(o.topPad) ? Math.min(32, Math.max(0, Math.round(o.topPad))) : 0,
@@ -83,13 +84,15 @@ export function applyTheme(theme, mode, reduceEffects) {
   }
 }
 
+const SOUNDS = ['off', 'soft', 'mech'];
+
 export function mountSettings(ctx) {
   let s = loadSettings();
   const wake = makeWake();
   const apply = () => {
     applyTheme(s.theme, s.mode, effectiveReduce(s));
     ctx.vibrate = s.vibrate;
-    ctx.sound = s.sound;
+    ctx.sounder.set(s.sound);
     ctx.setOnStyle?.(s.onStyle);
     ctx.calc.style.setProperty('--top-extra', s.topPad + 'px');
     wake(s.wake && wakeSupported());
@@ -115,8 +118,8 @@ export function mountSettings(ctx) {
     '<select name="locale"><option value="br">1.234,56 (pt-BR)</option><option value="us">1,234.56 (en-US)</option></select></label>' +
     '<label class="row"><span class="txt">Vibração leve ao tocar<small>Só em aparelhos que permitem vibrar</small></span>' +
     '<input type="checkbox" name="vibrate" role="switch"></label>' +
-    '<label class="row"><span class="txt">Som de tecla<small>Clique curto a cada toque</small></span>' +
-    '<input type="checkbox" name="sound" role="switch"></label></section>' +
+    '<label class="row"><span class="txt">Som de tecla<small>Um som ao apertar e outro ao soltar</small></span>' +
+    '<select name="sound"><option value="off">Desligado</option><option value="soft">Suave</option><option value="mech">Mecânico</option></select></label></section>' +
     '<section class="group"><h3 class="group-title">Tela</h3>' +
     (fsOk ? '<div class="row"><span class="txt">Tela cheia</span><button type="button" class="mini fs-btn" aria-pressed="false">Entrar</button></div>' : '') +
     '<label class="row"><span class="txt">Manter a tela acesa<small class="wake-note">Evita que a tela apague enquanto você usa</small></span>' +
@@ -163,7 +166,7 @@ export function mountSettings(ctx) {
     lockMode();
     panel.querySelector('[name=reduce]').checked = effectiveReduce(s);
     panel.querySelector('[name=vibrate]').checked = s.vibrate;
-    panel.querySelector('[name=sound]').checked = s.sound;
+    panel.querySelector('[name=sound]').value = s.sound;
     const w = panel.querySelector('[name=wake]');
     w.checked = s.wake && wakeOk;
     w.disabled = !wakeOk;
@@ -231,9 +234,9 @@ export function mountSettings(ctx) {
       ctx.render();
       return;
     }
-    if (n === 'theme' || n === 'mode' || n === 'onStyle') s[n] = e.target.value;
+    if (n === 'theme' || n === 'mode' || n === 'onStyle' || n === 'sound') s[n] = e.target.value;
     else if (n === 'topPad') s.topPad = Number(e.target.value);
-    else s[n] = e.target.checked; // reduce, vibrate, sound, wake
+    else s[n] = e.target.checked; // reduce, vibrate, wake
     saveSettings(s);
     lockMode();
     // troca de tema com fusão suave (View Transitions); sem suporte ou com movimento reduzido, troca direto
