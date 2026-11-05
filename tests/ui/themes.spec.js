@@ -1,6 +1,6 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { chromium, startServer, openApp } from './helpers.js';
+import { chromium, startServer, openApp, enableDev } from './helpers.js';
 
 let server, browser;
 before(async () => {
@@ -169,7 +169,7 @@ test('painel de configurações: cabeçalho, grupos, interruptores e botão fech
   const p = app.page;
   await p.locator('.key[data-id="on"]').click();
   assert.equal(await p.locator('.settings-title').innerText(), 'Configurações');
-  assert.deepEqual((await p.locator('.group-title').allTextContents()).map((t) => t.toLowerCase()), ['calculadora', 'aparência', 'cores', 'números e teclas', 'tela', 'memórias', 'brilho', 'mais']);
+  assert.deepEqual((await p.locator('.group-title:visible').allTextContents()).map((t) => t.toLowerCase()), ['calculadora', 'aparência', 'números e teclas', 'tela', 'memórias', 'brilho', 'mais']);
   const w = await p.locator('input[name="vibrate"]').evaluate((e) => e.getBoundingClientRect().width);
   assert.ok(w >= 40, `interruptor largo o bastante para o toque (${w}px)`);
   await p.locator('input[name="vibrate"]').check();
@@ -185,6 +185,7 @@ test('temas Gold, Platinum e Retro; modo claro/escuro só vale no Retro', async 
   const app = await openApp(browser, server.url);
   const p = app.page;
   await p.locator('.key[data-id="on"]').click();
+  await enableDev(p); // sem o modo desenvolvedor a clássica só oferece Gold e Retro
   assert.deepEqual(await p.locator('select[name="theme"] option').allTextContents(), ['Gold', 'Platinum', 'Retro']);
   assert.equal(await p.locator('select[name="theme"]').inputValue(), 'retro'); // padrão: Gold
   assert.equal(await p.locator('select[name="mode"]').isDisabled(), true);
@@ -260,9 +261,11 @@ test('trocar o tema pelas configurações usa transição suave (fusão) e chega
   const p = app.page;
   await p.evaluate(() => { window.__vt = 0; const o = document.startViewTransition?.bind(document); if (o) document.startViewTransition = (f) => { window.__vt++; return o(f); }; });
   await p.locator('.key[data-id="on"]').click();
+  await enableDev(p);
+  const antes = await p.evaluate(() => window.__vt);
   await p.locator('select[name="theme"]').selectOption('platinum');
   await p.waitForFunction(() => document.documentElement.getAttribute('data-theme') === 'platinum');
-  assert.equal(await p.evaluate(() => window.__vt), 1);
+  assert.equal(await p.evaluate(() => window.__vt) - antes, 1);
   assert.equal(await p.evaluate(() => getComputedStyle(document.documentElement, '::view-transition-old(root)').animationDuration !== undefined), true);
   await app.close();
 });

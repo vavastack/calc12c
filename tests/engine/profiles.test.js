@@ -1,8 +1,8 @@
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { Engine } from '../../src/engine/engine.js';
-import { getProfile, listProfiles, registerProfile, DEFAULT_PROFILE } from '../../src/engine/profiles.js';
-import { KEYS } from '../../src/engine/keymap.js';
+import { getProfile, listProfiles, registerProfile, DEFAULT_PROFILE, allowedThemes, themeFor } from '../../src/engine/profiles.js';
+import { KEYS, KEYS_PLATINUM } from '../../src/engine/keymap.js';
 import { buildMemoryFile, parseMemoryFile } from '../../src/ui/memories.js';
 
 // armazenamento falso para storage.js
@@ -15,20 +15,51 @@ beforeEach(() => mem.clear());
 
 const type = (e, seq) => seq.split(/\s+/).forEach((t) => [...t].forEach((c) => e.press(c === '.' ? 'dot' : c)) );
 
-test('o perfil 12c é o padrão e traz nome, 39 teclas, modos e indicadores', () => {
+test('o perfil 12c (clássica) é o padrão: RPN só, 7 indicadores, teclas sem os rótulos da Platinum', () => {
   const p = getProfile(DEFAULT_PROFILE);
   assert.equal(p.id, '12c');
   assert.equal(p.name, 'Calc 12c');
   assert.equal(p.keys, KEYS);
   assert.equal(p.keys.length, 39);
+  assert.deepEqual(p.modes, ['rpn']);
+  assert.deepEqual(p.indicators, ['f', 'g', 'BEGIN', 'D.MY', 'C', 'USER', 'PRGM']);
+  assert.equal(p.keyById.get('chs').f, null);
+  assert.equal(p.keyById.get('sto').g, null);
+  assert.equal(p.title, undefined);
+});
+
+test('o perfil 12cp (Platinum): RPN e ALG, 10 indicadores, rótulos f RPN/ALG e g ( ), título em duas linhas', () => {
+  const p = getProfile('12cp');
+  assert.equal(p.keys, KEYS_PLATINUM);
+  assert.equal(p.keys.length, 39);
   assert.deepEqual(p.modes, ['rpn', 'alg']);
-  assert.ok(p.indicators.includes('RPN') && p.indicators.includes('ALG'));
-  assert.ok(p.keyById.get('enter'));
+  assert.deepEqual(p.indicators, ['RPN', 'ALG', '( )', 'f', 'g', 'BEGIN', 'D.MY', 'C', 'USER', 'PRGM']);
+  assert.equal(p.keyById.get('chs').f, 'RPN');
+  assert.equal(p.keyById.get('eex').f, 'ALG');
+  assert.equal(p.keyById.get('sto').g, '(');
+  assert.equal(p.keyById.get('rcl').g, ')');
+  assert.deepEqual(p.title, ['Platinum', '12c']);
+  assert.deepEqual(KEYS.map((k) => k.id), KEYS_PLATINUM.map((k) => k.id)); // mesmas teclas, só os rótulos mudam
+});
+
+test('temas por perfil: Gold na clássica, Platinum na Platinum, Retro nos dois; o modo desenvolvedor libera tudo', () => {
+  assert.deepEqual(allowedThemes('12c', false), ['retro', 'moderno']);
+  assert.deepEqual(allowedThemes('12cp', false), ['platinum', 'moderno']);
+  assert.deepEqual(allowedThemes('12c', true), ['retro', 'platinum', 'moderno']);
+  assert.deepEqual(allowedThemes('12cp', true), ['retro', 'platinum', 'moderno']);
+  assert.equal(getProfile('12c').defaultTheme, 'retro');
+  assert.equal(getProfile('12cp').defaultTheme, 'platinum');
+  // a escolha vale se for permitida; senão volta ao tema padrão do perfil
+  assert.equal(themeFor('12c', 'platinum', false), 'retro');
+  assert.equal(themeFor('12cp', 'retro', false), 'platinum');
+  assert.equal(themeFor('12cp', 'moderno', false), 'moderno');
+  assert.equal(themeFor('12c', 'platinum', true), 'platinum');
+  assert.equal(themeFor('12cp', 'retro', true), 'retro');
 });
 
 test('perfis desconhecidos são recusados; a lista traz os registrados', () => {
   assert.throws(() => getProfile('xyz'), /perfil desconhecido/);
-  assert.deepEqual(listProfiles().map((p) => p.id), ['12c', 'teste']);
+  assert.deepEqual(listProfiles().map((p) => p.id), ['12c', '12cp', 'teste']);
 });
 
 test('o motor guarda o perfil, mantém no reset e restaura da serialização', () => {
@@ -41,7 +72,7 @@ test('o motor guarda o perfil, mantém no reset e restaura da serialização', (
 });
 
 test('reset mantém o modo ALG', () => {
-  const e = new Engine();
+  const e = new Engine({ profile: '12cp' });
   e.press('f');
   e.press('eex');
   e.reset();

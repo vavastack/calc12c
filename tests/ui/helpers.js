@@ -31,6 +31,9 @@ export async function startServer() {
   return { url, close: () => new Promise((ok) => server.close(ok)) };
 }
 
+// Liga o modo desenvolvedor (libera cores e temas Gold/Platinum em qualquer modelo).
+export const enableDev = (page) => page.evaluate(() => window.calc12c.settings.setDev(true));
+
 // Abre o app numa página nova com o tamanho pedido; devolve { page, errors, close }.
 export async function openApp(browser, url, viewport = { width: 390, height: 844 }, ctxOpts = {}) {
   const context = await browser.newContext({ viewport, ...ctxOpts });

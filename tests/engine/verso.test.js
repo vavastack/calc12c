@@ -2,11 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Engine } from '../../src/engine/engine.js';
 import { KEY_BY_ID } from '../../src/engine/keymap.js';
-import { VERSO, fullKeys } from '../../src/ui/verso-data.js';
+import { VERSO, VERSO_BY_PROFILE, fullKeys } from '../../src/ui/verso-data.js';
 import { chipsOf, expandKeys } from '../../src/ui/verso.js';
 
 const run = (keys) => {
-  const e = new Engine();
+  const e = new Engine({ profile: '12cp' }); // a Platinum cobre todos os grupos, inclusive o ALG
   for (const id of expandKeys(keys)) e.press(id);
   return e.state.display;
 };
@@ -72,6 +72,12 @@ test('verso: todo exemplo pronto dá o resultado esperado, e só os prontos est�
     }
   }
   assert.deepEqual([...vistos].sort(), Object.keys(ESPERADO).sort());
+});
+
+test('verso: a clássica não tem o grupo ALG e a Platinum tem todos', () => {
+  assert.equal(VERSO_BY_PROFILE['12c'].sections.some((g) => g.id === 'alg'), false);
+  assert.equal(VERSO_BY_PROFILE['12cp'].sections.some((g) => g.id === 'alg'), true);
+  assert.equal(VERSO_BY_PROFILE['12cp'].sections.length, VERSO.length);
 });
 
 test('verso: toda tecla citada existe, inclusive nos exemplos "em breve"', () => {

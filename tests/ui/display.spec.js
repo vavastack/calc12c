@@ -47,12 +47,10 @@ test('indicadores: f e g acendem e apagam; BEGIN segue g 7 / g 8', async () => {
   await app.close();
 });
 
-test('os indicadores da 12C Platinum existem (RPN, ALG, parênteses, f, g, BEGIN, D.MY, C, USER, PRGM)', async () => {
+test('os sete indicadores da 12C clássica existem (f, g, BEGIN, D.MY, C, USER, PRGM)', async () => {
   const app = await openApp(browser, server.url);
   const names = await app.page.locator('.display [data-ind]').evaluateAll((els) => els.map((e) => e.dataset.ind));
-  assert.deepEqual(names, ['RPN', 'ALG', '( )', 'f', 'g', 'BEGIN', 'D.MY', 'C', 'USER', 'PRGM']);
-  assert.equal(await lit(app.page, 'RPN'), true); // o padrão é RPN
-  assert.equal(await lit(app.page, 'ALG'), false);
+  assert.deepEqual(names, ['f', 'g', 'BEGIN', 'D.MY', 'C', 'USER', 'PRGM']);
   assert.equal(await lit(app.page, 'PRGM'), false);
   await app.close();
 });

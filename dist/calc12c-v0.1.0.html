@@ -151,6 +151,10 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
   border-bottom: 1px solid var(--plate-edge);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 1px 0 var(--engrave-hi), 0 3px 6px rgba(0,0,0,.28); }
 .brand .name { display: grid; gap: 2px; line-height: 1; }
+/* perfis com título em duas linhas (Platinum): o nome do modelo, menor, embaixo e à esquerda */
+.brand .title.two { display: grid; gap: 1px; }
+.brand .title.two .l1 { font-size: 1em; line-height: .95; }
+.brand .title.two .l2 { font-size: .52em; font-weight: 800; letter-spacing: .32em; line-height: 1; text-align: left; padding-left: .1em; }
 .brand .title { font-size: 25px; font-weight: 800; letter-spacing: .02em; color: var(--plate-ink); white-space: nowrap;
   text-shadow: 0 1px 0 var(--engrave-hi), 0 -1px 0 var(--engrave-lo); }
 .brand .rule { flex: 1; height: 2px; border-radius: 1px; background: var(--plate-ink); opacity: .75;
@@ -431,6 +435,7 @@ html:not([data-theme^="moderno"]) .display { border: 4px solid transparent;
 .settings input[type="range"] { flex: none; width: 110px; accent-color: var(--gold); }
 @media (orientation: landscape) { .verso { left: 0; right: 0; } .sigma-map { grid-template-columns: repeat(6, auto 14px auto); } }
 .v-tag.sigma-tag { writing-mode: horizontal-tb; transform: none; font-size: 16px; letter-spacing: 0; }
+.settings .group[hidden] { display: none; } /* grupos que só aparecem no modo desenvolvedor */
 
 </style>
 </head>
@@ -438,7 +443,7 @@ html:not([data-theme^="moderno"]) .display { border: 4px solid transparent;
 <div id="app"></div>
 <script>
 const __m_keymap = (() => {
-// Mapa do teclado do perfil 12C (39 teclas; f RPN / f ALG e g ( / g ) são da Platinum). Posição no layout vertical: 5 colunas × 8 linhas.
+// Mapa do teclado da HP 12C clássica (39 teclas). A Platinum usa as mesmas teclas e acrescenta rótulos (KEYS_PLATINUM). Posição no layout vertical: 5 colunas × 8 linhas.
 // Metade de cima = colunas 1 a 5 da HP 12C original; metade de baixo = colunas 6 a 10.
 // `f` (dourado) e `g` (azul) são os rótulos oficiais; `enabled:false` = fora do escopo (PRGM, estatística).
 const k = (id, label, f, g, row, col, extra = {}) => ({ id, label, f, g, row, col, enabled: true, ...extra });
@@ -466,16 +471,16 @@ const KEYS = [
   k('on', 'ON', 'OFF', null, 3, 0),
   k('f', 'f', null, null, 3, 1),
   k('g', 'g', null, null, 3, 2),
-  k('sto', 'STO', null, '(', 3, 3),
-  k('rcl', 'RCL', null, ')', 3, 4),
+  k('sto', 'STO', null, null, 3, 3),
+  k('rcl', 'RCL', null, null, 3, 4),
   // linha 4
-  k('chs', 'CHS', 'RPN', 'DATE', 4, 0),
+  k('chs', 'CHS', null, 'DATE', 4, 0),
   k('7', '7', null, 'BEG', 4, 1),
   k('8', '8', null, 'END', 4, 2),
   k('9', '9', null, 'MEM', 4, 3),
   k('divide', '÷', null, null, 4, 4),
   // linha 5
-  k('eex', 'EEX', 'ALG', 'ΔDYS', 5, 0),
+  k('eex', 'EEX', null, 'ΔDYS', 5, 0),
   k('4', '4', null, 'D.MY', 5, 1),
   k('5', '5', null, 'M.DY', 5, 2),
   k('6', '6', null, 'x̄w', 5, 3),
@@ -494,14 +499,19 @@ const KEYS = [
 
 const KEY_BY_ID = new Map(KEYS.map((x) => [x.id, x]));
 
-return { KEYS, KEY_BY_ID };
+// 12C Platinum: f CHS = RPN, f EEX = ALG, g STO = "(" e g RCL = ")".
+const PLATINUM_LABELS = { chs: { f: 'RPN' }, eex: { f: 'ALG' }, sto: { g: '(' }, rcl: { g: ')' } };
+const KEYS_PLATINUM = KEYS.map((x) => ({ ...x, ...PLATINUM_LABELS[x.id] }));
+const KEY_BY_ID_PLATINUM = new Map(KEYS_PLATINUM.map((x) => [x.id, x]));
+
+return { KEYS, KEY_BY_ID, KEYS_PLATINUM, KEY_BY_ID_PLATINUM };
 })();
 
 const __m_profiles = (() => {
 // Perfis de calculadora. Cada perfil define o que muda de um modelo para outro: identidade, mapa de teclas,
 // modos de cálculo, indicadores do visor e as linhas de ligação (colchetes) do teclado.
 // O motor (engine.js) consulta o perfil pelo id; a interface monta o teclado a partir dele.
-const { KEYS, KEY_BY_ID } = __m_keymap;
+const { KEYS, KEY_BY_ID, KEYS_PLATINUM, KEY_BY_ID_PLATINUM } = __m_keymap;
 
 const DEFAULT_PROFILE = '12c';
 
@@ -515,12 +525,17 @@ const BRACKETS_12C = [
 
 const PROFILES = new Map();
 
-// Perfil: { id, name (título no topo), model (selo), keys, keyById, modes, defaultMode, indicators, brackets }
+// Temas: 'retro' = Gold, 'platinum' = prata, 'moderno' = Retro (vidro). Cada perfil só mostra os seus (Gold na clássica,
+// Platinum na Platinum) e o Retro vale para todos; o modo desenvolvedor libera todos em qualquer perfil.
+const ALL_THEMES = ['retro', 'platinum', 'moderno'];
+
+// Perfil: { id, name (título no topo), title (opcional: duas linhas), label (nome na lista), model (selo), keys, keyById,
+//   modes, defaultMode, indicators, brackets, themes, defaultTheme }
 function registerProfile(p) {
-  for (const f of ['id', 'name', 'model', 'keys', 'keyById', 'modes', 'indicators', 'brackets']) {
+  for (const f of ['id', 'name', 'model', 'keys', 'keyById', 'modes', 'indicators', 'brackets', 'themes', 'defaultTheme']) {
     if (p[f] === undefined) throw new Error(`perfil sem ${f}`);
   }
-  PROFILES.set(p.id, { defaultMode: p.modes[0], ...p });
+  PROFILES.set(p.id, { defaultMode: p.modes[0], label: p.name, ...p });
 }
 
 function hasProfile(id) {
@@ -537,18 +552,50 @@ function listProfiles() {
   return [...PROFILES.values()];
 }
 
+// Temas que o perfil oferece (todos, no modo desenvolvedor).
+function allowedThemes(id, dev = false) {
+  return dev ? [...ALL_THEMES] : [...getProfile(id).themes];
+}
+
+// Tema que vale de fato: a escolha da pessoa, se o perfil a oferece; senão o tema padrão do perfil.
+function themeFor(id, chosen, dev = false) {
+  return allowedThemes(id, dev).includes(chosen) ? chosen : getProfile(id).defaultTheme;
+}
+
+const INDICATORS_CLASSIC = ['f', 'g', 'BEGIN', 'D.MY', 'C', 'USER', 'PRGM'];
+
+// HP 12C clássica: só RPN, placa dourada.
 registerProfile({
   id: '12c',
   name: 'Calc 12c',
+  label: 'Calc 12c (clássica)',
   model: '12C',
   keys: KEYS,
   keyById: KEY_BY_ID,
-  modes: ['rpn', 'alg'], // a Platinum é a única da família com os dois modos
-  indicators: ['RPN', 'ALG', '( )', 'f', 'g', 'BEGIN', 'D.MY', 'C', 'USER', 'PRGM'],
+  modes: ['rpn'],
+  indicators: INDICATORS_CLASSIC,
   brackets: BRACKETS_12C,
+  themes: ['retro', 'moderno'],
+  defaultTheme: 'retro',
 });
 
-return { DEFAULT_PROFILE, registerProfile, hasProfile, getProfile, listProfiles };
+// HP 12C Platinum: RPN e ALG, placa prateada, título "Platinum" com "12c" embaixo.
+registerProfile({
+  id: '12cp',
+  name: 'Calc 12c Platinum',
+  label: 'Calc 12c Platinum',
+  title: ['Platinum', '12c'],
+  model: '12C',
+  keys: KEYS_PLATINUM,
+  keyById: KEY_BY_ID_PLATINUM,
+  modes: ['rpn', 'alg'],
+  indicators: ['RPN', 'ALG', '( )', ...INDICATORS_CLASSIC],
+  brackets: BRACKETS_12C,
+  themes: ['platinum', 'moderno'],
+  defaultTheme: 'platinum',
+});
+
+return { DEFAULT_PROFILE, ALL_THEMES, registerProfile, hasProfile, getProfile, listProfiles, allowedThemes, themeFor };
 })();
 
 const __m_alg = (() => {
@@ -2580,8 +2627,7 @@ class Engine {
     if (o.cf !== undefined && !CashFlows.valid(o.cf)) throw bad();
     const profile = o.profile ?? DEFAULT_PROFILE; // estados antigos não tinham perfil: eram da 12C
     if (typeof profile !== 'string' || !hasProfile(profile)) throw bad();
-    const modes = getProfile(profile).modes;
-    if (o.mode !== undefined && !modes.includes(o.mode)) throw bad();
+    if (o.mode !== undefined && !['rpn', 'alg'].includes(o.mode)) throw bad(); // modo sem suporte no perfil (ex.: ALG na clássica) volta ao padrão
     if (o.alg !== undefined && !AlgState.valid(o.alg)) throw bad();
     const e = new Engine({ locale: o.locale, profile, mode: o.mode });
     if (o.alg) e.alg = AlgState.fromJSON(o.alg);
@@ -3072,10 +3118,13 @@ const __m_settings = (() => {
 const { makeWake, wakeSupported } = __m_extras;
 const { COLOR_KEYS, validHex, customVars } = __m_colors;
 const { buildMemoryFile, parseMemoryFile, loadInto } = __m_memories;
-const { listProfiles } = __m_profiles;
+const { listProfiles, allowedThemes, themeFor } = __m_profiles;
 const KEY = 'calc12c.settings';
 const THEMES = ['retro', 'platinum', 'moderno']; // 'retro' = Gold (padrão), 'platinum' = prata, 'moderno' = Retro (vidro)
-const VERSION = 4; // v2: a vibração ao tocar passou a vir ligada; v3: som, não dormir, estilo da tecla ON e banda superior; v4: cores e orientação
+const VERSION = 5; // v2: a vibração ao tocar passou a vir ligada; v3: som, não dormir, estilo da tecla ON e banda superior; v4: cores e orientação; v5: modo desenvolvedor
+const APP_VERSION = 'V3.0';
+const DEV_TAPS = 7; // toques na versão para ligar o modo desenvolvedor
+const DEV_GAP_MS = 2000; // intervalo máximo entre dois toques
 const MODES = ['auto', 'escuro', 'claro'];
 const ON_STYLES = ['menu', 'on'];
 const ORIENTS = ['auto', 'portrait', 'landscape'];
@@ -3086,7 +3135,7 @@ const lowEnd = () => (navigator.hardwareConcurrency ?? 8) <= 2 || (navigator.dev
 
 function defaultSettings() {
   // reduce: null = automático (liga sozinho em aparelhos simples); true/false = escolha do usuário
-  return { v: VERSION, theme: 'retro', mode: 'auto', reduce: null, vibrate: true, sound: 'off', wake: false, onStyle: 'on', topPad: 0, colors: noColors(), orient: 'auto' };
+  return { v: VERSION, theme: null, mode: 'auto', reduce: null, vibrate: true, sound: 'off', wake: false, onStyle: 'on', topPad: 0, colors: noColors(), orient: 'auto', dev: false };
 }
 
 function loadSettings() {
@@ -3096,7 +3145,7 @@ function loadSettings() {
     if (!o || typeof o !== 'object') return d;
     return {
       v: VERSION,
-      theme: THEMES.includes(o.theme) ? o.theme : d.theme,
+      theme: THEMES.includes(o.theme) ? o.theme : null, // null = o tema padrão do perfil, até a pessoa escolher outro
       mode: MODES.includes(o.mode) ? o.mode : d.mode,
       reduce: typeof o.reduce === 'boolean' ? o.reduce : null,
       // quem salvou antes da versão 2 passa a ter a vibração ligada (dá para desligar nas configurações)
@@ -3108,6 +3157,7 @@ function loadSettings() {
       topPad: Number.isFinite(o.topPad) ? Math.min(32, Math.max(0, Math.round(o.topPad))) : 0,
       colors: Object.fromEntries(COLOR_KEYS.map((k) => [k, validHex(o.colors?.[k]) ? o.colors[k].toLowerCase() : null])),
       orient: ORIENTS.includes(o.orient) ? o.orient : 'auto',
+      dev: o.dev === true,
     };
   } catch {
     return d; // ausente, corrompido ou armazenamento bloqueado
@@ -3189,14 +3239,16 @@ async function lockOrientation(mode) {
 function mountSettings(ctx) {
   let s = loadSettings();
   const wake = makeWake();
+  // tema que vale: a escolha, se o perfil em uso a oferece (ou o modo desenvolvedor); senão o padrão do perfil
+  const effTheme = () => themeFor(ctx.profile.id, s.theme, s.dev);
   const apply = () => {
-    applyTheme(s.theme, s.mode, effectiveReduce(s));
+    applyTheme(effTheme(), s.mode, effectiveReduce(s));
     ctx.vibrate = s.vibrate;
     ctx.sounder.set(s.sound);
     ctx.setOnStyle?.(s.onStyle);
     ctx.calc.style.setProperty('--top-extra', s.topPad + 'px');
     wake(s.wake && wakeSupported());
-    applyColors(s.colors);
+    applyColors(s.dev ? s.colors : noColors()); // as cores só valem no modo desenvolvedor
   };
   const fsOk = !!document.fullscreenEnabled && !window.matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches;
   const panel = document.createElement('section');
@@ -3210,14 +3262,14 @@ function mountSettings(ctx) {
     '<select name="profile"></select></label></section>' +
     '<section class="group"><h3 class="group-title">Aparência</h3>' +
     '<label class="row"><span class="txt">Tema<small>Gold e Platinum são metálicos e sempre escuros; Retro é de vidro</small></span>' +
-    '<select name="theme"><option value="retro">Gold</option><option value="platinum">Platinum</option><option value="moderno">Retro</option></select></label>' +
+    '<select name="theme"></select></label>' +
     '<label class="row"><span class="txt">Modo<small>Automático segue o sistema; só vale no Retro</small></span>' +
     '<select name="mode"><option value="auto">Automático</option><option value="escuro">Escuro</option><option value="claro">Claro</option></select></label>' +
     '<label class="row"><span class="txt">Tecla ON<small>Um toque abre estas configurações; segurar abre o verso</small></span>' +
     '<select name="onStyle"><option value="on">ON</option><option value="menu">Menu (≡)</option></select></label>' +
     '<label class="row"><span class="txt">Altura da banda superior<small>Desce a placa metálica (notch ou barra de status)</small></span>' +
     '<input type="range" name="topPad" min="0" max="32" step="2"></label></section>' +
-    '<section class="group"><h3 class="group-title">Cores</h3>' +
+    '<section class="group dev-only" hidden><h3 class="group-title">Cores</h3>' +
     '<label class="row"><span class="txt">Placa e destaque<small>Faixa metálica, título e bordas</small></span><input type="color" name="color-plate"></label>' +
     '<label class="row"><span class="txt">Tecla f<small>Teclas e rótulos dourados</small></span><input type="color" name="color-f"></label>' +
     '<label class="row"><span class="txt">Tecla g<small>Teclas e rótulos azuis</small></span><input type="color" name="color-g"></label>' +
@@ -3253,7 +3305,11 @@ function mountSettings(ctx) {
     '<div class="row"><span class="txt">Verso da calculadora<small>Guia de fórmulas com exemplos (ou segure a tecla ON)</small></span>' +
     '<button type="button" class="mini open-verso">Abrir</button></div>' +
     '<div class="row"><span class="txt">Redefinir configurações<small>Volta ao padrão; não apaga a memória da calculadora</small></span>' +
-    '<button type="button" class="mini reset-settings">Redefinir</button></div></section>';
+    '<button type="button" class="mini reset-settings">Redefinir</button></div>' +
+    `<div class="row ver-row" role="button" tabindex="0"><span class="txt">Versão<small class="ver-note">Calc 12c ${APP_VERSION}</small></span></div></section>` +
+    '<section class="group dev-only" hidden><h3 class="group-title">Desenvolvedor</h3>' +
+    '<div class="row"><span class="txt">Modo desenvolvedor ativo<small>Libera as cores e os temas Gold e Platinum em qualquer modelo</small></span>' +
+    '<button type="button" class="mini dev-off">Desativar</button></div></section>';
   // altura da placa metálica: o brilho de ênfase fica restrito a ela
   const plate = ctx.top.querySelector('.brand');
   if (plate) {
@@ -3264,7 +3320,7 @@ function mountSettings(ctx) {
   ctx.calc.append(panel);
   // os temas Gold e Platinum são sempre escuros: a escolha de modo fica inativa
   const lockMode = () => {
-    const off = s.theme !== 'moderno';
+    const off = effTheme() !== 'moderno';
     const sel = panel.querySelector('[name=mode]');
     sel.disabled = off;
     sel.closest('.row').classList.toggle('off', off);
@@ -3279,9 +3335,13 @@ function mountSettings(ctx) {
   const wakeOk = wakeSupported();
   const sync = () => {
     const sel = panel.querySelector('[name=profile]');
-    sel.innerHTML = listProfiles().map((p) => `<option value="${p.id}">${p.name}</option>`).join('');
+    sel.innerHTML = listProfiles().map((p) => `<option value="${p.id}">${p.label}</option>`).join('');
     sel.value = ctx.engine.profile;
-    panel.querySelector('[name=theme]').value = s.theme;
+    const THEME_NAMES = { retro: 'Gold', platinum: 'Platinum', moderno: 'Retro' };
+    const themeSel = panel.querySelector('[name=theme]');
+    themeSel.innerHTML = allowedThemes(ctx.profile.id, s.dev).map((t) => `<option value="${t}">${THEME_NAMES[t]}</option>`).join('');
+    themeSel.value = effTheme();
+    for (const g of panel.querySelectorAll('.dev-only')) g.hidden = !s.dev;
     panel.querySelector('[name=mode]').value = s.mode;
     panel.querySelector('[name=onStyle]').value = s.onStyle;
     panel.querySelector('[name=topPad]').value = s.topPad;
@@ -3427,6 +3487,35 @@ function mountSettings(ctx) {
     }
   });
 
+  // ---- modo desenvolvedor: 7 toques seguidos na versão ----
+  let taps = 0;
+  let lastTap = 0;
+  const verNote = panel.querySelector('.ver-note');
+  const setDev = (on) => {
+    s.dev = on;
+    saveSettings(s);
+    taps = 0;
+    apply();
+    sync();
+  };
+  const tapVersion = () => {
+    const now = Date.now();
+    taps = now - lastTap > DEV_GAP_MS ? 1 : taps + 1;
+    lastTap = now;
+    if (s.dev) verNote.textContent = 'O modo desenvolvedor já está ativo';
+    else if (taps >= DEV_TAPS) {
+      setDev(true);
+      verNote.textContent = 'Modo desenvolvedor ativado';
+    } else if (taps >= 3) verNote.textContent = `Faltam ${DEV_TAPS - taps} toques para o modo desenvolvedor`;
+  };
+  const verRow = panel.querySelector('.ver-row');
+  verRow.addEventListener('click', tapVersion);
+  verRow.addEventListener('keydown', (e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), tapVersion()));
+  panel.querySelector('.dev-off').addEventListener('click', () => {
+    setDev(false);
+    verNote.textContent = `Calc 12c ${APP_VERSION}`;
+  });
+
   const themeless = new Set(['vibrate', 'sound', 'wake', 'onStyle', 'topPad', 'orient']);
   const onInput = (e) => {
     const n = e.target.name;
@@ -3465,7 +3554,7 @@ function mountSettings(ctx) {
   panel.addEventListener('input', (e) => (e.target.name?.startsWith('color-') ? onColor(e) : e.target.name === 'topPad' && onInput(e))); // a banda sobe e desce enquanto arrasta
   apply();
   if (s.orient !== 'auto') setOrient(s.orient, false); // reaplica a trava guardada
-  return { get: () => ({ ...s }), open, close, toggle: () => (panel.hidden ? open() : close()), isOpen: () => !panel.hidden };
+  return { get: () => ({ ...s }), setDev, refresh: () => { sync(); apply(); }, open, close, toggle: () => (panel.hidden ? open() : close()), isOpen: () => !panel.hidden };
 }
 
 return { defaultSettings, loadSettings, saveSettings, applyTheme, applyColors, lockOrientation, mountSettings };
@@ -3770,8 +3859,12 @@ const VERSO = [
   },
 ];
 
-// Guia do verso de cada perfil (a 12C é o único por enquanto).
-const VERSO_BY_PROFILE = { '12c': { sections: VERSO, sigma: SIGMA_MAP } };
+// Guia do verso de cada perfil.
+// O grupo ALG só existe na Platinum.
+const VERSO_BY_PROFILE = {
+  '12c': { sections: VERSO.filter((g) => g.id !== 'alg'), sigma: SIGMA_MAP },
+  '12cp': { sections: VERSO, sigma: SIGMA_MAP },
+};
 
 // Uma variante pode depender da gravação do programa: `pre` é o rótulo de outra variante do mesmo exemplo,
 // cujas teclas são apertadas antes (rápido, sem animação). Devolve só essas teclas prévias.
@@ -4009,7 +4102,13 @@ function mountApp(root, engine = new Engine()) {
   const paintBrand = (s) => {
     const p = ctx.profile;
     const modeLabel = p.modes.length > 1 ? s.mode.toUpperCase() : 'RPN';
-    brand.querySelector('.title').textContent = p.name;
+    const title = brand.querySelector('.title');
+    if (title.dataset.profile !== p.id) { // o título muda só quando o perfil muda
+      title.dataset.profile = p.id;
+      title.classList.toggle('two', !!p.title);
+      if (p.title) title.innerHTML = `<span class="l1">${p.title[0]}</span><small class="l2">${p.title[1]}</small>`; // ex.: Platinum com 12c embaixo
+      else title.textContent = p.name;
+    }
     brand.querySelector('.model').textContent = modeLabel;
     brand.setAttribute('aria-label', `${p.name}, calculadora financeira ${modeLabel}`);
   };
@@ -4189,6 +4288,7 @@ function mountApp(root, engine = new Engine()) {
     ctx.setOnStyle(ctx.settings?.get().onStyle ?? 'on');
     ctx.verso.el.remove();
     ctx.verso = mountVerso(ctx);
+    ctx.settings?.refresh(); // o tema depende do perfil
     ctx.render();
     return true;
   };

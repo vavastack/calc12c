@@ -140,7 +140,7 @@ test('configurações novas: estilo da tecla ON, separador decimal, som, não do
   const saved = await p.evaluate(() => JSON.parse(localStorage.getItem('calc12c.settings')));
   assert.equal(saved.sound, 'mech');
   assert.equal(saved.topPad, 20);
-  assert.equal(saved.v, 4);
+  assert.equal(saved.v, 5);
   // redefinir: dois toques, volta ao padrão e mantém a memória da calculadora
   await p.locator('.reset-settings').click();
   assert.equal(await p.locator('.reset-settings').innerText(), 'Toque de novo');

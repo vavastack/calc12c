@@ -1,7 +1,7 @@
 // Perfis de calculadora. Cada perfil define o que muda de um modelo para outro: identidade, mapa de teclas,
 // modos de cálculo, indicadores do visor e as linhas de ligação (colchetes) do teclado.
 // O motor (engine.js) consulta o perfil pelo id; a interface monta o teclado a partir dele.
-import { KEYS, KEY_BY_ID } from './keymap.js';
+import { KEYS, KEY_BY_ID, KEYS_PLATINUM, KEY_BY_ID_PLATINUM } from './keymap.js';
 
 export const DEFAULT_PROFILE = '12c';
 
@@ -15,12 +15,17 @@ const BRACKETS_12C = [
 
 const PROFILES = new Map();
 
-// Perfil: { id, name (título no topo), model (selo), keys, keyById, modes, defaultMode, indicators, brackets }
+// Temas: 'retro' = Gold, 'platinum' = prata, 'moderno' = Retro (vidro). Cada perfil só mostra os seus (Gold na clássica,
+// Platinum na Platinum) e o Retro vale para todos; o modo desenvolvedor libera todos em qualquer perfil.
+export const ALL_THEMES = ['retro', 'platinum', 'moderno'];
+
+// Perfil: { id, name (título no topo), title (opcional: duas linhas), label (nome na lista), model (selo), keys, keyById,
+//   modes, defaultMode, indicators, brackets, themes, defaultTheme }
 export function registerProfile(p) {
-  for (const f of ['id', 'name', 'model', 'keys', 'keyById', 'modes', 'indicators', 'brackets']) {
+  for (const f of ['id', 'name', 'model', 'keys', 'keyById', 'modes', 'indicators', 'brackets', 'themes', 'defaultTheme']) {
     if (p[f] === undefined) throw new Error(`perfil sem ${f}`);
   }
-  PROFILES.set(p.id, { defaultMode: p.modes[0], ...p });
+  PROFILES.set(p.id, { defaultMode: p.modes[0], label: p.name, ...p });
 }
 
 export function hasProfile(id) {
@@ -37,13 +42,45 @@ export function listProfiles() {
   return [...PROFILES.values()];
 }
 
+// Temas que o perfil oferece (todos, no modo desenvolvedor).
+export function allowedThemes(id, dev = false) {
+  return dev ? [...ALL_THEMES] : [...getProfile(id).themes];
+}
+
+// Tema que vale de fato: a escolha da pessoa, se o perfil a oferece; senão o tema padrão do perfil.
+export function themeFor(id, chosen, dev = false) {
+  return allowedThemes(id, dev).includes(chosen) ? chosen : getProfile(id).defaultTheme;
+}
+
+const INDICATORS_CLASSIC = ['f', 'g', 'BEGIN', 'D.MY', 'C', 'USER', 'PRGM'];
+
+// HP 12C clássica: só RPN, placa dourada.
 registerProfile({
   id: '12c',
   name: 'Calc 12c',
+  label: 'Calc 12c (clássica)',
   model: '12C',
   keys: KEYS,
   keyById: KEY_BY_ID,
-  modes: ['rpn', 'alg'], // a Platinum é a única da família com os dois modos
-  indicators: ['RPN', 'ALG', '( )', 'f', 'g', 'BEGIN', 'D.MY', 'C', 'USER', 'PRGM'],
+  modes: ['rpn'],
+  indicators: INDICATORS_CLASSIC,
   brackets: BRACKETS_12C,
+  themes: ['retro', 'moderno'],
+  defaultTheme: 'retro',
+});
+
+// HP 12C Platinum: RPN e ALG, placa prateada, título "Platinum" com "12c" embaixo.
+registerProfile({
+  id: '12cp',
+  name: 'Calc 12c Platinum',
+  label: 'Calc 12c Platinum',
+  title: ['Platinum', '12c'],
+  model: '12C',
+  keys: KEYS_PLATINUM,
+  keyById: KEY_BY_ID_PLATINUM,
+  modes: ['rpn', 'alg'],
+  indicators: ['RPN', 'ALG', '( )', ...INDICATORS_CLASSIC],
+  brackets: BRACKETS_12C,
+  themes: ['platinum', 'moderno'],
+  defaultTheme: 'platinum',
 });

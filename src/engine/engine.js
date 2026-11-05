@@ -935,8 +935,7 @@ export class Engine {
     if (o.cf !== undefined && !CashFlows.valid(o.cf)) throw bad();
     const profile = o.profile ?? DEFAULT_PROFILE; // estados antigos não tinham perfil: eram da 12C
     if (typeof profile !== 'string' || !hasProfile(profile)) throw bad();
-    const modes = getProfile(profile).modes;
-    if (o.mode !== undefined && !modes.includes(o.mode)) throw bad();
+    if (o.mode !== undefined && !['rpn', 'alg'].includes(o.mode)) throw bad(); // modo sem suporte no perfil (ex.: ALG na clássica) volta ao padrão
     if (o.alg !== undefined && !AlgState.valid(o.alg)) throw bad();
     const e = new Engine({ locale: o.locale, profile, mode: o.mode });
     if (o.alg) e.alg = AlgState.fromJSON(o.alg);

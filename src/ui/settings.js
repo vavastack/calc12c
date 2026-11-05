@@ -2,10 +2,13 @@
 import { makeWake, wakeSupported } from './extras.js';
 import { COLOR_KEYS, validHex, customVars } from './colors.js';
 import { buildMemoryFile, parseMemoryFile, loadInto } from './memories.js';
-import { listProfiles } from '../engine/profiles.js';
+import { listProfiles, allowedThemes, themeFor } from '../engine/profiles.js';
 const KEY = 'calc12c.settings';
 const THEMES = ['retro', 'platinum', 'moderno']; // 'retro' = Gold (padrão), 'platinum' = prata, 'moderno' = Retro (vidro)
-const VERSION = 4; // v2: a vibração ao tocar passou a vir ligada; v3: som, não dormir, estilo da tecla ON e banda superior; v4: cores e orientação
+const VERSION = 5; // v2: a vibração ao tocar passou a vir ligada; v3: som, não dormir, estilo da tecla ON e banda superior; v4: cores e orientação; v5: modo desenvolvedor
+const APP_VERSION = 'V3.0';
+const DEV_TAPS = 7; // toques na versão para ligar o modo desenvolvedor
+const DEV_GAP_MS = 2000; // intervalo máximo entre dois toques
 const MODES = ['auto', 'escuro', 'claro'];
 const ON_STYLES = ['menu', 'on'];
 const ORIENTS = ['auto', 'portrait', 'landscape'];
@@ -16,7 +19,7 @@ const lowEnd = () => (navigator.hardwareConcurrency ?? 8) <= 2 || (navigator.dev
 
 export function defaultSettings() {
   // reduce: null = automático (liga sozinho em aparelhos simples); true/false = escolha do usuário
-  return { v: VERSION, theme: 'retro', mode: 'auto', reduce: null, vibrate: true, sound: 'off', wake: false, onStyle: 'on', topPad: 0, colors: noColors(), orient: 'auto' };
+  return { v: VERSION, theme: null, mode: 'auto', reduce: null, vibrate: true, sound: 'off', wake: false, onStyle: 'on', topPad: 0, colors: noColors(), orient: 'auto', dev: false };
 }
 
 export function loadSettings() {
@@ -26,7 +29,7 @@ export function loadSettings() {
     if (!o || typeof o !== 'object') return d;
     return {
       v: VERSION,
-      theme: THEMES.includes(o.theme) ? o.theme : d.theme,
+      theme: THEMES.includes(o.theme) ? o.theme : null, // null = o tema padrão do perfil, até a pessoa escolher outro
       mode: MODES.includes(o.mode) ? o.mode : d.mode,
       reduce: typeof o.reduce === 'boolean' ? o.reduce : null,
       // quem salvou antes da versão 2 passa a ter a vibração ligada (dá para desligar nas configurações)
@@ -38,6 +41,7 @@ export function loadSettings() {
       topPad: Number.isFinite(o.topPad) ? Math.min(32, Math.max(0, Math.round(o.topPad))) : 0,
       colors: Object.fromEntries(COLOR_KEYS.map((k) => [k, validHex(o.colors?.[k]) ? o.colors[k].toLowerCase() : null])),
       orient: ORIENTS.includes(o.orient) ? o.orient : 'auto',
+      dev: o.dev === true,
     };
   } catch {
     return d; // ausente, corrompido ou armazenamento bloqueado
@@ -119,14 +123,16 @@ export async function lockOrientation(mode) {
 export function mountSettings(ctx) {
   let s = loadSettings();
   const wake = makeWake();
+  // tema que vale: a escolha, se o perfil em uso a oferece (ou o modo desenvolvedor); senão o padrão do perfil
+  const effTheme = () => themeFor(ctx.profile.id, s.theme, s.dev);
   const apply = () => {
-    applyTheme(s.theme, s.mode, effectiveReduce(s));
+    applyTheme(effTheme(), s.mode, effectiveReduce(s));
     ctx.vibrate = s.vibrate;
     ctx.sounder.set(s.sound);
     ctx.setOnStyle?.(s.onStyle);
     ctx.calc.style.setProperty('--top-extra', s.topPad + 'px');
     wake(s.wake && wakeSupported());
-    applyColors(s.colors);
+    applyColors(s.dev ? s.colors : noColors()); // as cores só valem no modo desenvolvedor
   };
   const fsOk = !!document.fullscreenEnabled && !window.matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches;
   const panel = document.createElement('section');
@@ -140,14 +146,14 @@ export function mountSettings(ctx) {
     '<select name="profile"></select></label></section>' +
     '<section class="group"><h3 class="group-title">Aparência</h3>' +
     '<label class="row"><span class="txt">Tema<small>Gold e Platinum são metálicos e sempre escuros; Retro é de vidro</small></span>' +
-    '<select name="theme"><option value="retro">Gold</option><option value="platinum">Platinum</option><option value="moderno">Retro</option></select></label>' +
+    '<select name="theme"></select></label>' +
     '<label class="row"><span class="txt">Modo<small>Automático segue o sistema; só vale no Retro</small></span>' +
     '<select name="mode"><option value="auto">Automático</option><option value="escuro">Escuro</option><option value="claro">Claro</option></select></label>' +
     '<label class="row"><span class="txt">Tecla ON<small>Um toque abre estas configurações; segurar abre o verso</small></span>' +
     '<select name="onStyle"><option value="on">ON</option><option value="menu">Menu (≡)</option></select></label>' +
     '<label class="row"><span class="txt">Altura da banda superior<small>Desce a placa metálica (notch ou barra de status)</small></span>' +
     '<input type="range" name="topPad" min="0" max="32" step="2"></label></section>' +
-    '<section class="group"><h3 class="group-title">Cores</h3>' +
+    '<section class="group dev-only" hidden><h3 class="group-title">Cores</h3>' +
     '<label class="row"><span class="txt">Placa e destaque<small>Faixa metálica, título e bordas</small></span><input type="color" name="color-plate"></label>' +
     '<label class="row"><span class="txt">Tecla f<small>Teclas e rótulos dourados</small></span><input type="color" name="color-f"></label>' +
     '<label class="row"><span class="txt">Tecla g<small>Teclas e rótulos azuis</small></span><input type="color" name="color-g"></label>' +
@@ -183,7 +189,11 @@ export function mountSettings(ctx) {
     '<div class="row"><span class="txt">Verso da calculadora<small>Guia de fórmulas com exemplos (ou segure a tecla ON)</small></span>' +
     '<button type="button" class="mini open-verso">Abrir</button></div>' +
     '<div class="row"><span class="txt">Redefinir configurações<small>Volta ao padrão; não apaga a memória da calculadora</small></span>' +
-    '<button type="button" class="mini reset-settings">Redefinir</button></div></section>';
+    '<button type="button" class="mini reset-settings">Redefinir</button></div>' +
+    `<div class="row ver-row" role="button" tabindex="0"><span class="txt">Versão<small class="ver-note">Calc 12c ${APP_VERSION}</small></span></div></section>` +
+    '<section class="group dev-only" hidden><h3 class="group-title">Desenvolvedor</h3>' +
+    '<div class="row"><span class="txt">Modo desenvolvedor ativo<small>Libera as cores e os temas Gold e Platinum em qualquer modelo</small></span>' +
+    '<button type="button" class="mini dev-off">Desativar</button></div></section>';
   // altura da placa metálica: o brilho de ênfase fica restrito a ela
   const plate = ctx.top.querySelector('.brand');
   if (plate) {
@@ -194,7 +204,7 @@ export function mountSettings(ctx) {
   ctx.calc.append(panel);
   // os temas Gold e Platinum são sempre escuros: a escolha de modo fica inativa
   const lockMode = () => {
-    const off = s.theme !== 'moderno';
+    const off = effTheme() !== 'moderno';
     const sel = panel.querySelector('[name=mode]');
     sel.disabled = off;
     sel.closest('.row').classList.toggle('off', off);
@@ -209,9 +219,13 @@ export function mountSettings(ctx) {
   const wakeOk = wakeSupported();
   const sync = () => {
     const sel = panel.querySelector('[name=profile]');
-    sel.innerHTML = listProfiles().map((p) => `<option value="${p.id}">${p.name}</option>`).join('');
+    sel.innerHTML = listProfiles().map((p) => `<option value="${p.id}">${p.label}</option>`).join('');
     sel.value = ctx.engine.profile;
-    panel.querySelector('[name=theme]').value = s.theme;
+    const THEME_NAMES = { retro: 'Gold', platinum: 'Platinum', moderno: 'Retro' };
+    const themeSel = panel.querySelector('[name=theme]');
+    themeSel.innerHTML = allowedThemes(ctx.profile.id, s.dev).map((t) => `<option value="${t}">${THEME_NAMES[t]}</option>`).join('');
+    themeSel.value = effTheme();
+    for (const g of panel.querySelectorAll('.dev-only')) g.hidden = !s.dev;
     panel.querySelector('[name=mode]').value = s.mode;
     panel.querySelector('[name=onStyle]').value = s.onStyle;
     panel.querySelector('[name=topPad]').value = s.topPad;
@@ -357,6 +371,35 @@ export function mountSettings(ctx) {
     }
   });
 
+  // ---- modo desenvolvedor: 7 toques seguidos na versão ----
+  let taps = 0;
+  let lastTap = 0;
+  const verNote = panel.querySelector('.ver-note');
+  const setDev = (on) => {
+    s.dev = on;
+    saveSettings(s);
+    taps = 0;
+    apply();
+    sync();
+  };
+  const tapVersion = () => {
+    const now = Date.now();
+    taps = now - lastTap > DEV_GAP_MS ? 1 : taps + 1;
+    lastTap = now;
+    if (s.dev) verNote.textContent = 'O modo desenvolvedor já está ativo';
+    else if (taps >= DEV_TAPS) {
+      setDev(true);
+      verNote.textContent = 'Modo desenvolvedor ativado';
+    } else if (taps >= 3) verNote.textContent = `Faltam ${DEV_TAPS - taps} toques para o modo desenvolvedor`;
+  };
+  const verRow = panel.querySelector('.ver-row');
+  verRow.addEventListener('click', tapVersion);
+  verRow.addEventListener('keydown', (e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), tapVersion()));
+  panel.querySelector('.dev-off').addEventListener('click', () => {
+    setDev(false);
+    verNote.textContent = `Calc 12c ${APP_VERSION}`;
+  });
+
   const themeless = new Set(['vibrate', 'sound', 'wake', 'onStyle', 'topPad', 'orient']);
   const onInput = (e) => {
     const n = e.target.name;
@@ -395,5 +438,5 @@ export function mountSettings(ctx) {
   panel.addEventListener('input', (e) => (e.target.name?.startsWith('color-') ? onColor(e) : e.target.name === 'topPad' && onInput(e))); // a banda sobe e desce enquanto arrasta
   apply();
   if (s.orient !== 'auto') setOrient(s.orient, false); // reaplica a trava guardada
-  return { get: () => ({ ...s }), open, close, toggle: () => (panel.hidden ? open() : close()), isOpen: () => !panel.hidden };
+  return { get: () => ({ ...s }), setDev, refresh: () => { sync(); apply(); }, open, close, toggle: () => (panel.hidden ? open() : close()), isOpen: () => !panel.hidden };
 }

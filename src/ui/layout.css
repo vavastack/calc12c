@@ -25,6 +25,10 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
   border-bottom: 1px solid var(--plate-edge);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 1px 0 var(--engrave-hi), 0 3px 6px rgba(0,0,0,.28); }
 .brand .name { display: grid; gap: 2px; line-height: 1; }
+/* perfis com título em duas linhas (Platinum): o nome do modelo, menor, embaixo e à esquerda */
+.brand .title.two { display: grid; gap: 1px; }
+.brand .title.two .l1 { font-size: 1em; line-height: .95; }
+.brand .title.two .l2 { font-size: .52em; font-weight: 800; letter-spacing: .32em; line-height: 1; text-align: left; padding-left: .1em; }
 .brand .title { font-size: 25px; font-weight: 800; letter-spacing: .02em; color: var(--plate-ink); white-space: nowrap;
   text-shadow: 0 1px 0 var(--engrave-hi), 0 -1px 0 var(--engrave-lo); }
 .brand .rule { flex: 1; height: 2px; border-radius: 1px; background: var(--plate-ink); opacity: .75;
@@ -305,3 +309,4 @@ html:not([data-theme^="moderno"]) .display { border: 4px solid transparent;
 .settings input[type="range"] { flex: none; width: 110px; accent-color: var(--gold); }
 @media (orientation: landscape) { .verso { left: 0; right: 0; } .sigma-map { grid-template-columns: repeat(6, auto 14px auto); } }
 .v-tag.sigma-tag { writing-mode: horizontal-tb; transform: none; font-size: 16px; letter-spacing: 0; }
+.settings .group[hidden] { display: none; } /* grupos que só aparecem no modo desenvolvedor */

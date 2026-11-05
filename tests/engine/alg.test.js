@@ -14,12 +14,21 @@ function run(e, seq) {
   }
   return e;
 }
-const alg = (seq = '') => run(run(new Engine({ locale: 'br' }), 'f eex'), seq);
+const novo = () => new Engine({ locale: 'br', profile: '12cp' }); // o ALG é da Platinum
+const alg = (seq = '') => run(run(novo(), 'f eex'), seq);
 const shown = (e) => e.state.display;
 
 // ---------- modo ----------
+test('a 12C clássica não tem ALG: f EEX não muda nada e o modo fica RPN', () => {
+  const e = run(new Engine({ locale: 'br' }), 'f eex 2 plus 3 enter');
+  assert.equal(e.state.mode, 'rpn');
+  assert.equal(e.state.parens, 0);
+  run(e, 'g sto g rcl');
+  assert.equal(e.state.parens, 0);
+});
+
 test('o modo padrão é RPN; f EEX liga o ALG e f CHS volta ao RPN', () => {
-  const e = new Engine({ locale: 'br' });
+  const e = novo();
   assert.equal(e.state.mode, 'rpn');
   run(e, 'f eex');
   assert.equal(e.state.mode, 'alg');
@@ -28,7 +37,7 @@ test('o modo padrão é RPN; f EEX liga o ALG e f CHS volta ao RPN', () => {
 });
 
 test('em RPN nada muda: 2 ENTER 3 + continua dando 5 e g STO / g RCL não fazem nada', () => {
-  const e = run(new Engine({ locale: 'br' }), '2 enter 3 plus');
+  const e = run(novo(), '2 enter 3 plus');
   assert.equal(shown(e), '5,00');
   run(e, 'g sto g rcl');
   assert.equal(shown(e), '5,00');
@@ -50,10 +59,18 @@ test('o modo é gravado e restaurado com a calculadora', () => {
 });
 
 test('estado salvo antes do ALG (sem mode) abre em RPN', () => {
-  const o = JSON.parse(new Engine().serialize());
+  const o = JSON.parse(novo().serialize());
   delete o.mode;
   delete o.alg;
   assert.equal(Engine.restore(JSON.stringify(o)).state.mode, 'rpn');
+});
+
+test('estado do ALG salvo em um perfil sem ALG (clássica) volta em RPN, sem perder o resto', () => {
+  const o = JSON.parse(alg('42 sto 1').serialize());
+  o.profile = '12c';
+  const e = Engine.restore(JSON.stringify(o));
+  assert.equal(e.state.mode, 'rpn');
+  assert.equal(e.state.regs[1], 42);
 });
 
 // ---------- aritmética (manual, pp. 22-26 e 237-239) ----------
@@ -186,7 +203,7 @@ test('%T: 40 ENTER 10 %T = 25,00', () => {
 test('financeiras iguais ao RPN: 12 n, 1 i, −1.000 PV, PMT = 88,85', () => {
   const e = alg('12 n 1 i 1000 chs pv pmt');
   assert.equal(shown(e), '88,85');
-  const r = run(new Engine({ locale: 'br' }), '12 n 1 i 1000 chs pv pmt');
+  const r = run(new Engine({ locale: 'br' }), '12 n 1 i 1000 chs pv pmt'); // clássica, em RPN
   assert.equal(e.state.stack.x, r.state.stack.x);
 });
 
@@ -238,8 +255,8 @@ test('a fita registra cada operador e o ENTER como "="', () => {
 
 test('programa gravado e rodado em ALG: 25 ENTER 3 ÷ dá 3 (RPN dá 8,33), como no fórum do HP Museum', () => {
   const prog = 'f rs f rdown 25 enter 3 divide f rs';
-  const r = run(new Engine({ locale: 'br' }), prog + ' rs');
+  const r = run(novo(), prog + ' rs');
   assert.equal(shown(r), '8,33');
-  const a = run(new Engine({ locale: 'br' }), 'f eex ' + prog + ' rs');
+  const a = run(novo(), 'f eex ' + prog + ' rs');
   assert.equal(shown(a), '3,00');
 });

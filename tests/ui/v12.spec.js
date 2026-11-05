@@ -1,7 +1,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { chromium, startServer, openApp } from './helpers.js';
+import { chromium, startServer, openApp, enableDev } from './helpers.js';
 
 let server, browser;
 before(async () => {
@@ -22,6 +22,7 @@ const press = (p, seq) => p.evaluate((s) => s.split(' ').forEach((id) => window.
 // ---------- cores ----------
 test('cores: escolher a cor da tecla f muda as variáveis, persiste ao reabrir e "Restaurar" volta ao tema', async () => {
   const { page: p, context, errors, close } = await openApp(browser, server.url);
+  await enableDev(p);
   await openSettings(p);
   await p.locator('.settings input[name="color-f"]').fill('#ff0000');
   assert.equal(await rootVar(p, '--gold'), '#ff0000');
@@ -42,6 +43,7 @@ test('cores: escolher a cor da tecla f muda as variáveis, persiste ao reabrir e
 
 test('cores: as quatro cores aplicam as variáveis esperadas e a troca de tema não as apaga', async () => {
   const { page: p, close } = await openApp(browser, server.url);
+  await enableDev(p);
   await openSettings(p);
   for (const [k, c] of [['plate', '#336699'], ['f', '#ff8800'], ['g', '#00aa55'], ['display', '#ffee00']]) await p.locator(`.settings input[name="color-${k}"]`).fill(c);
   assert.equal(await rootVar(p, '--brand'), '#336699');
@@ -54,7 +56,7 @@ test('cores: as quatro cores aplicam as variáveis esperadas e a troca de tema n
 
 test('cores: valores salvos inválidos são ignorados ao carregar', async () => {
   const { page: p, close } = await openApp(browser, server.url);
-  await p.evaluate(() => localStorage.setItem('calc12c.settings', JSON.stringify({ v: 4, colors: { f: 'vermelho', g: '#zzz', plate: '#112233', display: 5 } })));
+  await p.evaluate(() => localStorage.setItem('calc12c.settings', JSON.stringify({ v: 5, dev: true, colors: { f: 'vermelho', g: '#zzz', plate: '#112233', display: 5 } })));
   await p.reload();
   await p.waitForSelector('button.key');
   assert.equal(await rootVar(p, '--gold'), '');

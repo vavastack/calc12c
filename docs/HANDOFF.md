@@ -10,7 +10,7 @@ Uso: ferramenta diária, futuro módulo da Pista Financeira, item de portfólio 
 ## Versões feitas
 - **V1** (fechada): motor RPN completo no que cobre, 39 teclas, fita (tape), rótulos f/g, temas Gold (padrão) / Platinum / Retro (moderno escuro e claro), PWA offline, selo "MW RPN" no cabeçalho.
 - **V1.1**: tecla ON (toque = configurações, segurar 500 ms = verso), linhas de conexão (BOND, DEPRECIATION, CLEAR, PREFIX), verso interativo (guia de fórmulas com exemplos executáveis), novas configurações, teclado cabe em tela cheia (`--app-h`).
-- **V3.0 (05/11/2026):** arquitetura de perfis e modo ALG da 12C Platinum (detalhes na seção "V3.0" abaixo).
+- **V3.0 (05/11/2026):** arquitetura de perfis, 12C clássica e 12C Platinum como perfis separados, modo ALG (só na Platinum), temas fiéis por perfil e modo desenvolvedor (detalhes na seção "V3.0" abaixo).
 - **V1.1.1**: tecla afunda ao tocar (só a face no Gold/Platinum), som em dois momentos (Desligado/Suave/Mecânico), vibração ao encostar (12 ms, reserva ao soltar), contorno de f/g só na face. Vibração só funciona fora do modo silencioso do Android (confirmado no S25).
 
 ## O que o motor já faz (src/engine)
@@ -31,7 +31,7 @@ Arquivos: `engine.js` (despacho, F_OPS/G_OPS), `keymap.js` (teclas do perfil 12C
 Build: `node scripts/build.js` junta tudo em um HTML (o empacotador só aceita `import {…} from '…';` em uma linha e `export function/const/class/let`).
 
 ## Testes
-- `npm test` → motor (278 testes). `node --test tests/ui/*.spec.js` → interface com Playwright (108). `npm run test:all` roda os dois (cerca de 1 min 30).
+- `npm test` → motor (283 testes). `node --test tests/ui/*.spec.js` → interface com Playwright (116). `npm run test:all` roda os dois (cerca de 1 min 30).
 - Tudo passa na versão atual. `tests/engine/verso.test.js` tem a tabela ESPERADO dos exemplos do verso.
 
 ## Plano da V2 — "12C completa"
@@ -59,12 +59,15 @@ Critério de pronto: testes verdes e resultados idênticos aos da HP 12C real qu
 - **Integração com o Pista Financeira (adiada, decidir mais à frente):** definir o que faz sentido levar do projeto amplo para o Pista de forma simples: um link de acesso (o PWA continua separado) ou a inclusão do motor de cálculo adaptado à plataforma do Pista. O motor (`src/engine`) já é independente da interface, então os dois caminhos são possíveis.
 
 ## V3.0 — perfis e modo ALG (feita em 05/11/2026)
-**Perfis (`src/engine/profiles.js`):** cada perfil tem `id`, `name` (título no topo), `model`, `keys` e `keyById` (mapa de teclas), `modes` (`['rpn','alg']` na 12C), `indicators` do visor e `brackets` (linhas de ligação). `registerProfile` / `getProfile` / `listProfiles` / `hasProfile`. Hoje só existe o `12c`; um perfil novo é registrar um objeto desses (e dados de verso em `VERSO_BY_PROFILE`, em `verso-data.js`).
+**Perfis (`src/engine/profiles.js`):** cada perfil tem `id`, `name` (título no topo), `model`, `keys` e `keyById` (mapa de teclas), `modes` (`['rpn','alg']` na 12C), `indicators` do visor e `brackets` (linhas de ligação). `registerProfile` / `getProfile` / `listProfiles` / `hasProfile`. Hoje há dois: `12c` (clássica: só RPN, tema Gold, 7 indicadores, sem rótulos RPN/ALG e g ( )) e `12cp` (Platinum: RPN e ALG, tema Platinum, 10 indicadores, rótulos f RPN/f ALG e g ( ) em `KEYS_PLATINUM`, título em duas linhas "Platinum" / "12c" via `title`). Um perfil novo é registrar um objeto desses (e dados de verso em `VERSO_BY_PROFILE`, em `verso-data.js`).
 - O `Engine` recebe `{ profile, mode }`, guarda os dois (`engine.profile`, `engine.mode`), mantém no `reset()` e na serialização. Estado salvo antigo, sem `profile`/`mode`/`alg`, abre como 12C em RPN.
 - Armazenamento por perfil (`storage.js`): 12C continua em `calc12c.state` (nada se perde); os outros em `calc12c.state.<id>`; perfil em uso em `calc12c.profile`. Troca de perfil nas Configurações > Calculadora: guarda o estado do atual, carrega o do novo e refaz teclado, título, selo, indicadores e verso (`ctx.setProfile`, `ctx.adoptProfile`). Temas e cores continuam globais.
 - Memórias em arquivo: `versao: 2` com `perfil`; arquivo da versão 1 (sem perfil) abre como 12C; arquivo de outro perfil troca para ele; perfil desconhecido é recusado.
 - `program.js` ainda usa o mapa de teclas da 12C para listar linhas (ok enquanto só há a 12C; passa a depender do perfil quando entrar o 2º perfil programável).
-**ALG (`alg.js` guarda o estado; a lógica está em `engine.js`, métodos `_alg*`):** f EEX = ALG, f CHS = RPN (rótulos dourados nas teclas); g STO = "(", g RCL = ")". Visor ganhou RPN, ALG e ( ); o selo do topo mostra RPN ou ALG. Regras, todas do Apêndice B do manual da Platinum:
+**Temas por perfil (fiéis por padrão):** cada perfil tem `themes` e `defaultTheme` (`allowedThemes`, `themeFor` em `profiles.js`): Gold na clássica, Platinum na Platinum, Retro (vidro) nos dois. `settings.theme` é `null` até a pessoa escolher um tema; sem escolha vale o padrão do perfil, e escolha que o perfil não oferece volta ao padrão dele.
+**Modo desenvolvedor (settings VERSION 5, campo `dev`):** liga com 7 toques seguidos (até 2 s entre eles) na linha "Versão" em Configurações > Mais; a contagem aparece a partir do 3º toque. Libera: grupo **Cores** (editor de cores; sem o modo desenvolvedor as cores salvas não valem, mas ficam guardadas) e **todos os temas em qualquer modelo** (Gold e Platinum nos dois). Grupo "Desenvolvedor" com botão Desativar; "Redefinir configurações" também desliga. API para testes: `window.calc12c.settings.setDev(bool)`.
+**Pendente da Platinum:** memória de 400 linhas de programa (hoje 99 nos dois perfis; `MAX_LINES` em `program.js`) e as demais diferenças dela (desfazer, mais registradores).
+**ALG (`alg.js` guarda o estado; a lógica está em `engine.js`, métodos `_alg*`):** Só no perfil Platinum: f EEX = ALG, f CHS = RPN (rótulos dourados nas teclas); g STO = "(", g RCL = ")". Visor da Platinum ganhou RPN, ALG e ( ); o selo do topo mostra RPN ou ALG. Na clássica essas teclas não fazem nada. Regras, todas do Apêndice B do manual da Platinum:
 - Contas da esquerda para a direita, **sem hierarquia** (1 + 2 × 3 = 9; 456 − 75 ÷ 18,5 × 68 ÷ 1,9 = 737,07 com 381,00 / 20,59 / 1.400,43 no caminho). Dois operadores seguidos: vale o último.
 - ENTER é "=": com conta pendente calcula e fecha os parênteses; sem conta pendente é o ENTER da pilha (por isso `A ENTER B Δ%` e as funções de datas/títulos funcionam igual ao RPN).
 - Parênteses até 13 abertos (o 14º dá Error 4 — **código do erro a confirmar**); ")" sem "(" é ignorado.
@@ -72,7 +75,7 @@ Critério de pronto: testes verdes e resultados idênticos aos da HP 12C real qu
 - CLx apaga o número; CLx duas vezes cancela as operações pendentes. Erro cancela as pendentes. Trocar de modo, f CLEAR REG e f CLEAR Σ também.
 - LAST X no ALG: g LSTx troca X com LAST X sem elevar a pilha; o visor vai para LAST X quando se começa a digitar um número novo. Resultados concluídos sobem pela pilha de histórico (x≷y e R↓ mexem nela).
 - Programas gravados em RPN rodam em ALG como a máquina faria (25 ENTER 3 ÷ dá 3 em ALG e 8,33 em RPN, caso do fórum do HP Museum).
-- Verso: grupo ALG com 5 exemplos executáveis; exemplos dos outros grupos passam a calculadora para RPN antes de rodar (aviso na tela).
+- Verso: grupo ALG com 5 exemplos executáveis (só na Platinum, via `VERSO_BY_PROFILE`); exemplos dos outros grupos passam a calculadora para RPN antes de rodar (aviso na tela).
 - **Pontos a confirmar** (o manual da Platinum só pôde ser lido em resumo; o Wanderson tem a 12C clássica e não confere o ALG na máquina): código de erro do 14º parêntese; display exato do % com + e − (o app mostra o líquido na hora); detalhes do LAST X e do histórico no ALG (manual, p. 239).
 
 ## Próximo passo

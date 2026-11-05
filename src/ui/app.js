@@ -97,7 +97,13 @@ export function mountApp(root, engine = new Engine()) {
   const paintBrand = (s) => {
     const p = ctx.profile;
     const modeLabel = p.modes.length > 1 ? s.mode.toUpperCase() : 'RPN';
-    brand.querySelector('.title').textContent = p.name;
+    const title = brand.querySelector('.title');
+    if (title.dataset.profile !== p.id) { // o título muda só quando o perfil muda
+      title.dataset.profile = p.id;
+      title.classList.toggle('two', !!p.title);
+      if (p.title) title.innerHTML = `<span class="l1">${p.title[0]}</span><small class="l2">${p.title[1]}</small>`; // ex.: Platinum com 12c embaixo
+      else title.textContent = p.name;
+    }
     brand.querySelector('.model').textContent = modeLabel;
     brand.setAttribute('aria-label', `${p.name}, calculadora financeira ${modeLabel}`);
   };
@@ -277,6 +283,7 @@ export function mountApp(root, engine = new Engine()) {
     ctx.setOnStyle(ctx.settings?.get().onStyle ?? 'on');
     ctx.verso.el.remove();
     ctx.verso = mountVerso(ctx);
+    ctx.settings?.refresh(); // o tema depende do perfil
     ctx.render();
     return true;
   };

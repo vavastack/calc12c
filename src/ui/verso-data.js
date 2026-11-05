@@ -173,8 +173,12 @@ export const VERSO = [
   },
 ];
 
-// Guia do verso de cada perfil (a 12C é o único por enquanto).
-export const VERSO_BY_PROFILE = { '12c': { sections: VERSO, sigma: SIGMA_MAP } };
+// Guia do verso de cada perfil.
+// O grupo ALG só existe na Platinum.
+export const VERSO_BY_PROFILE = {
+  '12c': { sections: VERSO.filter((g) => g.id !== 'alg'), sigma: SIGMA_MAP },
+  '12cp': { sections: VERSO, sigma: SIGMA_MAP },
+};
 
 // Uma variante pode depender da gravação do programa: `pre` é o rótulo de outra variante do mesmo exemplo,
 // cujas teclas são apertadas antes (rápido, sem animação). Devolve só essas teclas prévias.

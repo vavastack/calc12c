@@ -1,6 +1,6 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { chromium, startServer, openApp } from './helpers.js';
+import { chromium, startServer, openApp, enableDev } from './helpers.js';
 
 let server, browser;
 before(async () => {
@@ -17,11 +17,13 @@ const tap = async (p, seq) => {
 };
 const on = (p, ind) => p.locator(`.display [data-ind="${ind}"]`).evaluate((e) => e.classList.contains('on'));
 const digits = (p) => p.locator('.digits').innerText();
+const platinum = (p) => p.evaluate(() => window.calc12c.setProfile('12cp'));
 
 // ---------- modo ALG pela tela ----------
 test('f ALG acende ALG, apaga RPN e troca o selo; f RPN volta', async () => {
   const app = await openApp(browser, server.url);
   const p = app.page;
+  await platinum(p);
   assert.equal(await on(p, 'RPN'), true);
   assert.equal((await p.locator('.brand .badge .model').innerText()).trim(), 'RPN');
   await tap(p, 'f eex');
@@ -37,6 +39,7 @@ test('f ALG acende ALG, apaga RPN e troca o selo; f RPN volta', async () => {
 test('ALG pela tela: 2 + 3 ENTER = 5 e a cadeia do manual dá 737,07', async () => {
   const app = await openApp(browser, server.url);
   const p = app.page;
+  await platinum(p);
   await tap(p, 'f eex 2 plus 3 enter');
   assert.equal(await digits(p), '5,00');
   await tap(p, 'clx clx 4 5 6 minus 7 5 divide 1 8 dot 5 times 6 8 divide 1 dot 9 enter');
@@ -47,6 +50,7 @@ test('ALG pela tela: 2 + 3 ENTER = 5 e a cadeia do manual dá 737,07', async () 
 test('o indicador ( ) acende com parêntese aberto e g ( g ) aparecem nas teclas STO e RCL', async () => {
   const app = await openApp(browser, server.url);
   const p = app.page;
+  await platinum(p);
   assert.equal(await p.locator('button.key[data-id="sto"] .lg').innerText(), '(');
   assert.equal(await p.locator('button.key[data-id="rcl"] .lg').innerText(), ')');
   assert.equal(await p.locator('button.key[data-id="chs"] .lf').innerText(), 'RPN');
@@ -63,6 +67,7 @@ test('o indicador ( ) acende com parêntese aberto e g ( g ) aparecem nas teclas
 test('o modo ALG e a conta pendente sobrevivem a recarregar a página', async () => {
   const app = await openApp(browser, server.url);
   const p = app.page;
+  await platinum(p);
   await tap(p, 'f eex 5 plus 3');
   await p.reload();
   await p.waitForSelector('button.key');
@@ -75,6 +80,7 @@ test('o modo ALG e a conta pendente sobrevivem a recarregar a página', async ()
 test('os dez indicadores cabem no visor e a página não ganha rolagem lateral em telas estreitas', async () => {
   for (const width of [320, 360, 390]) {
     const app = await openApp(browser, server.url, { width, height: 740 });
+    await platinum(app.page);
     const r = await app.page.evaluate(() => {
       const d = document.querySelector('.display').getBoundingClientRect();
       const last = [...document.querySelectorAll('.display [data-ind], .display .fmt-toggle')].map((e) => e.getBoundingClientRect().right);
@@ -90,6 +96,7 @@ test('os dez indicadores cabem no visor e a página não ganha rolagem lateral e
 test('o verso roda os exemplos em RPN mesmo com a calculadora em ALG, e o grupo ALG liga o ALG', async () => {
   const app = await openApp(browser, server.url);
   const p = app.page;
+  await platinum(p);
   await p.evaluate(() => { window.calc12c.fast = true; });
   await tap(p, 'f eex');
   assert.equal(await on(p, 'ALG'), true);
@@ -114,7 +121,7 @@ test('Configurações traz o seletor de modelo com a 12C selecionada', async () 
   await p.locator('.key[data-id="on"]').click();
   const sel = p.locator('.settings select[name="profile"]');
   assert.equal(await sel.inputValue(), '12c');
-  assert.deepEqual(await sel.locator('option').allTextContents(), ['Calc 12c']);
+  assert.deepEqual(await sel.locator('option').allTextContents(), ['Calc 12c (clássica)', 'Calc 12c Platinum']);
   assert.equal(await p.locator('.brand .title').innerText(), 'Calc 12c');
   await app.close();
 });
@@ -188,5 +195,156 @@ test('abrir um arquivo de memórias de outro modelo troca para esse modelo', asy
   await p.locator('.settings input.mem-file').setInputFiles({ name: 'm.json', mimeType: 'application/json', buffer: Buffer.from(texto) });
   await p.waitForFunction(() => document.querySelector('.brand .title').textContent === 'Calc teste');
   assert.equal(await digits(p), '9'); // o 9 ainda estava sendo digitado
+  await app.close();
+});
+
+// ---------- 12C clássica x Platinum ----------
+test('a clássica é o padrão: 7 indicadores, título numa linha, sem os rótulos RPN/ALG e g ( )', async () => {
+  const app = await openApp(browser, server.url);
+  const p = app.page;
+  assert.deepEqual(await p.locator('.display [data-ind]').evaluateAll((els) => els.map((e) => e.dataset.ind)), ['f', 'g', 'BEGIN', 'D.MY', 'C', 'USER', 'PRGM']);
+  assert.equal(await p.locator('.brand .title').innerText(), 'Calc 12c');
+  assert.equal(await p.locator('.brand .title .l2').count(), 0);
+  assert.equal(await p.locator('button.key[data-id="chs"] .lf').innerText(), '');
+  assert.equal(await p.locator('button.key[data-id="sto"] .lg').innerText(), '');
+  await tap(p, 'f eex 2 plus 3 enter'); // sem ALG: f EEX não faz nada e a conta é RPN
+  assert.equal(await digits(p), '3,00');
+  assert.equal((await p.locator('.brand .badge .model').innerText()).trim(), 'RPN');
+  await app.close();
+});
+
+test('a Platinum mostra "Platinum" com "12c" menor embaixo, à esquerda, e o selo segue o modo', async () => {
+  const app = await openApp(browser, server.url);
+  const p = app.page;
+  await platinum(p);
+  assert.equal(await p.locator('.brand .title .l1').innerText(), 'Platinum');
+  assert.equal(await p.locator('.brand .title .l2').innerText(), '12c');
+  const r = await p.evaluate(() => {
+    const a = document.querySelector('.title .l1').getBoundingClientRect();
+    const b = document.querySelector('.title .l2').getBoundingClientRect();
+    return { l1: a, l2: b, f1: parseFloat(getComputedStyle(document.querySelector('.title .l1')).fontSize), f2: parseFloat(getComputedStyle(document.querySelector('.title .l2')).fontSize) };
+  });
+  assert.ok(r.l2.top >= r.l1.bottom - 1, '12c fica embaixo de Platinum');
+  assert.ok(r.f2 < r.f1 * 0.7, '12c é menor');
+  assert.ok(Math.abs(r.l2.left - r.l1.left) < 4, 'alinhados à esquerda');
+  assert.equal(await p.locator('.brand .badge .model').innerText().then((t) => t.trim()), 'RPN');
+  await tap(p, 'f eex');
+  assert.equal(await p.locator('.brand .badge .model').innerText().then((t) => t.trim()), 'ALG');
+  await app.close();
+});
+
+test('temas fiéis por padrão: Gold na clássica, Platinum na Platinum, Retro nos dois', async () => {
+  const app = await openApp(browser, server.url);
+  const p = app.page;
+  const tema = () => p.evaluate(() => document.documentElement.getAttribute('data-theme'));
+  const opcoes = async () => {
+    await p.evaluate(() => window.calc12c.settings.open());
+    return p.locator('.settings select[name="theme"] option').allTextContents();
+  };
+  assert.equal(await tema(), 'retro'); // Gold
+  assert.deepEqual(await opcoes(), ['Gold', 'Retro']);
+  await platinum(p);
+  assert.equal(await tema(), 'platinum');
+  assert.deepEqual(await opcoes(), ['Platinum', 'Retro']);
+  // o Retro (vidro) escolhido numa vale na outra
+  await p.locator('.settings select[name="theme"]').selectOption('moderno');
+  await p.waitForFunction(() => document.documentElement.getAttribute('data-theme').startsWith('moderno'));
+  await p.evaluate(() => window.calc12c.setProfile('12c'));
+  assert.ok((await tema()).startsWith('moderno'));
+  await p.locator('.settings select[name="theme"]').selectOption('retro');
+  await p.waitForFunction(() => document.documentElement.getAttribute('data-theme') === 'retro');
+  await p.evaluate(() => window.calc12c.setProfile('12cp')); // Gold não existe na Platinum: volta ao padrão dela
+  assert.equal(await tema(), 'platinum');
+  assert.deepEqual(app.errors, []);
+  await app.close();
+});
+
+// ---------- modo desenvolvedor ----------
+const abrirConfig = (p) => p.evaluate(() => window.calc12c.settings.open());
+
+test('o grupo Cores e o Desenvolvedor ficam ocultos por padrão e as cores salvas não valem', async () => {
+  const app = await openApp(browser, server.url);
+  const p = app.page;
+  await p.evaluate(() => localStorage.setItem('calc12c.settings', JSON.stringify({ v: 5, colors: { f: '#ff0000' } })));
+  await p.reload();
+  await p.waitForSelector('button.key');
+  await abrirConfig(p);
+  assert.equal(await p.locator('.settings input[name="color-f"]').isVisible(), false);
+  assert.equal(await p.locator('.settings .dev-off').isVisible(), false);
+  assert.equal(await p.evaluate(() => document.documentElement.style.getPropertyValue('--gold')), '');
+  await app.close();
+});
+
+test('7 toques na versão ligam o modo desenvolvedor (com contagem a partir do 3º) e ele fica salvo', async () => {
+  const app = await openApp(browser, server.url);
+  const p = app.page;
+  await abrirConfig(p);
+  const nota = p.locator('.settings .ver-note');
+  assert.match(await nota.innerText(), /V3\.0/);
+  const row = p.locator('.settings .ver-row');
+  for (let i = 0; i < 2; i++) await row.click();
+  assert.match(await nota.innerText(), /V3\.0/); // até o 2º toque, nada aparece
+  await row.click();
+  assert.match(await nota.innerText(), /Faltam 4 toques/);
+  for (let i = 0; i < 3; i++) await row.click();
+  assert.match(await nota.innerText(), /Faltam 1 toque/);
+  assert.equal(await p.evaluate(() => window.calc12c.settings.get().dev), false);
+  await row.click();
+  assert.match(await nota.innerText(), /ativado/);
+  assert.equal(await p.evaluate(() => window.calc12c.settings.get().dev), true);
+  assert.equal(await p.locator('.settings input[name="color-f"]').isVisible(), true);
+  assert.equal(await p.locator('.settings .dev-off').isVisible(), true);
+  await p.reload();
+  await p.waitForSelector('button.key');
+  assert.equal(await p.evaluate(() => window.calc12c.settings.get().dev), true);
+  assert.deepEqual(app.errors, []);
+  await app.close();
+});
+
+test('toques espaçados demais não contam para o modo desenvolvedor', async () => {
+  const app = await openApp(browser, server.url);
+  const p = app.page;
+  await abrirConfig(p);
+  const row = p.locator('.settings .ver-row');
+  for (let i = 0; i < 4; i++) await row.click();
+  await p.waitForTimeout(2200);
+  for (let i = 0; i < 4; i++) await row.click();
+  assert.equal(await p.evaluate(() => window.calc12c.settings.get().dev), false);
+  await app.close();
+});
+
+test('no modo desenvolvedor: todos os temas em qualquer modelo, cores valem, e Desativar volta ao padrão fiel', async () => {
+  const app = await openApp(browser, server.url);
+  const p = app.page;
+  await enableDev(p);
+  await abrirConfig(p);
+  assert.deepEqual(await p.locator('.settings select[name="theme"] option').allTextContents(), ['Gold', 'Platinum', 'Retro']);
+  await p.locator('.settings select[name="theme"]').selectOption('platinum'); // Platinum na clássica
+  await p.waitForFunction(() => document.documentElement.getAttribute('data-theme') === 'platinum');
+  await platinum(p);
+  await p.locator('.settings select[name="theme"]').selectOption('retro'); // Gold na Platinum
+  await p.waitForFunction(() => document.documentElement.getAttribute('data-theme') === 'retro');
+  await p.locator('.settings input[name="color-f"]').fill('#ff0000');
+  assert.equal(await p.evaluate(() => document.documentElement.style.getPropertyValue('--gold')), '#ff0000');
+  await p.locator('.settings .dev-off').click();
+  await p.waitForFunction(() => document.documentElement.getAttribute('data-theme') === 'platinum'); // padrão da Platinum
+  assert.equal(await p.evaluate(() => document.documentElement.style.getPropertyValue('--gold')), '');
+  assert.deepEqual(await p.locator('.settings select[name="theme"] option').allTextContents(), ['Platinum', 'Retro']);
+  assert.equal(await p.locator('.settings input[name="color-f"]').isVisible(), false);
+  assert.deepEqual(app.errors, []);
+  await app.close();
+});
+
+test('ligar o modo desenvolvedor não troca o tema: o padrão de cada modelo continua valendo até a pessoa escolher', async () => {
+  const app = await openApp(browser, server.url);
+  const p = app.page;
+  const tema = () => p.evaluate(() => document.documentElement.getAttribute('data-theme'));
+  await platinum(p);
+  assert.equal(await tema(), 'platinum');
+  await enableDev(p);
+  assert.equal(await tema(), 'platinum');
+  assert.equal(await p.evaluate(() => window.calc12c.settings.get().theme), null);
+  await p.evaluate(() => window.calc12c.setProfile('12c'));
+  assert.equal(await tema(), 'retro');
   await app.close();
 });
