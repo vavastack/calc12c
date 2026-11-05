@@ -15,7 +15,8 @@ Uso: ferramenta diária, futuro módulo da Pista Financeira, item de portfólio 
 ## O que o motor já faz (src/engine)
 TVM (n, i, PV, PMT, FV; BEGIN/END; períodos fracionários com C via STO EEX), INT, %, %T, Δ%, datas (D.MY/M.DY, ΔDYS, DATE), estatística (Σ+, x̄, s, x̄w, x̂,r, ŷ,r; registradores R1..R6), pilha RPN de 4 níveis + LSTx, STO/RCL, funções matemáticas (√x, yˣ, eˣ, LN, 1/x, n!, FRAC, INTG), formatação BR/US.
 Arquivos: `engine.js` (despacho, F_OPS/G_OPS), `keymap.js` (ids das teclas), `tvm.js`, `dates.js`, `stats.js`, `math.js`, `stack.js`, `registers.js`, `program.js`, `errors.js`, `number.js`.
-**Ainda NÃO implementado:** AMORT, NPV, IRR, CFo/CFj/Nj, SL/SOYD/DB, PRICE/YTM, RND. Programação (PRGM, R/S, SST, GTO...) e estatística avançada estão desabilitadas na V1 (teclas mostram aviso).
+**V2 bloco 1 (feito em 05/11/2026, aguardando conferência na HP real):** CFo/CFj/Nj (g PV/PMT/FV), NPV (f PV), IRR (f FV) em `cashflow.js`; até 20 fluxos, Nj de 1 a 99, guardados à parte dos registradores R0..R9 (não colidem com a estatística). Também corrigido o `bisect` do `tvm.js` para taxas negativas.
+**Ainda NÃO implementado:** AMORT, SL/SOYD/DB, PRICE/YTM, RND. Programação (PRGM, R/S, SST, GTO...) e estatística avançada estão desabilitadas na V1 (teclas mostram aviso).
 
 ## UI (src/ui)
 `app.js` (montagem, teclas, ON, colchetes `BRACKETS`, som/vibração/animação), `settings.js` (configurações em localStorage `calc12c.settings`, VERSION 3), `extras.js` (`makeSound`, wake lock), `verso.js` + `verso-data.js` (verso; exemplos com `ready:false` mostram "Em breve"), `tape.js`, `display.js`, `reflex.js`, `layout.css`, `themes.css`, `sw.js`, `manifest.webmanifest`.
@@ -27,7 +28,7 @@ Build: `node scripts/build.js` junta tudo em um HTML (o empacotador só aceita `
 
 ## Plano da V2 — "12C completa"
 Ordem combinada, com números de teste para o Wanderson conferir na HP real depois de cada bloco:
-1. Fluxo de caixa: CFo, CFj, Nj (g PV/PMT/FV), NPV (f PV), IRR (f FV). Até 20 fluxos; Nj repete.
+1. ✅ (feito, falta conferir na HP) Fluxo de caixa: CFo, CFj, Nj (g PV/PMT/FV), NPV (f PV), IRR (f FV). Até 20 fluxos; Nj repete.
 2. AMORT (f n): amortização por intervalo, mostrando juros, principal e saldo.
 3. Depreciação: SL (f %T), SOYD (f Δ%), DB (f %).
 4. Títulos: PRICE (f yᵡ), YTM (f 1/x) — datas no modo atual (D.MY/M.DY).

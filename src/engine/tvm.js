@@ -18,6 +18,7 @@ function residual(ii, f, begin) {
 }
 
 function bisect(fn, a, b) {
+  if (a > b) [a, b] = [b, a]; // a busca por taxas negativas chega com o intervalo invertido
   let fa = fn(a);
   for (let it = 0; it < 300; it++) {
     const m = (a + b) / 2;
@@ -34,7 +35,7 @@ function bisect(fn, a, b) {
 }
 
 // Procura, a partir de 0 e para um lado, o primeiro intervalo com troca de sinal.
-function firstRoot(fn, grid) {
+export function firstRoot(fn, grid) {
   let prev = grid[0];
   let fPrev = fn(prev);
   if (fPrev === 0) return prev;
@@ -50,9 +51,9 @@ function firstRoot(fn, grid) {
   return null;
 }
 
-const POS = [0, 1e-6, 1e-5, 1e-4, 1e-3, 0.005, 0.01, 0.02, 0.03, 0.05, 0.075, 0.1, 0.15, 0.2,
+export const POS = [0, 1e-6, 1e-5, 1e-4, 1e-3, 0.005, 0.01, 0.02, 0.03, 0.05, 0.075, 0.1, 0.15, 0.2,
   0.3, 0.5, 0.75, 1, 1.5, 2, 3, 5, 10, 20, 50, 100, 1000];
-const NEG = [0, -1e-6, -1e-5, -1e-4, -1e-3, -0.005, -0.01, -0.02, -0.05, -0.1, -0.2, -0.3,
+export const NEG = [0, -1e-6, -1e-5, -1e-4, -1e-3, -0.005, -0.01, -0.02, -0.05, -0.1, -0.2, -0.3,
   -0.5, -0.75, -0.9, -0.95, -0.99, -0.999];
 
 // n arredondado como na HP: para cima, exceto se a parte fracionária for < 0,005.

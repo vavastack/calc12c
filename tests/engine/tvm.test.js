@@ -129,3 +129,8 @@ test('manual p.35: juros simples de 450 a 7% por 60 dias — 5,25 (ordinários) 
   near(r.interest360, 5.25, 0.005);
   near(r.interest365, 5.18, 0.005);
 });
+
+test('i negativa: pv=-1000, fv=800 em 2 períodos → −10,56%', () => {
+  const r = solve('i', fin({ n: 2, pv: -1000, fv: 800 }), false);
+  near(r, (Math.sqrt(0.8) - 1) * 100, 1e-6);
+});

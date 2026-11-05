@@ -789,100 +789,6 @@ class Registers {
 return { Registers };
 })();
 
-const __m_number = (() => {
-// Arredonda para 10 dígitos significativos.
-function round10(x) {
-  if (!Number.isFinite(x)) return x;
-  return Number(x.toPrecision(10));
-}
-
-// Formata com `decimals` casas e separadores pt-BR ('br') ou en-US ('us').
-function formatNumber(x, decimals, locale = 'br') {
-  const fixed = Math.abs(x).toFixed(decimals);
-  const [int, frac] = fixed.split('.');
-  const thousands = locale === 'br' ? '.' : ',';
-  const decimal = locale === 'br' ? ',' : '.';
-  const grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, thousands);
-  const neg = x < 0 && Number(fixed) !== 0 ? '-' : '';
-  return neg + grouped + (frac !== undefined ? decimal + frac : '');
-}
-
-return { round10, formatNumber };
-})();
-
-const __m_math = (() => {
-const { CalcError } = __m_errors;
-const { round10 } = __m_number;
-
-// Resultado final: 10 dígitos significativos; nunca NaN/Infinity (Erro 0).
-function fin(v) {
-  if (!Number.isFinite(v)) throw new CalcError(0);
-  return round10(v);
-}
-
-const BINARY = {
-  plus: (y, x) => y + x,
-  minus: (y, x) => y - x,
-  times: (y, x) => y * x,
-  divide: (y, x) => {
-    if (x === 0) throw new CalcError(0);
-    return y / x;
-  },
-  yx: (y, x) => {
-    if (y === 0 && x <= 0) throw new CalcError(0);
-    if (y < 0 && !Number.isInteger(x)) throw new CalcError(0);
-    return Math.pow(y, x);
-  },
-};
-
-// %, Δ% e %T não retiram Y da pilha: Y continua disponível (valor líquido).
-const KEEP_Y = {
-  pct: (y, x) => (y * x) / 100,
-  dpct: (y, x) => {
-    if (y === 0) throw new CalcError(0);
-    return ((x - y) / y) * 100;
-  },
-  pctT: (y, x) => {
-    if (y === 0) throw new CalcError(0);
-    return (x / y) * 100;
-  },
-};
-
-const UNARY = {
-  recip: (x) => {
-    if (x === 0) throw new CalcError(0);
-    return 1 / x;
-  },
-  sqrt: (x) => {
-    if (x < 0) throw new CalcError(0);
-    return Math.sqrt(x);
-  },
-  expx: (x) => Math.exp(x),
-  ln: (x) => {
-    if (x <= 0) throw new CalcError(0);
-    return Math.log(x);
-  },
-  frac: (x) => x - Math.trunc(x),
-  intg: (x) => Math.trunc(x),
-  // n!: inteiro de 0 a 69 (acima disso estoura 10^100); senão Erro 0
-  fact: (x) => {
-    if (!Number.isInteger(x) || x < 0 || x > 69) throw new CalcError(0);
-    let r = 1;
-    for (let k = 2; k <= x; k++) r *= k;
-    return r;
-  },
-};
-
-function applyOp(stack, op) {
-  if (BINARY[op]) return stack.applyBinary((y, x) => fin(BINARY[op](y, x)));
-  if (UNARY[op]) return stack.applyUnary((x) => fin(UNARY[op](x)));
-  if (KEEP_Y[op]) return stack.applyKeepY((y, x) => fin(KEEP_Y[op](y, x)));
-  throw new Error('operação desconhecida: ' + op);
-}
-
-return { applyOp };
-})();
-
 const __m_tvm = (() => {
 const { CalcError } = __m_errors;
 
@@ -904,6 +810,7 @@ function residual(ii, f, begin) {
 }
 
 function bisect(fn, a, b) {
+  if (a > b) [a, b] = [b, a]; // a busca por taxas negativas chega com o intervalo invertido
   let fa = fn(a);
   for (let it = 0; it < 300; it++) {
     const m = (a + b) / 2;
@@ -1018,7 +925,199 @@ function simpleInterest(days, rate, pv) {
   return { interest360: base / 36000, interest365: base / 36500 };
 }
 
-return { solve, simpleInterest };
+return { firstRoot, POS, NEG, solve, simpleInterest };
+})();
+
+const __m_cashflow = (() => {
+const { CalcError } = __m_errors;
+const { firstRoot, POS, NEG } = __m_tvm;
+
+// Fluxos de caixa da HP 12C: CFo + até 20 fluxos CFj, cada um repetido Nj vezes (1 a 99).
+const MAX_FLOWS = 20;
+const MAX_NJ = 99;
+
+class CashFlows {
+  constructor() {
+    this.cf0 = 0;
+    this.flows = []; // { amt, nj }
+  }
+
+  setCf0(x) {
+    this.cf0 = x;
+    this.flows = []; // CFo recomeça a lista
+  }
+
+  addFlow(x) {
+    if (this.flows.length >= MAX_FLOWS) throw new CalcError(6);
+    this.flows.push({ amt: x, nj: 1 });
+  }
+
+  setNj(x) {
+    if (!this.flows.length || !Number.isInteger(x) || x < 1 || x > MAX_NJ) throw new CalcError(6);
+    this.flows[this.flows.length - 1].nj = x;
+  }
+
+  clear() {
+    this.cf0 = 0;
+    this.flows = [];
+  }
+
+  // Lista plana dos fluxos por período: [CFo, f1, f1 (se Nj = 2), f2, ...]
+  expanded() {
+    const out = [this.cf0];
+    for (const { amt, nj } of this.flows) for (let k = 0; k < nj; k++) out.push(amt);
+    return out;
+  }
+
+  // f NPV: valor presente líquido à taxa do registrador i (% por período).
+  npv(ratePct) {
+    const r = ratePct / 100;
+    if (r <= -1) throw new CalcError(0);
+    const v = 1 / (1 + r);
+    let p = 1;
+    let total = 0;
+    for (const a of this.expanded()) {
+      total += a * p;
+      p *= v;
+    }
+    if (!Number.isFinite(total)) throw new CalcError(1);
+    return total;
+  }
+
+  // f IRR: taxa (% por período) que zera o NPV; raiz mais próxima de zero.
+  irr() {
+    const a = this.expanded();
+    if (!(a.some((x) => x > 0) && a.some((x) => x < 0))) throw new CalcError(7);
+    const fn = (r) => {
+      const v = 1 / (1 + r);
+      let p = 1;
+      let total = 0;
+      for (const x of a) {
+        total += x * p;
+        p *= v;
+      }
+      return total;
+    };
+    const pos = firstRoot(fn, POS);
+    const neg = firstRoot(fn, NEG);
+    const cands = [pos, neg].filter((r) => r !== null);
+    if (!cands.length) throw new CalcError(7);
+    return cands.reduce((x, y) => (Math.abs(x) <= Math.abs(y) ? x : y)) * 100;
+  }
+
+  toJSON() {
+    return { cf0: this.cf0, flows: this.flows.map((f) => ({ amt: f.amt, nj: f.nj })) };
+  }
+
+  static valid(o) {
+    const num = (v) => typeof v === 'number' && Number.isFinite(v);
+    return !!o && num(o.cf0) && Array.isArray(o.flows) && o.flows.length <= MAX_FLOWS
+      && o.flows.every((f) => f && num(f.amt) && Number.isInteger(f.nj) && f.nj >= 1 && f.nj <= MAX_NJ);
+  }
+
+  static fromJSON(o) {
+    const c = new CashFlows();
+    c.cf0 = o.cf0;
+    c.flows = o.flows.map((f) => ({ amt: f.amt, nj: f.nj }));
+    return c;
+  }
+}
+
+return { MAX_FLOWS, MAX_NJ, CashFlows };
+})();
+
+const __m_number = (() => {
+// Arredonda para 10 dígitos significativos.
+function round10(x) {
+  if (!Number.isFinite(x)) return x;
+  return Number(x.toPrecision(10));
+}
+
+// Formata com `decimals` casas e separadores pt-BR ('br') ou en-US ('us').
+function formatNumber(x, decimals, locale = 'br') {
+  const fixed = Math.abs(x).toFixed(decimals);
+  const [int, frac] = fixed.split('.');
+  const thousands = locale === 'br' ? '.' : ',';
+  const decimal = locale === 'br' ? ',' : '.';
+  const grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, thousands);
+  const neg = x < 0 && Number(fixed) !== 0 ? '-' : '';
+  return neg + grouped + (frac !== undefined ? decimal + frac : '');
+}
+
+return { round10, formatNumber };
+})();
+
+const __m_math = (() => {
+const { CalcError } = __m_errors;
+const { round10 } = __m_number;
+
+// Resultado final: 10 dígitos significativos; nunca NaN/Infinity (Erro 0).
+function fin(v) {
+  if (!Number.isFinite(v)) throw new CalcError(0);
+  return round10(v);
+}
+
+const BINARY = {
+  plus: (y, x) => y + x,
+  minus: (y, x) => y - x,
+  times: (y, x) => y * x,
+  divide: (y, x) => {
+    if (x === 0) throw new CalcError(0);
+    return y / x;
+  },
+  yx: (y, x) => {
+    if (y === 0 && x <= 0) throw new CalcError(0);
+    if (y < 0 && !Number.isInteger(x)) throw new CalcError(0);
+    return Math.pow(y, x);
+  },
+};
+
+// %, Δ% e %T não retiram Y da pilha: Y continua disponível (valor líquido).
+const KEEP_Y = {
+  pct: (y, x) => (y * x) / 100,
+  dpct: (y, x) => {
+    if (y === 0) throw new CalcError(0);
+    return ((x - y) / y) * 100;
+  },
+  pctT: (y, x) => {
+    if (y === 0) throw new CalcError(0);
+    return (x / y) * 100;
+  },
+};
+
+const UNARY = {
+  recip: (x) => {
+    if (x === 0) throw new CalcError(0);
+    return 1 / x;
+  },
+  sqrt: (x) => {
+    if (x < 0) throw new CalcError(0);
+    return Math.sqrt(x);
+  },
+  expx: (x) => Math.exp(x),
+  ln: (x) => {
+    if (x <= 0) throw new CalcError(0);
+    return Math.log(x);
+  },
+  frac: (x) => x - Math.trunc(x),
+  intg: (x) => Math.trunc(x),
+  // n!: inteiro de 0 a 69 (acima disso estoura 10^100); senão Erro 0
+  fact: (x) => {
+    if (!Number.isInteger(x) || x < 0 || x > 69) throw new CalcError(0);
+    let r = 1;
+    for (let k = 2; k <= x; k++) r *= k;
+    return r;
+  },
+};
+
+function applyOp(stack, op) {
+  if (BINARY[op]) return stack.applyBinary((y, x) => fin(BINARY[op](y, x)));
+  if (UNARY[op]) return stack.applyUnary((x) => fin(UNARY[op](x)));
+  if (KEEP_Y[op]) return stack.applyKeepY((y, x) => fin(KEEP_Y[op](y, x)));
+  throw new Error('operação desconhecida: ' + op);
+}
+
+return { applyOp };
 })();
 
 const __m_program = (() => {
@@ -1234,6 +1333,7 @@ const __m_engine = (() => {
 const { KEY_BY_ID } = __m_keymap;
 const { Stack } = __m_stack;
 const { Registers } = __m_registers;
+const { CashFlows } = __m_cashflow;
 const { applyOp } = __m_math;
 const { solve, simpleInterest } = __m_tvm;
 const { CalcError } = __m_errors;
@@ -1258,6 +1358,7 @@ class Engine {
     this.stack = new Stack();
     this.regs = new Registers();
     this.fin = zeroFin();
+    this.cf = new CashFlows(); // CFo, CFj, Nj (V2)
     this.begin = false;
     this.prgm = false; // modo de programação (indicador PRGM)
     this.prog = []; // linhas de programa (índice 0 = linha 01); null = linha vazia (GTO 00)
@@ -1495,6 +1596,7 @@ class Engine {
       this.pauses.push(this._fmt(this.stack.x)); // g PSE fora de um programa: só mostra
       return;
     }
+    if (id === 'pv' || id === 'pmt' || id === 'fv') return this._cashFlowKey(id);
     if (id === 'chs') return this._date();
     if (id === 'eex') return this._deltaDays();
     if (STAT_G[id]) return this._stat(STAT_G[id]);
@@ -1503,6 +1605,17 @@ class Engine {
       return this._record(key.g);
     }
     // demais funções g (V2 e fora do escopo): ignoradas
+  }
+
+  // g CFo, g CFj, g Nj: guardam o número exibido (X) na lista de fluxos de caixa.
+  _cashFlowKey(id) {
+    const s = this.stack;
+    s.commit();
+    if (id === 'pv') this.cf.setCf0(s.x);
+    else if (id === 'pmt') this.cf.addFlow(s.x);
+    else this.cf.setNj(s.x);
+    s.liftEnabled = true;
+    this._record({ pv: 'CFo', pmt: 'CFj', fv: 'Nj' }[id]);
   }
 
   _f(key) {
@@ -1519,6 +1632,13 @@ class Engine {
         s.loadXYZ(round10(r.interest360), round10(-this.fin.pv), round10(r.interest365));
         return this._record('INT');
       }
+      case 'pv': // NPV
+      case 'fv': { // IRR
+        s.commit();
+        const v = round10(id === 'pv' ? this.cf.npv(this.fin.i) : this.cf.irr());
+        s.setResult(v);
+        return this._record(id === 'pv' ? 'NPV' : 'IRR');
+      }
       case 'xy': // CLEAR FIN
         s.commit();
         this.fin = zeroFin();
@@ -1533,6 +1653,7 @@ class Engine {
         return;
       case 'clx': // CLEAR REG
         this.regs.clear();
+        this.cf.clear();
         this.fin = zeroFin();
         s.clearAll();
         this.tokens = [];
@@ -1873,6 +1994,7 @@ class Engine {
       stack: this.stack.toJSON(),
       regs: this.regs.values(),
       fin: this.fin,
+      cf: this.cf.toJSON(),
       begin: this.begin,
       compound: this.compound,
       dmy: this.dmy,
@@ -1906,6 +2028,7 @@ class Engine {
     if (!Array.isArray(o.tape) || !o.tape.every((l) => l && str(l.keys) && str(l.label) && num(l.value) && str(l.text))) throw bad();
     if (!Array.isArray(o.tokens) || !o.tokens.every(str)) throw bad();
     if (o.prog !== undefined && !(Array.isArray(o.prog) && o.prog.length <= MAX_LINES && o.prog.every(validLine))) throw bad();
+    if (o.cf !== undefined && !CashFlows.valid(o.cf)) throw bad();
     const e = new Engine({ locale: o.locale });
     try {
       e.stack = Stack.fromJSON(o.stack);
@@ -1913,6 +2036,7 @@ class Engine {
       throw bad();
     }
     o.regs.forEach((v, n) => e.regs.store(n, v));
+    if (o.cf) e.cf = CashFlows.fromJSON(o.cf);
     e.fin = { n: o.fin.n, i: o.fin.i, pv: o.fin.pv, pmt: o.fin.pmt, fv: o.fin.fv };
     Object.assign(e, {
       begin: o.begin, compound: o.compound === true, dmy: o.dmy === true, prgm: o.prgm === true, prog: Array.isArray(o.prog) ? o.prog : [], pc: Number.isInteger(o.pc) && o.pc >= 0 && o.pc <= MAX_LINES ? o.pc : 0, shift: o.shift, pending: o.pending, justStored: o.justStored, decimals: o.decimals,

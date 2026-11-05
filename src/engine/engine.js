@@ -1,6 +1,7 @@
 import { KEY_BY_ID } from './keymap.js';
 import { Stack } from './stack.js';
 import { Registers } from './registers.js';
+import { CashFlows } from './cashflow.js';
 import { applyOp } from './math.js';
 import { solve, simpleInterest } from './tvm.js';
 import { CalcError } from './errors.js';
@@ -25,6 +26,7 @@ export class Engine {
     this.stack = new Stack();
     this.regs = new Registers();
     this.fin = zeroFin();
+    this.cf = new CashFlows(); // CFo, CFj, Nj (V2)
     this.begin = false;
     this.prgm = false; // modo de programação (indicador PRGM)
     this.prog = []; // linhas de programa (índice 0 = linha 01); null = linha vazia (GTO 00)
@@ -262,6 +264,7 @@ export class Engine {
       this.pauses.push(this._fmt(this.stack.x)); // g PSE fora de um programa: só mostra
       return;
     }
+    if (id === 'pv' || id === 'pmt' || id === 'fv') return this._cashFlowKey(id);
     if (id === 'chs') return this._date();
     if (id === 'eex') return this._deltaDays();
     if (STAT_G[id]) return this._stat(STAT_G[id]);
@@ -270,6 +273,17 @@ export class Engine {
       return this._record(key.g);
     }
     // demais funções g (V2 e fora do escopo): ignoradas
+  }
+
+  // g CFo, g CFj, g Nj: guardam o número exibido (X) na lista de fluxos de caixa.
+  _cashFlowKey(id) {
+    const s = this.stack;
+    s.commit();
+    if (id === 'pv') this.cf.setCf0(s.x);
+    else if (id === 'pmt') this.cf.addFlow(s.x);
+    else this.cf.setNj(s.x);
+    s.liftEnabled = true;
+    this._record({ pv: 'CFo', pmt: 'CFj', fv: 'Nj' }[id]);
   }
 
   _f(key) {
@@ -286,6 +300,13 @@ export class Engine {
         s.loadXYZ(round10(r.interest360), round10(-this.fin.pv), round10(r.interest365));
         return this._record('INT');
       }
+      case 'pv': // NPV
+      case 'fv': { // IRR
+        s.commit();
+        const v = round10(id === 'pv' ? this.cf.npv(this.fin.i) : this.cf.irr());
+        s.setResult(v);
+        return this._record(id === 'pv' ? 'NPV' : 'IRR');
+      }
       case 'xy': // CLEAR FIN
         s.commit();
         this.fin = zeroFin();
@@ -300,6 +321,7 @@ export class Engine {
         return;
       case 'clx': // CLEAR REG
         this.regs.clear();
+        this.cf.clear();
         this.fin = zeroFin();
         s.clearAll();
         this.tokens = [];
@@ -640,6 +662,7 @@ export class Engine {
       stack: this.stack.toJSON(),
       regs: this.regs.values(),
       fin: this.fin,
+      cf: this.cf.toJSON(),
       begin: this.begin,
       compound: this.compound,
       dmy: this.dmy,
@@ -673,6 +696,7 @@ export class Engine {
     if (!Array.isArray(o.tape) || !o.tape.every((l) => l && str(l.keys) && str(l.label) && num(l.value) && str(l.text))) throw bad();
     if (!Array.isArray(o.tokens) || !o.tokens.every(str)) throw bad();
     if (o.prog !== undefined && !(Array.isArray(o.prog) && o.prog.length <= MAX_LINES && o.prog.every(validLine))) throw bad();
+    if (o.cf !== undefined && !CashFlows.valid(o.cf)) throw bad();
     const e = new Engine({ locale: o.locale });
     try {
       e.stack = Stack.fromJSON(o.stack);
@@ -680,6 +704,7 @@ export class Engine {
       throw bad();
     }
     o.regs.forEach((v, n) => e.regs.store(n, v));
+    if (o.cf) e.cf = CashFlows.fromJSON(o.cf);
     e.fin = { n: o.fin.n, i: o.fin.i, pv: o.fin.pv, pmt: o.fin.pmt, fv: o.fin.fv };
     Object.assign(e, {
       begin: o.begin, compound: o.compound === true, dmy: o.dmy === true, prgm: o.prgm === true, prog: Array.isArray(o.prog) ? o.prog : [], pc: Number.isInteger(o.pc) && o.pc >= 0 && o.pc <= MAX_LINES ? o.pc : 0, shift: o.shift, pending: o.pending, justStored: o.justStored, decimals: o.decimals,
