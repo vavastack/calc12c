@@ -2,6 +2,7 @@
 import { makeWake, wakeSupported } from './extras.js';
 import { COLOR_KEYS, validHex, customVars } from './colors.js';
 import { buildMemoryFile, parseMemoryFile, loadInto } from './memories.js';
+import { listProfiles } from '../engine/profiles.js';
 const KEY = 'calc12c.settings';
 const THEMES = ['retro', 'platinum', 'moderno']; // 'retro' = Gold (padrão), 'platinum' = prata, 'moderno' = Retro (vidro)
 const VERSION = 4; // v2: a vibração ao tocar passou a vir ligada; v3: som, não dormir, estilo da tecla ON e banda superior; v4: cores e orientação
@@ -134,6 +135,9 @@ export function mountSettings(ctx) {
   panel.innerHTML =
     '<header class="settings-head"><span class="settings-title">Configurações</span>' +
     '<button type="button" class="settings-close" aria-label="Fechar configurações">✕</button></header>' +
+    '<section class="group"><h3 class="group-title">Calculadora</h3>' +
+    '<label class="row"><span class="txt">Modelo<small>Cada modelo guarda a sua própria memória; o RPN/ALG da 12C troca em f CHS e f EEX</small></span>' +
+    '<select name="profile"></select></label></section>' +
     '<section class="group"><h3 class="group-title">Aparência</h3>' +
     '<label class="row"><span class="txt">Tema<small>Gold e Platinum são metálicos e sempre escuros; Retro é de vidro</small></span>' +
     '<select name="theme"><option value="retro">Gold</option><option value="platinum">Platinum</option><option value="moderno">Retro</option></select></label>' +
@@ -204,6 +208,9 @@ export function mountSettings(ctx) {
   };
   const wakeOk = wakeSupported();
   const sync = () => {
+    const sel = panel.querySelector('[name=profile]');
+    sel.innerHTML = listProfiles().map((p) => `<option value="${p.id}">${p.name}</option>`).join('');
+    sel.value = ctx.engine.profile;
     panel.querySelector('[name=theme]').value = s.theme;
     panel.querySelector('[name=mode]').value = s.mode;
     panel.querySelector('[name=onStyle]').value = s.onStyle;
@@ -341,7 +348,8 @@ export function mountSettings(ctx) {
     if (!f) return;
     try {
       loadInto(ctx.engine, parseMemoryFile(await f.text()));
-      ctx.render();
+      if (!ctx.adoptProfile?.()) ctx.render(); // o arquivo pode ser de outro modelo
+
       sync();
       ctx.showNotice(`Memórias carregadas: ${f.name}`);
     } catch (err) {
@@ -357,6 +365,11 @@ export function mountSettings(ctx) {
       s.orient = e.target.value;
       saveSettings(s);
       setOrient(s.orient, true);
+      return;
+    }
+    if (n === 'profile') {
+      ctx.setProfile(e.target.value);
+      sync();
       return;
     }
     if (n === 'locale') {

@@ -7,8 +7,8 @@ Cinco modelos quase idênticos por fora, cada um com um público: HP-10C (cient�
 
 ## HP-12C Platinum e o modo ALG (V3.0)
 - A Platinum tem 400 linhas de programa (a 12C clássica tem 99) e permite alternar entre RPN e ALG (algébrico).
-- Em ALG, a tecla ENTER funciona como "=". Há parênteses, acessados com g + STO e g + RCL (a confirmar no manual, Apêndice B).
-- Relatos de usuários dizem que o ALG da Platinum calcula em cadeia, da esquerda para a direita, sem hierarquia de operações (1 + 2 × 3 daria 9). **Decidido:** seguir a Platinum à risca, conforme o manual (Apêndice B), inclusive nos casos em que difere da precedência matemática.
+- Em ALG, a tecla ENTER funciona como "=". Há parênteses, acessados com g + STO ("(") e g + RCL (")"), até 13 abertos (confirmado no manual, Apêndice B). f EEX liga o ALG e f CHS liga o RPN (teclas de código 26 e 16).
+- O ALG da Platinum calcula em cadeia, da esquerda para a direita, sem hierarquia de operações (1 + 2 × 3 = 9; o exemplo 456 − 75 ÷ 18,5 × 68 ÷ 1,9 do manual mostra 381,00, 20,59, 1.400,43 e 737,07). **Decidido e implementado na V3.0:** seguir a Platinum à risca, inclusive onde difere da precedência matemática.
 - Cálculos financeiros (n, i, PV, PMT, FV, NPV, IRR etc.) seguem as mesmas teclas nos dois modos.
 
 ## Black-Scholes (V3.2) — não é uma HP

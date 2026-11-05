@@ -87,6 +87,41 @@ export const VERSO = [
     ],
   },
   {
+    id: 'alg', tag: 'ALG', title: 'Modo algébrico (ALG)',
+    note: 'Só na 12C Platinum. f ALG liga e f RPN desliga (teclas EEX e CHS). No ALG o ENTER faz o papel de "=", as contas são feitas na ordem em que são digitadas (1 + 2 × 3 = 9, sem hierarquia) e g ( / g ) abrem e fecham parênteses. As teclas financeiras funcionam igual nos dois modos. Os exemplos ligam o ALG sozinhos; para voltar, f RPN.',
+    items: [
+      {
+        id: 'alg-soma', title: '21,1 + 23,8', text: 'Digite o primeiro número, o operador, o segundo e ENTER (o "=").', ready: true,
+        variants: [{ label: 'Soma', keys: 'f eex 21.1 plus 23.8 enter' }],
+      },
+      {
+        id: 'alg-cadeia', title: '456 − 75 ÷ 18,5 × 68 ÷ 1,9', text: 'Cada operador faz a conta pendente: 381, 20,59, 1.400,43 e, no fim, o resultado.', ready: true,
+        variants: [
+          { label: 'Cadeia', keys: 'f eex 456 minus 75 divide 18.5 times 68 divide 1.9 enter' },
+          { label: 'Sem hierarquia · 1 + 2 × 3', keys: 'f eex 1 plus 2 times 3 enter' },
+        ],
+      },
+      {
+        id: 'alg-paren', title: '8 ÷ 5 − 1 e 8 ÷ (5 − 1)', text: 'Sem parênteses a divisão vem primeiro; com g ( e g ) a subtração é feita antes. O indicador ( ) acende enquanto houver parêntese aberto.', ready: true,
+        variants: [
+          { label: 'Sem parênteses', keys: 'f eex 8 divide 5 minus 1 enter' },
+          { label: 'Com parênteses', keys: 'f eex 8 divide g sto 5 minus 1 g rcl enter' },
+        ],
+      },
+      {
+        id: 'alg-pct', title: 'Porcentagem em 200', text: 'Depois de × ou ÷ o % usa o número dividido por 100; depois de + ou − dá o valor líquido na hora.', ready: true,
+        variants: [
+          { label: '25% de 200', keys: 'f eex 200 times 25 pct' },
+          { label: '200 reduzido em 25%', keys: 'f eex 200 minus 25 pct' },
+        ],
+      },
+      {
+        id: 'alg-delta', title: 'Variação de 35,5 para 31,25', text: 'Δ% também usa ENTER entre os dois números: o valor base primeiro.', ready: true,
+        variants: [{ label: 'Δ%', keys: 'f eex 35.5 enter 31.25 dpct' }],
+      },
+    ],
+  },
+  {
     id: 'prog', tag: 'PRGM', title: 'Programação',
     note: 'Gravar: f P/R liga o modo de programação (PRGM), f CLEAR PRGM limpa, depois aperte as teclas do cálculo; cada tecla vira uma linha (número de dois dígitos = duas linhas). f P/R sai. Rodar: digite os números e aperte R/S. SST executa uma linha de cada vez. Os exemplos gravam o programa sozinhos e apagam o que estava na memória de programa.',
     items: [
@@ -137,6 +172,9 @@ export const VERSO = [
     ],
   },
 ];
+
+// Guia do verso de cada perfil (a 12C é o único por enquanto).
+export const VERSO_BY_PROFILE = { '12c': { sections: VERSO, sigma: SIGMA_MAP } };
 
 // Uma variante pode depender da gravação do programa: `pre` é o rótulo de outra variante do mesmo exemplo,
 // cujas teclas são apertadas antes (rápido, sem animação). Devolve só essas teclas prévias.

@@ -1,4 +1,4 @@
-// Mapa único do teclado (39 teclas). Posição no layout vertical: 5 colunas × 8 linhas.
+// Mapa do teclado do perfil 12C (39 teclas; f RPN / f ALG e g ( / g ) são da Platinum). Posição no layout vertical: 5 colunas × 8 linhas.
 // Metade de cima = colunas 1 a 5 da HP 12C original; metade de baixo = colunas 6 a 10.
 // `f` (dourado) e `g` (azul) são os rótulos oficiais; `enabled:false` = fora do escopo (PRGM, estatística).
 const k = (id, label, f, g, row, col, extra = {}) => ({ id, label, f, g, row, col, enabled: true, ...extra });
@@ -26,16 +26,16 @@ export const KEYS = [
   k('on', 'ON', 'OFF', null, 3, 0),
   k('f', 'f', null, null, 3, 1),
   k('g', 'g', null, null, 3, 2),
-  k('sto', 'STO', null, null, 3, 3),
-  k('rcl', 'RCL', null, null, 3, 4),
+  k('sto', 'STO', null, '(', 3, 3),
+  k('rcl', 'RCL', null, ')', 3, 4),
   // linha 4
-  k('chs', 'CHS', null, 'DATE', 4, 0),
+  k('chs', 'CHS', 'RPN', 'DATE', 4, 0),
   k('7', '7', null, 'BEG', 4, 1),
   k('8', '8', null, 'END', 4, 2),
   k('9', '9', null, 'MEM', 4, 3),
   k('divide', '÷', null, null, 4, 4),
   // linha 5
-  k('eex', 'EEX', null, 'ΔDYS', 5, 0),
+  k('eex', 'EEX', 'ALG', 'ΔDYS', 5, 0),
   k('4', '4', null, 'D.MY', 5, 1),
   k('5', '5', null, 'M.DY', 5, 2),
   k('6', '6', null, 'x̄w', 5, 3),

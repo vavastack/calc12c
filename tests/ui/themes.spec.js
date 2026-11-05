@@ -169,7 +169,7 @@ test('painel de configurações: cabeçalho, grupos, interruptores e botão fech
   const p = app.page;
   await p.locator('.key[data-id="on"]').click();
   assert.equal(await p.locator('.settings-title').innerText(), 'Configurações');
-  assert.deepEqual((await p.locator('.group-title').allTextContents()).map((t) => t.toLowerCase()), ['aparência', 'cores', 'números e teclas', 'tela', 'memórias', 'brilho', 'mais']);
+  assert.deepEqual((await p.locator('.group-title').allTextContents()).map((t) => t.toLowerCase()), ['calculadora', 'aparência', 'cores', 'números e teclas', 'tela', 'memórias', 'brilho', 'mais']);
   const w = await p.locator('input[name="vibrate"]').evaluate((e) => e.getBoundingClientRect().width);
   assert.ok(w >= 40, `interruptor largo o bastante para o toque (${w}px)`);
   await p.locator('input[name="vibrate"]').check();

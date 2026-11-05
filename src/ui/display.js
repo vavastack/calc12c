@@ -1,10 +1,14 @@
-// Visor: indicadores, dígitos com ajuste de fonte, mensagem de erro e teclado do PC.
-export const INDICATORS = ['f', 'g', 'BEGIN', 'D.MY', 'C', 'USER', 'PRGM'];
+// Visor: indicadores (conforme o perfil), dígitos com ajuste de fonte, mensagem de erro e teclado do PC.
+import { getProfile } from '../engine/profiles.js';
 
-function ensureStructure(el) {
-  if (el.querySelector('.digits')) return;
+export const INDICATORS = getProfile('12c').indicators;
+
+function ensureStructure(el, indicators) {
+  const sig = indicators.join('|');
+  if (el.querySelector('.digits') && el.dataset.inds === sig) return;
+  el.dataset.inds = sig;
   el.innerHTML =
-    '<div class="indicators">' + INDICATORS.map((i) => `<span data-ind="${i}">${i}</span>`).join('') +
+    '<div class="indicators">' + indicators.map((i) => `<span data-ind="${i}">${i}</span>`).join('') +
     '<button type="button" class="fmt-toggle" aria-label="Alternar formato dos números (pt-BR / en-US)"></button></div>' +
     '<div class="digits" role="status"></div><div class="msg"></div>';
 }
@@ -20,8 +24,11 @@ function fit(digits) {
 }
 
 export function renderDisplay(el, s) {
-  ensureStructure(el);
-  const lit = { f: s.shift === 'f', g: s.shift === 'g', BEGIN: s.begin, C: s.compound, 'D.MY': s.dmy, PRGM: s.prgm };
+  ensureStructure(el, getProfile(s.profile ?? '12c').indicators);
+  const lit = {
+    RPN: s.mode === 'rpn', ALG: s.mode === 'alg', '( )': s.parens > 0,
+    f: s.shift === 'f', g: s.shift === 'g', BEGIN: s.begin, C: s.compound, 'D.MY': s.dmy, PRGM: s.prgm,
+  };
   for (const span of el.querySelectorAll('[data-ind]')) {
     span.classList.toggle('on', !!lit[span.dataset.ind]);
   }

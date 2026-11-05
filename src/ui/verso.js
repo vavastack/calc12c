@@ -1,20 +1,20 @@
 // Verso: guia de fórmulas com exemplos que podem ser executados na própria calculadora.
 import { KEY_BY_ID } from '../engine/keymap.js';
-import { VERSO, SIGMA_MAP, preKeys } from './verso-data.js';
+import { VERSO_BY_PROFILE, preKeys } from './verso-data.js';
 
 const STEP_MS = 140; // intervalo entre as teclas quando um exemplo é executado
 
 // "31.052003" → "31,052003"; ids do motor → rótulo impresso na tecla; f/g + tecla viram um chip só (ex.: "g ΔDYS")
-export function chipsOf(keys) {
+export function chipsOf(keys, keyById = KEY_BY_ID) {
   const out = [];
   const t = keys.split(/\s+/).filter(Boolean);
   for (let i = 0; i < t.length; i++) {
     const id = t[i];
     if (/^\d+(\.\d+)?$/.test(id)) out.push({ text: id.replace('.', ','), kind: 'num' });
     else if ((id === 'f' || id === 'g') && t[i + 1] && !/^\d.+/.test(t[i + 1])) { // f/g + tecla (um dígito sozinho é tecla, ex.: g 4)
-      const next = KEY_BY_ID.get(t[++i]);
+      const next = keyById.get(t[++i]);
       out.push({ text: `${id} ${next[id] ?? next.label}`, kind: id });
-    } else out.push({ text: KEY_BY_ID.get(id)?.label ?? id, kind: 'fn' });
+    } else out.push({ text: keyById.get(id)?.label ?? id, kind: 'fn' });
   }
   return out;
 }
@@ -31,8 +31,8 @@ export function expandKeys(keys) {
 
 const esc = (x) => String(x).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
-function variantHtml(v, ready, key) {
-  const chips = chipsOf(v.keys).map((c) => `<span class="chip ${c.kind}">${esc(c.text)}</span>`).join('');
+function variantHtml(v, ready, key, keyById) {
+  const chips = chipsOf(v.keys, keyById).map((c) => `<span class="chip ${c.kind}">${esc(c.text)}</span>`).join('');
   const btn = ready
     ? `<button type="button" class="run" data-run="${key}">Executar</button>`
     : '<button type="button" class="run" disabled>Em breve</button>';
@@ -44,15 +44,17 @@ export function mountVerso(ctx) {
   el.className = 'verso';
   el.hidden = true;
   el.setAttribute('aria-label', 'Verso da calculadora: guia de fórmulas');
-  const sigma = SIGMA_MAP.map(([a, b]) => `<span class="sg">${esc(a)}</span><span class="ar">→</span><span class="sr">${esc(b)}</span>`).join('');
+  const data = VERSO_BY_PROFILE[ctx.profile.id] ?? { sections: [], sigma: [] }; // cada perfil tem o seu guia
+  const keyById = ctx.profile.keyById;
+  const sigma = data.sigma.map(([a, b]) => `<span class="sg">${esc(a)}</span><span class="ar">→</span><span class="sr">${esc(b)}</span>`).join('');
   const runs = new Map();
   let n = 0;
-  const secs = VERSO.map((g) => {
+  const secs = data.sections.map((g) => {
     const items = g.items.map((it) => {
       const vs = it.variants.map((v) => {
         const key = 'r' + n++;
         runs.set(key, { it, v });
-        return variantHtml(v, it.ready, key);
+        return variantHtml(v, it.ready, key, keyById);
       }).join('');
       const lst = it.listing ? `<ol class="listing">${it.listing.map((l) => `<li>${esc(l)}</li>`).join('')}</ol>` : '';
       return `<article class="v-item"><h4>${esc(it.title)}</h4><p>${esc(it.text)}</p>${lst}${vs}</article>`;
@@ -62,8 +64,8 @@ export function mountVerso(ctx) {
   el.innerHTML =
     '<header class="verso-head"><span class="verso-title">Verso · guia rápido</span>' +
     '<button type="button" class="verso-close" aria-label="Voltar à frente da calculadora">✕</button></header>' +
-    '<p class="verso-hint">Todos os exemplos usam a pilha RPN: digite o número, ENTER, e depois a função. Toque em Executar para ver as teclas sendo apertadas.</p>' +
-    `<section class="v-sec sigma"><span class="v-tag sigma-tag" aria-hidden="true">Σ</span><div class="v-body"><h3>Estatística: onde ficam os totais</h3><div class="sigma-map">${sigma}</div></div></section>` +
+    '<p class="verso-hint">Os exemplos usam a pilha RPN: digite o número, ENTER, e depois a função (se a calculadora estiver em ALG, ela passa para RPN ao executar; os exemplos do grupo ALG ligam o ALG sozinhos). Toque em Executar para ver as teclas sendo apertadas.</p>' +
+    (data.sigma.length ? `<section class="v-sec sigma"><span class="v-tag sigma-tag" aria-hidden="true">Σ</span><div class="v-body"><h3>Estatística: onde ficam os totais</h3><div class="sigma-map">${sigma}</div></div></section>` : '') +
     secs;
   ctx.calc.append(el);
 
@@ -89,6 +91,10 @@ export function mountVerso(ctx) {
     if (e.prgm) { // os exemplos supõem o modo de execução
       ctx.pressKey('f');
       ctx.pressKey('rs');
+    }
+    if (e.mode !== 'rpn') { // os exemplos supõem a pilha RPN
+      ctx.pressKey('f');
+      ctx.pressKey('chs');
     }
     for (const id of expandKeys(pre)) ctx.pressKey(id); // gravação do programa: rápida, sem animação
     for (const id of expandKeys(keys)) {

@@ -1,7 +1,12 @@
 // Salvamento automático no aparelho (localStorage). Nada sai do dispositivo.
 import { Engine } from '../engine/engine.js';
+import { DEFAULT_PROFILE, hasProfile } from '../engine/profiles.js';
 
-export const STORAGE_KEY = 'calc12c.state';
+export const STORAGE_KEY = 'calc12c.state'; // estado do perfil 12C (chave mantida para não perder o que já estava salvo)
+export const PROFILE_KEY = 'calc12c.profile'; // perfil em uso
+
+// Cada perfil tem o seu estado salvo à parte.
+export const stateKey = (id) => (id === DEFAULT_PROFILE ? STORAGE_KEY : `${STORAGE_KEY}.${id}`);
 
 function store() {
   try {
@@ -13,26 +18,48 @@ function store() {
 
 export function saveState(engine) {
   try {
-    store()?.setItem(STORAGE_KEY, engine.serialize());
+    store()?.setItem(stateKey(engine.profile), engine.serialize());
   } catch {
     /* sem armazenamento: o app segue funcionando */
   }
 }
 
-// Estado salvo ausente, corrompido ou de versão antiga → motor novo (sem erro).
-export function loadState() {
+// Perfil em uso: ausente ou desconhecido → 12C.
+export function loadActiveProfile() {
   try {
-    const raw = store()?.getItem(STORAGE_KEY);
-    if (raw) return Engine.restore(raw);
+    const id = store()?.getItem(PROFILE_KEY);
+    if (id && hasProfile(id)) return id;
+  } catch {
+    /* usa o padrão */
+  }
+  return DEFAULT_PROFILE;
+}
+
+export function saveActiveProfile(id) {
+  try {
+    store()?.setItem(PROFILE_KEY, id);
+  } catch {
+    /* sem armazenamento: o app segue funcionando */
+  }
+}
+
+// Estado salvo do perfil (o ativo, se não for dito) ausente, corrompido ou de versão antiga → motor novo (sem erro).
+export function loadState(profile = loadActiveProfile()) {
+  try {
+    const raw = store()?.getItem(stateKey(profile));
+    if (raw) {
+      const e = Engine.restore(raw);
+      if (e.profile === profile) return e;
+    }
   } catch {
     /* cai no estado inicial */
   }
-  return new Engine();
+  return new Engine({ profile });
 }
 
-export function clearAll() {
+export function clearAll(profile = DEFAULT_PROFILE) {
   try {
-    store()?.removeItem(STORAGE_KEY);
+    store()?.removeItem(stateKey(profile));
   } catch {
     /* ignora */
   }

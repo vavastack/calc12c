@@ -49,8 +49,11 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
   box-shadow: var(--display-shadow), 0 0 0 3px var(--display-bezel, #000), 0 0 0 4px #ffffff12;
   display: grid; grid-template-rows: auto 1fr auto; gap: 2px; }
 .indicators { display: flex; gap: 10px; font-size: 11px; font-weight: 700; align-items: center; }
-.indicators [data-ind] { color: var(--ind-off); }
+.indicators [data-ind] { color: var(--ind-off); white-space: nowrap; }
 .indicators [data-ind].on { color: var(--ind-on); }
+/* com RPN, ALG e ( ) são dez indicadores: em telas estreitas encolhem para caber sem rolagem lateral */
+@media (max-width: 420px) { .indicators { gap: 6px; font-size: 10px; } .fmt-toggle { padding: 1px 6px; } }
+@media (max-width: 350px) { .indicators { gap: 4px; font-size: 9px; } .fmt-toggle { font-size: 9px; padding: 0 4px; } }
 .fmt-toggle { margin-left: auto; font: inherit; font-size: 11px; border: 1px solid currentColor; background: transparent;
   color: inherit; border-radius: 8px; padding: 1px 8px; opacity: .7; }
 .digits { font-family: "Share Tech Mono", ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 1px; font-size: 44px; text-align: right; white-space: nowrap;

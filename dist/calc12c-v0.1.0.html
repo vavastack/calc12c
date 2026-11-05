@@ -175,8 +175,11 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
   box-shadow: var(--display-shadow), 0 0 0 3px var(--display-bezel, #000), 0 0 0 4px #ffffff12;
   display: grid; grid-template-rows: auto 1fr auto; gap: 2px; }
 .indicators { display: flex; gap: 10px; font-size: 11px; font-weight: 700; align-items: center; }
-.indicators [data-ind] { color: var(--ind-off); }
+.indicators [data-ind] { color: var(--ind-off); white-space: nowrap; }
 .indicators [data-ind].on { color: var(--ind-on); }
+/* com RPN, ALG e ( ) são dez indicadores: em telas estreitas encolhem para caber sem rolagem lateral */
+@media (max-width: 420px) { .indicators { gap: 6px; font-size: 10px; } .fmt-toggle { padding: 1px 6px; } }
+@media (max-width: 350px) { .indicators { gap: 4px; font-size: 9px; } .fmt-toggle { font-size: 9px; padding: 0 4px; } }
 .fmt-toggle { margin-left: auto; font: inherit; font-size: 11px; border: 1px solid currentColor; background: transparent;
   color: inherit; border-radius: 8px; padding: 1px 8px; opacity: .7; }
 .digits { font-family: "Share Tech Mono", ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 1px; font-size: 44px; text-align: right; white-space: nowrap;
@@ -435,7 +438,7 @@ html:not([data-theme^="moderno"]) .display { border: 4px solid transparent;
 <div id="app"></div>
 <script>
 const __m_keymap = (() => {
-// Mapa único do teclado (39 teclas). Posição no layout vertical: 5 colunas × 8 linhas.
+// Mapa do teclado do perfil 12C (39 teclas; f RPN / f ALG e g ( / g ) são da Platinum). Posição no layout vertical: 5 colunas × 8 linhas.
 // Metade de cima = colunas 1 a 5 da HP 12C original; metade de baixo = colunas 6 a 10.
 // `f` (dourado) e `g` (azul) são os rótulos oficiais; `enabled:false` = fora do escopo (PRGM, estatística).
 const k = (id, label, f, g, row, col, extra = {}) => ({ id, label, f, g, row, col, enabled: true, ...extra });
@@ -463,16 +466,16 @@ const KEYS = [
   k('on', 'ON', 'OFF', null, 3, 0),
   k('f', 'f', null, null, 3, 1),
   k('g', 'g', null, null, 3, 2),
-  k('sto', 'STO', null, null, 3, 3),
-  k('rcl', 'RCL', null, null, 3, 4),
+  k('sto', 'STO', null, '(', 3, 3),
+  k('rcl', 'RCL', null, ')', 3, 4),
   // linha 4
-  k('chs', 'CHS', null, 'DATE', 4, 0),
+  k('chs', 'CHS', 'RPN', 'DATE', 4, 0),
   k('7', '7', null, 'BEG', 4, 1),
   k('8', '8', null, 'END', 4, 2),
   k('9', '9', null, 'MEM', 4, 3),
   k('divide', '÷', null, null, 4, 4),
   // linha 5
-  k('eex', 'EEX', null, 'ΔDYS', 5, 0),
+  k('eex', 'EEX', 'ALG', 'ΔDYS', 5, 0),
   k('4', '4', null, 'D.MY', 5, 1),
   k('5', '5', null, 'M.DY', 5, 2),
   k('6', '6', null, 'x̄w', 5, 3),
@@ -492,6 +495,117 @@ const KEYS = [
 const KEY_BY_ID = new Map(KEYS.map((x) => [x.id, x]));
 
 return { KEYS, KEY_BY_ID };
+})();
+
+const __m_profiles = (() => {
+// Perfis de calculadora. Cada perfil define o que muda de um modelo para outro: identidade, mapa de teclas,
+// modos de cálculo, indicadores do visor e as linhas de ligação (colchetes) do teclado.
+// O motor (engine.js) consulta o perfil pelo id; a interface monta o teclado a partir dele.
+const { KEYS, KEY_BY_ID } = __m_keymap;
+
+const DEFAULT_PROFILE = '12c';
+
+// Colchetes impressos acima das teclas: posição no retrato (r, c0..c1) e na paisagem (hr, hc0..hc1)
+const BRACKETS_12C = [
+  { label: 'BOND', r: 1, c0: 0, c1: 1, hr: 1, hc0: 0, hc1: 1 },
+  { label: 'DEPRECIATION', r: 1, c0: 2, c1: 4, hr: 1, hc0: 2, hc1: 4 },
+  { label: 'CLEAR', r: 2, c0: 1, c1: 4, hr: 2, hc0: 1, hc1: 5 },
+  { label: '', r: 6, c0: 0, c1: 0, hr: 2, hc0: 5, hc1: 5, cls: 'pfx' }, // PREFIX: no retrato tem a linha própria; na paisagem a do CLEAR já a cobre
+];
+
+const PROFILES = new Map();
+
+// Perfil: { id, name (título no topo), model (selo), keys, keyById, modes, defaultMode, indicators, brackets }
+function registerProfile(p) {
+  for (const f of ['id', 'name', 'model', 'keys', 'keyById', 'modes', 'indicators', 'brackets']) {
+    if (p[f] === undefined) throw new Error(`perfil sem ${f}`);
+  }
+  PROFILES.set(p.id, { defaultMode: p.modes[0], ...p });
+}
+
+function hasProfile(id) {
+  return PROFILES.has(id);
+}
+
+function getProfile(id) {
+  const p = PROFILES.get(id);
+  if (!p) throw new Error('perfil desconhecido: ' + id);
+  return p;
+}
+
+function listProfiles() {
+  return [...PROFILES.values()];
+}
+
+registerProfile({
+  id: '12c',
+  name: 'Calc 12c',
+  model: '12C',
+  keys: KEYS,
+  keyById: KEY_BY_ID,
+  modes: ['rpn', 'alg'], // a Platinum é a única da família com os dois modos
+  indicators: ['RPN', 'ALG', '( )', 'f', 'g', 'BEGIN', 'D.MY', 'C', 'USER', 'PRGM'],
+  brackets: BRACKETS_12C,
+});
+
+return { DEFAULT_PROFILE, registerProfile, hasProfile, getProfile, listProfiles };
+})();
+
+const __m_alg = (() => {
+// Modo ALG da HP 12C Platinum (Apêndice B do manual): as operações são feitas na ordem em que são digitadas,
+// da esquerda para a direita, sem hierarquia (1 + 2 × 3 = 9). ENTER faz o papel de "=" e fecha os parênteses.
+// Este módulo guarda só o estado das operações pendentes; quem calcula e mexe na pilha é o engine.js.
+const MAX_PARENS = 13; // parênteses abertos ao mesmo tempo (manual, p. 26)
+
+class AlgState {
+  constructor() {
+    this.lastResult = 0; // último resultado concluído (alimenta a pilha de histórico)
+    this.fresh = false; // a última tecla foi um operador ou "(": o próximo número começa do zero
+    this.wasFresh = false; // valor de `fresh` antes da tecla que está sendo tratada
+    this.clxPrev = false; // a tecla anterior foi CLx
+    this.wasClx = false;
+    this.clearPending();
+  }
+
+  // Cada nível (o principal e um por parêntese aberto) guarda o acumulado e o operador esperando o próximo número.
+  clearPending() {
+    this.frames = [{ acc: null, op: null }];
+    this.fresh = false;
+  }
+
+  get depth() {
+    return this.frames.length - 1;
+  }
+
+  get top() {
+    return this.frames[this.frames.length - 1];
+  }
+
+  // Há algo a calcular quando o ENTER for apertado?
+  get pending() {
+    return this.depth > 0 || this.top.op !== null;
+  }
+
+  toJSON() {
+    return { frames: this.frames.map((f) => ({ ...f })), lastResult: this.lastResult };
+  }
+
+  static valid(o) {
+    const num = (v) => typeof v === 'number' && Number.isFinite(v);
+    return !!o && typeof o === 'object' && num(o.lastResult) && Array.isArray(o.frames) && o.frames.length >= 1 &&
+      o.frames.length <= MAX_PARENS + 1 &&
+      o.frames.every((f) => f && (f.acc === null || num(f.acc)) && (f.op === null || ['plus', 'minus', 'times', 'divide', 'yx'].includes(f.op)));
+  }
+
+  static fromJSON(o) {
+    const a = new AlgState();
+    a.frames = o.frames.map((f) => ({ acc: f.acc, op: f.op }));
+    a.lastResult = o.lastResult;
+    return a;
+  }
+}
+
+return { MAX_PARENS, AlgState };
 })();
 
 const __m_stack = (() => {
@@ -1384,7 +1498,22 @@ function applyOp(stack, op) {
   throw new Error('operação desconhecida: ' + op);
 }
 
-return { applyOp };
+// Operação de dois números (y op x) sem tocar na pilha: usada pelo modo ALG. op: plus, minus, times, divide, yx.
+function compute(op, y, x) {
+  if (!BINARY[op]) throw new Error('operação desconhecida: ' + op);
+  return fin(BINARY[op](y, x));
+}
+
+// y% de x quando há uma operação pendente (ALG): a base é o primeiro operando.
+function percentOf(base, pct) {
+  return fin((base * pct) / 100);
+}
+
+function divide100(x) {
+  return fin(x / 100);
+}
+
+return { applyOp, compute, percentOf, divide100 };
 })();
 
 const __m_program = (() => {
@@ -1514,14 +1643,15 @@ return { accumulate, means, deviations, weightedMean, estimateY, estimateX, rnd 
 })();
 
 const __m_engine = (() => {
-const { KEY_BY_ID } = __m_keymap;
+const { getProfile, hasProfile, DEFAULT_PROFILE } = __m_profiles;
+const { AlgState, MAX_PARENS } = __m_alg;
 const { Stack } = __m_stack;
 const { Registers } = __m_registers;
 const { CashFlows } = __m_cashflow;
 const { amortize, roundDec } = __m_amort;
 const { sl, soyd, db } = __m_depreciation;
 const { bondPrice, bondYield } = __m_bonds;
-const { applyOp } = __m_math;
+const { applyOp, compute, percentOf, divide100 } = __m_math;
 const { solve, simpleInterest } = __m_tvm;
 const { CalcError } = __m_errors;
 const { MAX_LINES, lineText, memoryText, validLine } = __m_program;
@@ -1535,6 +1665,7 @@ const FIN = ['n', 'i', 'pv', 'pmt', 'fv'];
 const FIN_LABEL = { n: 'n', i: 'i', pv: 'PV', pmt: 'PMT', fv: 'FV' };
 const PRIMARY_OPS = ['plus', 'minus', 'times', 'divide', 'yx', 'recip', 'pctT', 'dpct', 'pct'];
 const OPKEYS = ['plus', 'minus', 'times', 'divide'];
+const ALG_OPS = ['plus', 'minus', 'times', 'divide', 'yx']; // operações de dois números do modo ALG
 const STAT_G = { '0': 'mean', dot: 'sd', '6': 'wmean', '1': 'estx', '2': 'esty', sigma: 'sigmaminus' };
 const G_OPS = { yx: 'sqrt', recip: 'expx', pctT: 'ln', dpct: 'frac', pct: 'intg', 3: 'fact' };
 const isDigit = (id) => /^[0-9]$/.test(id);
@@ -1542,6 +1673,10 @@ const zeroFin = () => ({ n: 0, i: 0, pv: 0, pmt: 0, fv: 0 });
 
 class Engine {
   constructor(opts = {}) {
+    this.profile = opts.profile ?? DEFAULT_PROFILE; // perfil de calculadora (mapa de teclas, modos); ver profiles.js
+    const def = getProfile(this.profile);
+    this.mode = opts.mode && def.modes.includes(opts.mode) ? opts.mode : def.defaultMode; // 'rpn' | 'alg'
+    this.alg = new AlgState(); // operações pendentes do modo ALG
     this.stack = new Stack();
     this.regs = new Registers();
     this.fin = zeroFin();
@@ -1568,11 +1703,18 @@ class Engine {
     this.tokens = []; // teclas desde a última linha da fita
   }
 
+  get keyById() {
+    return getProfile(this.profile).keyById;
+  }
+
   // ---------- estado ----------
   get state() {
     const s = this.stack;
     return {
       display: this._display(),
+      profile: this.profile,
+      mode: this.mode,
+      parens: this.alg.depth,
       stack: { x: s.x, y: s.y, z: s.z, t: s.t, lastX: s.lastX },
       regs: this.regs.values(),
       fin: { ...this.fin },
@@ -1597,7 +1739,7 @@ class Engine {
 
   // ---------- teclas ----------
   press(id) {
-    const key = KEY_BY_ID.get(id);
+    const key = this.keyById.get(id);
     if (!key) throw new Error('tecla desconhecida: ' + id);
     if (id !== 'f' && id !== 'g') this.dateText = null;
     if (this.error) {
@@ -1622,6 +1764,7 @@ class Engine {
     } catch (e) {
       if (!(e instanceof CalcError)) throw e;
       this.error = { code: e.code, message: e.message };
+      this.alg.clearPending(); // um erro cancela as operações pendentes do ALG
       this.shift = null;
       this.pending = null;
       this.tokens = [];
@@ -1631,7 +1774,7 @@ class Engine {
   // Limpar tudo: pilha, registradores, financeiros, fita; mantém o formato (pt-BR / en-US).
   reset() {
     const locale = this.locale;
-    Object.assign(this, new Engine({ locale }));
+    Object.assign(this, new Engine({ locale, profile: this.profile, mode: this.mode }));
   }
 
   // Linha da fita tocada: o valor entra em X, respeitando a regra de elevação da pilha.
@@ -1664,6 +1807,11 @@ class Engine {
     if (this.pending) return this._finishPending(key);
     if (key.id === 'on') return;
     const s = this.stack;
+    const a = this.alg;
+    a.wasFresh = a.fresh; // ALG: a tecla anterior foi um operador? e foi CLx?
+    a.fresh = false;
+    a.wasClx = a.clxPrev;
+    a.clxPrev = false;
     const entryKey = shift === null && (isDigit(key.id) || key.id === 'dot' || key.id === 'eex' || key.id === 'chs');
     if (!entryKey && s.entering) this.tokens.push(s.entryText());
     const wasStored = this.justStored;
@@ -1676,6 +1824,7 @@ class Engine {
   _primary(key, wasStored) {
     const id = key.id;
     const s = this.stack;
+    if (this.mode === 'alg' && this._algPrimary(key)) return;
     if (isDigit(id)) return s.digit(id);
     if (PRIMARY_OPS.includes(id)) {
       applyOp(s, id);
@@ -1759,8 +1908,13 @@ class Engine {
       return;
     }
     if (id === 'enter') {
+      if (this.mode === 'alg') return this._algLastX(); // no ALG, LSTx troca X com LAST X
       s.recall(s.lastX);
       this.tokens.push('LSTx');
+      return;
+    }
+    if (id === 'sto' || id === 'rcl') { // g ( e g ): só existem no ALG
+      if (this.mode === 'alg') return id === 'sto' ? this._algOpen() : this._algClose();
       return;
     }
     if (id === '4' || id === '5') {
@@ -1816,6 +1970,9 @@ class Engine {
       return;
     }
     switch (id) {
+      case 'chs': // f RPN
+      case 'eex': // f ALG
+        return this._setMode(id === 'chs' ? 'rpn' : 'alg');
       case 'i': {
         s.commit();
         const r = simpleInterest(this.fin.n, this.fin.i, this.fin.pv);
@@ -1878,11 +2035,13 @@ class Engine {
         this.pc = 0;
         return;
       case 'sst': // CLEAR Σ: zera R1..R6, a pilha e o visor
+        this.alg.clearPending();
         for (let n = 1; n <= 6; n++) this.regs.store(n, 0);
         s.clearAll();
         this.tokens = [];
         return;
       case 'clx': // CLEAR REG
+        this.alg.clearPending();
         this.regs.clear();
         this.cf.clear();
         this.amortFresh = true;
@@ -1892,6 +2051,160 @@ class Engine {
         return;
       // 'enter' (PREFIX) só cancela o prefixo; demais funções f: ignoradas
     }
+  }
+
+  // ---------- modo ALG (HP 12C Platinum, Apêndice B) ----------
+  _setMode(mode) {
+    this.stack.commit();
+    if (!getProfile(this.profile).modes.includes(mode)) return;
+    this.mode = mode;
+    this.alg.clearPending(); // trocar de modo cancela o que estava pendente
+  }
+
+  // Teclas que mudam de significado no ALG. Devolve true se tratou a tecla.
+  _algPrimary(key) {
+    const id = key.id;
+    const s = this.stack;
+    if (ALG_OPS.includes(id)) return this._algOp(key), true;
+    if (id === 'enter') return this._algEquals(), true;
+    if (id === 'pct') return this._algPercent(), true;
+    if (id === 'pctT' || id === 'dpct') return this._algRelative(key), true;
+    if (id === 'clx') return this._algClx(), true;
+    // começar um número novo guarda o que estava no visor em LAST X (manual, p. 239)
+    if ((isDigit(id) || id === 'dot' || id === 'eex') && !s.entering) s.lastX = s.x;
+    return false;
+  }
+
+  // + − × ÷ yˣ: faz a conta pendente com o que está no visor e deixa o novo operador esperando o próximo número.
+  _algOp(key) {
+    const s = this.stack;
+    const a = this.alg;
+    const f = a.top;
+    s.commit();
+    if (a.wasFresh && f.op) { // dois operadores seguidos: vale o último
+      f.op = key.id;
+      a.fresh = true;
+      this.tokens.push(key.label);
+      return;
+    }
+    const v = f.op ? compute(f.op, f.acc, s.x) : s.x;
+    s.x = v;
+    s.entering = false;
+    s.liftEnabled = false; // o próximo número substitui o visor, sem elevar a pilha
+    f.acc = v;
+    f.op = key.id;
+    a.fresh = true;
+    this._record(key.label);
+  }
+
+  // ENTER: com conta pendente age como "=" e fecha os parênteses; sem conta, é o ENTER da pilha (Y recebe X).
+  _algEquals() {
+    const s = this.stack;
+    const a = this.alg;
+    s.commit();
+    if (!a.pending) {
+      s.enter();
+      this.tokens.push('ENTER');
+      return;
+    }
+    let v = s.x;
+    for (let i = a.frames.length - 1; i >= 0; i--) if (a.frames[i].op) v = compute(a.frames[i].op, a.frames[i].acc, v);
+    a.clearPending();
+    this._algComplete(v);
+    this._record('=');
+  }
+
+  // Resultado concluído: entra em X e o anterior sobe na pilha de histórico (4 resultados, manual p. 239).
+  _algComplete(v) {
+    const s = this.stack;
+    const a = this.alg;
+    s.t = s.z;
+    s.z = s.y;
+    s.y = a.lastResult;
+    s.x = v;
+    a.lastResult = v;
+    s.entering = false;
+    s.liftEnabled = false; // o próximo número começa outra conta sem elevar a pilha
+  }
+
+  // %: com + ou − pendente calcula o percentual do primeiro número e já dá o valor líquido (200 − 25 % = 150);
+  // com × ou ÷ usa o número dividido por 100; sem operação pendente só divide por 100.
+  _algPercent() {
+    const s = this.stack;
+    const f = this.alg.top;
+    s.commit();
+    const b = s.x;
+    let r;
+    if (!f.op) r = divide100(b);
+    else if (f.op === 'plus' || f.op === 'minus') r = compute(f.op, f.acc, percentOf(f.acc, b));
+    else r = compute(f.op, f.acc, divide100(b));
+    s.lastX = b;
+    s.x = r;
+    s.entering = false;
+    s.liftEnabled = true;
+    f.acc = null;
+    f.op = null;
+    this._record('%');
+  }
+
+  // Δ% e %T: o número antes do operador pendente vira Y e o operador é ignorado (35,5 − 31,25 Δ% = 35,5 ENTER 31,25 Δ%).
+  _algRelative(key) {
+    const s = this.stack;
+    const f = this.alg.top;
+    s.commit();
+    if (f.op) {
+      s.y = f.acc;
+      f.acc = null;
+      f.op = null;
+    }
+    applyOp(s, key.id);
+    this._record(key.label);
+  }
+
+  // CLx apaga o número do visor; CLx duas vezes seguidas cancela também as operações pendentes.
+  _algClx() {
+    const a = this.alg;
+    this.stack.clx();
+    if (a.wasClx) a.clearPending();
+    a.clxPrev = true;
+    this.tokens.push('CLx');
+  }
+
+  // g LSTx no ALG: troca X com LAST X, nunca eleva a pilha.
+  _algLastX() {
+    const s = this.stack;
+    s.commit();
+    const x = s.x;
+    s.x = s.lastX;
+    s.lastX = x;
+    s.entering = false;
+    s.liftEnabled = true;
+    this.tokens.push('LSTx');
+  }
+
+  // g (: abre um nível. g ): fecha o nível e calcula o que havia dentro. Até 13 abertos.
+  _algOpen() {
+    const a = this.alg;
+    this.stack.commit();
+    if (a.depth >= MAX_PARENS) throw new CalcError(4);
+    a.frames.push({ acc: null, op: null });
+    this.stack.liftEnabled = false;
+    a.fresh = true;
+    this.tokens.push('(');
+  }
+
+  _algClose() {
+    const s = this.stack;
+    const a = this.alg;
+    s.commit();
+    if (a.depth === 0) return; // sem parêntese aberto: a tecla não faz nada
+    const f = a.top;
+    const v = f.op ? compute(f.op, f.acc, s.x) : s.x;
+    a.frames.pop();
+    s.x = v;
+    s.entering = false;
+    s.liftEnabled = false;
+    this.tokens.push(')');
   }
 
   // ---------- programação ----------
@@ -2003,14 +2316,14 @@ class Engine {
       this.pending = id;
       this.shift = null;
       if (line.op) {
-        this._finishPending(KEY_BY_ID.get(line.op));
-        this._finishPending(KEY_BY_ID.get(line.arg));
-      } else this._finishPending(KEY_BY_ID.get(line.arg));
+        this._finishPending(this.keyById.get(line.op));
+        this._finishPending(this.keyById.get(line.arg));
+      } else this._finishPending(this.keyById.get(line.arg));
       return null;
     }
     if (id === 'sst' || id === 'on' || id === 'f' || id === 'g') return null;
     this.shift = s;
-    this._dispatch(KEY_BY_ID.get(id));
+    this._dispatch(this.keyById.get(id));
     return null;
   }
 
@@ -2223,6 +2536,9 @@ class Engine {
   serialize() {
     return JSON.stringify({
       v: VERSION,
+      profile: this.profile,
+      mode: this.mode,
+      alg: this.alg.toJSON(),
       stack: this.stack.toJSON(),
       regs: this.regs.values(),
       fin: this.fin,
@@ -2262,7 +2578,13 @@ class Engine {
     if (!Array.isArray(o.tokens) || !o.tokens.every(str)) throw bad();
     if (o.prog !== undefined && !(Array.isArray(o.prog) && o.prog.length <= MAX_LINES && o.prog.every(validLine))) throw bad();
     if (o.cf !== undefined && !CashFlows.valid(o.cf)) throw bad();
-    const e = new Engine({ locale: o.locale });
+    const profile = o.profile ?? DEFAULT_PROFILE; // estados antigos não tinham perfil: eram da 12C
+    if (typeof profile !== 'string' || !hasProfile(profile)) throw bad();
+    const modes = getProfile(profile).modes;
+    if (o.mode !== undefined && !modes.includes(o.mode)) throw bad();
+    if (o.alg !== undefined && !AlgState.valid(o.alg)) throw bad();
+    const e = new Engine({ locale: o.locale, profile, mode: o.mode });
+    if (o.alg) e.alg = AlgState.fromJSON(o.alg);
     try {
       e.stack = Stack.fromJSON(o.stack);
     } catch {
@@ -2286,13 +2608,17 @@ return { Engine };
 })();
 
 const __m_display = (() => {
-// Visor: indicadores, dígitos com ajuste de fonte, mensagem de erro e teclado do PC.
-const INDICATORS = ['f', 'g', 'BEGIN', 'D.MY', 'C', 'USER', 'PRGM'];
+// Visor: indicadores (conforme o perfil), dígitos com ajuste de fonte, mensagem de erro e teclado do PC.
+const { getProfile } = __m_profiles;
 
-function ensureStructure(el) {
-  if (el.querySelector('.digits')) return;
+const INDICATORS = getProfile('12c').indicators;
+
+function ensureStructure(el, indicators) {
+  const sig = indicators.join('|');
+  if (el.querySelector('.digits') && el.dataset.inds === sig) return;
+  el.dataset.inds = sig;
   el.innerHTML =
-    '<div class="indicators">' + INDICATORS.map((i) => `<span data-ind="${i}">${i}</span>`).join('') +
+    '<div class="indicators">' + indicators.map((i) => `<span data-ind="${i}">${i}</span>`).join('') +
     '<button type="button" class="fmt-toggle" aria-label="Alternar formato dos números (pt-BR / en-US)"></button></div>' +
     '<div class="digits" role="status"></div><div class="msg"></div>';
 }
@@ -2308,8 +2634,11 @@ function fit(digits) {
 }
 
 function renderDisplay(el, s) {
-  ensureStructure(el);
-  const lit = { f: s.shift === 'f', g: s.shift === 'g', BEGIN: s.begin, C: s.compound, 'D.MY': s.dmy, PRGM: s.prgm };
+  ensureStructure(el, getProfile(s.profile ?? '12c').indicators);
+  const lit = {
+    RPN: s.mode === 'rpn', ALG: s.mode === 'alg', '( )': s.parens > 0,
+    f: s.shift === 'f', g: s.shift === 'g', BEGIN: s.begin, C: s.compound, 'D.MY': s.dmy, PRGM: s.prgm,
+  };
   for (const span of el.querySelectorAll('[data-ind]')) {
     span.classList.toggle('on', !!lit[span.dataset.ind]);
   }
@@ -2348,8 +2677,13 @@ return { INDICATORS, renderDisplay, bindKeyboard };
 const __m_storage = (() => {
 // Salvamento automático no aparelho (localStorage). Nada sai do dispositivo.
 const { Engine } = __m_engine;
+const { DEFAULT_PROFILE, hasProfile } = __m_profiles;
 
-const STORAGE_KEY = 'calc12c.state';
+const STORAGE_KEY = 'calc12c.state'; // estado do perfil 12C (chave mantida para não perder o que já estava salvo)
+const PROFILE_KEY = 'calc12c.profile'; // perfil em uso
+
+// Cada perfil tem o seu estado salvo à parte.
+const stateKey = (id) => (id === DEFAULT_PROFILE ? STORAGE_KEY : `${STORAGE_KEY}.${id}`);
 
 function store() {
   try {
@@ -2361,32 +2695,54 @@ function store() {
 
 function saveState(engine) {
   try {
-    store()?.setItem(STORAGE_KEY, engine.serialize());
+    store()?.setItem(stateKey(engine.profile), engine.serialize());
   } catch {
     /* sem armazenamento: o app segue funcionando */
   }
 }
 
-// Estado salvo ausente, corrompido ou de versão antiga → motor novo (sem erro).
-function loadState() {
+// Perfil em uso: ausente ou desconhecido → 12C.
+function loadActiveProfile() {
   try {
-    const raw = store()?.getItem(STORAGE_KEY);
-    if (raw) return Engine.restore(raw);
+    const id = store()?.getItem(PROFILE_KEY);
+    if (id && hasProfile(id)) return id;
+  } catch {
+    /* usa o padrão */
+  }
+  return DEFAULT_PROFILE;
+}
+
+function saveActiveProfile(id) {
+  try {
+    store()?.setItem(PROFILE_KEY, id);
+  } catch {
+    /* sem armazenamento: o app segue funcionando */
+  }
+}
+
+// Estado salvo do perfil (o ativo, se não for dito) ausente, corrompido ou de versão antiga → motor novo (sem erro).
+function loadState(profile = loadActiveProfile()) {
+  try {
+    const raw = store()?.getItem(stateKey(profile));
+    if (raw) {
+      const e = Engine.restore(raw);
+      if (e.profile === profile) return e;
+    }
   } catch {
     /* cai no estado inicial */
   }
-  return new Engine();
+  return new Engine({ profile });
 }
 
-function clearAll() {
+function clearAll(profile = DEFAULT_PROFILE) {
   try {
-    store()?.removeItem(STORAGE_KEY);
+    store()?.removeItem(stateKey(profile));
   } catch {
     /* ignora */
   }
 }
 
-return { STORAGE_KEY, saveState, loadState, clearAll };
+return { STORAGE_KEY, PROFILE_KEY, stateKey, saveState, loadActiveProfile, saveActiveProfile, loadState, clearAll };
 })();
 
 const __m_tape = (() => {
@@ -2483,13 +2839,55 @@ function mountDrawer(ctx) {
   confirm.querySelector('.ok').addEventListener('click', () => {
     confirm.hidden = true;
     engine.reset();
-    clearAll();
+    clearAll(engine.profile);
     ctx.render();
   });
   return { open: () => set(true), close: () => set(false) };
 }
 
 return { mountDrawer };
+})();
+
+const __m_memories = (() => {
+// Memórias em arquivo: salvar, abrir e compartilhar o estado da calculadora (registradores, financeiros,
+// fluxos de caixa, programa, pilha e fita). A versão 2 leva também o perfil e o modo (RPN/ALG); arquivos da versão 1 abrem como 12C. O arquivo só sai do aparelho se a pessoa o compartilhar.
+const { Engine } = __m_engine;
+
+const MEM_KIND = 'calc12c-memorias';
+const MAX_CHARS = 2000000;
+
+function buildMemoryFile(engine, now = new Date()) {
+  const estado = JSON.parse(engine.serialize());
+  estado.shift = null; // nada pendente: o arquivo guarda só o que a pessoa calculou
+  estado.pending = null;
+  estado.error = null;
+  const text = JSON.stringify({ app: 'Calc 12c', tipo: MEM_KIND, versao: 2, perfil: engine.profile, criado: now.toISOString(), estado }, null, 2);
+  return { name: `calc12c-memorias-${now.toISOString().slice(0, 10)}.json`, text };
+}
+
+// Texto do arquivo → motor novo; lança Error com mensagem em português se o arquivo não servir.
+function parseMemoryFile(text) {
+  if (typeof text !== 'string' || text.length > MAX_CHARS) throw new Error('Arquivo ilegível ou grande demais.');
+  let o;
+  try {
+    o = JSON.parse(text);
+  } catch {
+    throw new Error('O arquivo não é um JSON válido.');
+  }
+  if (!o || o.tipo !== MEM_KIND || !o.estado || typeof o.estado !== 'object') throw new Error('Este arquivo não é de memórias da Calc 12c.');
+  try {
+    return Engine.restore(JSON.stringify(o.estado));
+  } catch {
+    throw new Error('O conteúdo do arquivo está inválido ou é de uma versão não suportada.');
+  }
+}
+
+// Troca o estado do motor em uso pelo do motor lido (as referências ao motor continuam valendo).
+function loadInto(engine, loaded) {
+  Object.assign(engine, loaded);
+}
+
+return { MEM_KIND, buildMemoryFile, parseMemoryFile, loadInto };
 })();
 
 const __m_extras = (() => {
@@ -2669,53 +3067,12 @@ function customVars(colors = {}) {
 return { COLOR_KEYS, validHex, mix, lighten, darken, luminance, inkOn, customVars };
 })();
 
-const __m_memories = (() => {
-// Memórias em arquivo: salvar, abrir e compartilhar o estado da calculadora (registradores, financeiros,
-// fluxos de caixa, programa, pilha e fita). O arquivo só sai do aparelho se a pessoa o compartilhar.
-const { Engine } = __m_engine;
-
-const MEM_KIND = 'calc12c-memorias';
-const MAX_CHARS = 2000000;
-
-function buildMemoryFile(engine, now = new Date()) {
-  const estado = JSON.parse(engine.serialize());
-  estado.shift = null; // nada pendente: o arquivo guarda só o que a pessoa calculou
-  estado.pending = null;
-  estado.error = null;
-  const text = JSON.stringify({ app: 'Calc 12c', tipo: MEM_KIND, versao: 1, criado: now.toISOString(), estado }, null, 2);
-  return { name: `calc12c-memorias-${now.toISOString().slice(0, 10)}.json`, text };
-}
-
-// Texto do arquivo → motor novo; lança Error com mensagem em português se o arquivo não servir.
-function parseMemoryFile(text) {
-  if (typeof text !== 'string' || text.length > MAX_CHARS) throw new Error('Arquivo ilegível ou grande demais.');
-  let o;
-  try {
-    o = JSON.parse(text);
-  } catch {
-    throw new Error('O arquivo não é um JSON válido.');
-  }
-  if (!o || o.tipo !== MEM_KIND || !o.estado || typeof o.estado !== 'object') throw new Error('Este arquivo não é de memórias da Calc 12c.');
-  try {
-    return Engine.restore(JSON.stringify(o.estado));
-  } catch {
-    throw new Error('O conteúdo do arquivo está inválido ou é de uma versão não suportada.');
-  }
-}
-
-// Troca o estado do motor em uso pelo do motor lido (as referências ao motor continuam valendo).
-function loadInto(engine, loaded) {
-  Object.assign(engine, loaded);
-}
-
-return { MEM_KIND, buildMemoryFile, parseMemoryFile, loadInto };
-})();
-
 const __m_settings = (() => {
 // Temas e configurações. Só variáveis de cor mudam; o teclado e o motor nunca.
 const { makeWake, wakeSupported } = __m_extras;
 const { COLOR_KEYS, validHex, customVars } = __m_colors;
 const { buildMemoryFile, parseMemoryFile, loadInto } = __m_memories;
+const { listProfiles } = __m_profiles;
 const KEY = 'calc12c.settings';
 const THEMES = ['retro', 'platinum', 'moderno']; // 'retro' = Gold (padrão), 'platinum' = prata, 'moderno' = Retro (vidro)
 const VERSION = 4; // v2: a vibração ao tocar passou a vir ligada; v3: som, não dormir, estilo da tecla ON e banda superior; v4: cores e orientação
@@ -2848,6 +3205,9 @@ function mountSettings(ctx) {
   panel.innerHTML =
     '<header class="settings-head"><span class="settings-title">Configurações</span>' +
     '<button type="button" class="settings-close" aria-label="Fechar configurações">✕</button></header>' +
+    '<section class="group"><h3 class="group-title">Calculadora</h3>' +
+    '<label class="row"><span class="txt">Modelo<small>Cada modelo guarda a sua própria memória; o RPN/ALG da 12C troca em f CHS e f EEX</small></span>' +
+    '<select name="profile"></select></label></section>' +
     '<section class="group"><h3 class="group-title">Aparência</h3>' +
     '<label class="row"><span class="txt">Tema<small>Gold e Platinum são metálicos e sempre escuros; Retro é de vidro</small></span>' +
     '<select name="theme"><option value="retro">Gold</option><option value="platinum">Platinum</option><option value="moderno">Retro</option></select></label>' +
@@ -2918,6 +3278,9 @@ function mountSettings(ctx) {
   };
   const wakeOk = wakeSupported();
   const sync = () => {
+    const sel = panel.querySelector('[name=profile]');
+    sel.innerHTML = listProfiles().map((p) => `<option value="${p.id}">${p.name}</option>`).join('');
+    sel.value = ctx.engine.profile;
     panel.querySelector('[name=theme]').value = s.theme;
     panel.querySelector('[name=mode]').value = s.mode;
     panel.querySelector('[name=onStyle]').value = s.onStyle;
@@ -3055,7 +3418,8 @@ function mountSettings(ctx) {
     if (!f) return;
     try {
       loadInto(ctx.engine, parseMemoryFile(await f.text()));
-      ctx.render();
+      if (!ctx.adoptProfile?.()) ctx.render(); // o arquivo pode ser de outro modelo
+
       sync();
       ctx.showNotice(`Memórias carregadas: ${f.name}`);
     } catch (err) {
@@ -3071,6 +3435,11 @@ function mountSettings(ctx) {
       s.orient = e.target.value;
       saveSettings(s);
       setOrient(s.orient, true);
+      return;
+    }
+    if (n === 'profile') {
+      ctx.setProfile(e.target.value);
+      sync();
       return;
     }
     if (n === 'locale') {
@@ -3315,6 +3684,41 @@ const VERSO = [
     ],
   },
   {
+    id: 'alg', tag: 'ALG', title: 'Modo algébrico (ALG)',
+    note: 'Só na 12C Platinum. f ALG liga e f RPN desliga (teclas EEX e CHS). No ALG o ENTER faz o papel de "=", as contas são feitas na ordem em que são digitadas (1 + 2 × 3 = 9, sem hierarquia) e g ( / g ) abrem e fecham parênteses. As teclas financeiras funcionam igual nos dois modos. Os exemplos ligam o ALG sozinhos; para voltar, f RPN.',
+    items: [
+      {
+        id: 'alg-soma', title: '21,1 + 23,8', text: 'Digite o primeiro número, o operador, o segundo e ENTER (o "=").', ready: true,
+        variants: [{ label: 'Soma', keys: 'f eex 21.1 plus 23.8 enter' }],
+      },
+      {
+        id: 'alg-cadeia', title: '456 − 75 ÷ 18,5 × 68 ÷ 1,9', text: 'Cada operador faz a conta pendente: 381, 20,59, 1.400,43 e, no fim, o resultado.', ready: true,
+        variants: [
+          { label: 'Cadeia', keys: 'f eex 456 minus 75 divide 18.5 times 68 divide 1.9 enter' },
+          { label: 'Sem hierarquia · 1 + 2 × 3', keys: 'f eex 1 plus 2 times 3 enter' },
+        ],
+      },
+      {
+        id: 'alg-paren', title: '8 ÷ 5 − 1 e 8 ÷ (5 − 1)', text: 'Sem parênteses a divisão vem primeiro; com g ( e g ) a subtração é feita antes. O indicador ( ) acende enquanto houver parêntese aberto.', ready: true,
+        variants: [
+          { label: 'Sem parênteses', keys: 'f eex 8 divide 5 minus 1 enter' },
+          { label: 'Com parênteses', keys: 'f eex 8 divide g sto 5 minus 1 g rcl enter' },
+        ],
+      },
+      {
+        id: 'alg-pct', title: 'Porcentagem em 200', text: 'Depois de × ou ÷ o % usa o número dividido por 100; depois de + ou − dá o valor líquido na hora.', ready: true,
+        variants: [
+          { label: '25% de 200', keys: 'f eex 200 times 25 pct' },
+          { label: '200 reduzido em 25%', keys: 'f eex 200 minus 25 pct' },
+        ],
+      },
+      {
+        id: 'alg-delta', title: 'Variação de 35,5 para 31,25', text: 'Δ% também usa ENTER entre os dois números: o valor base primeiro.', ready: true,
+        variants: [{ label: 'Δ%', keys: 'f eex 35.5 enter 31.25 dpct' }],
+      },
+    ],
+  },
+  {
     id: 'prog', tag: 'PRGM', title: 'Programação',
     note: 'Gravar: f P/R liga o modo de programação (PRGM), f CLEAR PRGM limpa, depois aperte as teclas do cálculo; cada tecla vira uma linha (número de dois dígitos = duas linhas). f P/R sai. Rodar: digite os números e aperte R/S. SST executa uma linha de cada vez. Os exemplos gravam o programa sozinhos e apagam o que estava na memória de programa.',
     items: [
@@ -3366,6 +3770,9 @@ const VERSO = [
   },
 ];
 
+// Guia do verso de cada perfil (a 12C é o único por enquanto).
+const VERSO_BY_PROFILE = { '12c': { sections: VERSO, sigma: SIGMA_MAP } };
+
 // Uma variante pode depender da gravação do programa: `pre` é o rótulo de outra variante do mesmo exemplo,
 // cujas teclas são apertadas antes (rápido, sem animação). Devolve só essas teclas prévias.
 function preKeys(item, variant) {
@@ -3378,27 +3785,27 @@ function preKeys(item, variant) {
 // Sequência completa de teclas de uma variante (prévia + própria).
 const fullKeys = (item, variant) => [preKeys(item, variant), variant.keys].filter(Boolean).join(' ');
 
-return { SIGMA_MAP, VERSO, preKeys, fullKeys };
+return { SIGMA_MAP, VERSO, VERSO_BY_PROFILE, preKeys, fullKeys };
 })();
 
 const __m_verso = (() => {
 // Verso: guia de fórmulas com exemplos que podem ser executados na própria calculadora.
 const { KEY_BY_ID } = __m_keymap;
-const { VERSO, SIGMA_MAP, preKeys } = __m_verso_data;
+const { VERSO_BY_PROFILE, preKeys } = __m_verso_data;
 
 const STEP_MS = 140; // intervalo entre as teclas quando um exemplo é executado
 
 // "31.052003" → "31,052003"; ids do motor → rótulo impresso na tecla; f/g + tecla viram um chip só (ex.: "g ΔDYS")
-function chipsOf(keys) {
+function chipsOf(keys, keyById = KEY_BY_ID) {
   const out = [];
   const t = keys.split(/\s+/).filter(Boolean);
   for (let i = 0; i < t.length; i++) {
     const id = t[i];
     if (/^\d+(\.\d+)?$/.test(id)) out.push({ text: id.replace('.', ','), kind: 'num' });
     else if ((id === 'f' || id === 'g') && t[i + 1] && !/^\d.+/.test(t[i + 1])) { // f/g + tecla (um dígito sozinho é tecla, ex.: g 4)
-      const next = KEY_BY_ID.get(t[++i]);
+      const next = keyById.get(t[++i]);
       out.push({ text: `${id} ${next[id] ?? next.label}`, kind: id });
-    } else out.push({ text: KEY_BY_ID.get(id)?.label ?? id, kind: 'fn' });
+    } else out.push({ text: keyById.get(id)?.label ?? id, kind: 'fn' });
   }
   return out;
 }
@@ -3415,8 +3822,8 @@ function expandKeys(keys) {
 
 const esc = (x) => String(x).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
-function variantHtml(v, ready, key) {
-  const chips = chipsOf(v.keys).map((c) => `<span class="chip ${c.kind}">${esc(c.text)}</span>`).join('');
+function variantHtml(v, ready, key, keyById) {
+  const chips = chipsOf(v.keys, keyById).map((c) => `<span class="chip ${c.kind}">${esc(c.text)}</span>`).join('');
   const btn = ready
     ? `<button type="button" class="run" data-run="${key}">Executar</button>`
     : '<button type="button" class="run" disabled>Em breve</button>';
@@ -3428,15 +3835,17 @@ function mountVerso(ctx) {
   el.className = 'verso';
   el.hidden = true;
   el.setAttribute('aria-label', 'Verso da calculadora: guia de fórmulas');
-  const sigma = SIGMA_MAP.map(([a, b]) => `<span class="sg">${esc(a)}</span><span class="ar">→</span><span class="sr">${esc(b)}</span>`).join('');
+  const data = VERSO_BY_PROFILE[ctx.profile.id] ?? { sections: [], sigma: [] }; // cada perfil tem o seu guia
+  const keyById = ctx.profile.keyById;
+  const sigma = data.sigma.map(([a, b]) => `<span class="sg">${esc(a)}</span><span class="ar">→</span><span class="sr">${esc(b)}</span>`).join('');
   const runs = new Map();
   let n = 0;
-  const secs = VERSO.map((g) => {
+  const secs = data.sections.map((g) => {
     const items = g.items.map((it) => {
       const vs = it.variants.map((v) => {
         const key = 'r' + n++;
         runs.set(key, { it, v });
-        return variantHtml(v, it.ready, key);
+        return variantHtml(v, it.ready, key, keyById);
       }).join('');
       const lst = it.listing ? `<ol class="listing">${it.listing.map((l) => `<li>${esc(l)}</li>`).join('')}</ol>` : '';
       return `<article class="v-item"><h4>${esc(it.title)}</h4><p>${esc(it.text)}</p>${lst}${vs}</article>`;
@@ -3446,8 +3855,8 @@ function mountVerso(ctx) {
   el.innerHTML =
     '<header class="verso-head"><span class="verso-title">Verso · guia rápido</span>' +
     '<button type="button" class="verso-close" aria-label="Voltar à frente da calculadora">✕</button></header>' +
-    '<p class="verso-hint">Todos os exemplos usam a pilha RPN: digite o número, ENTER, e depois a função. Toque em Executar para ver as teclas sendo apertadas.</p>' +
-    `<section class="v-sec sigma"><span class="v-tag sigma-tag" aria-hidden="true">Σ</span><div class="v-body"><h3>Estatística: onde ficam os totais</h3><div class="sigma-map">${sigma}</div></div></section>` +
+    '<p class="verso-hint">Os exemplos usam a pilha RPN: digite o número, ENTER, e depois a função (se a calculadora estiver em ALG, ela passa para RPN ao executar; os exemplos do grupo ALG ligam o ALG sozinhos). Toque em Executar para ver as teclas sendo apertadas.</p>' +
+    (data.sigma.length ? `<section class="v-sec sigma"><span class="v-tag sigma-tag" aria-hidden="true">Σ</span><div class="v-body"><h3>Estatística: onde ficam os totais</h3><div class="sigma-map">${sigma}</div></div></section>` : '') +
     secs;
   ctx.calc.append(el);
 
@@ -3474,6 +3883,10 @@ function mountVerso(ctx) {
       ctx.pressKey('f');
       ctx.pressKey('rs');
     }
+    if (e.mode !== 'rpn') { // os exemplos supõem a pilha RPN
+      ctx.pressKey('f');
+      ctx.pressKey('chs');
+    }
     for (const id of expandKeys(pre)) ctx.pressKey(id); // gravação do programa: rápida, sem animação
     for (const id of expandKeys(keys)) {
       if (my !== busy) return;
@@ -3497,11 +3910,12 @@ return { chipsOf, expandKeys, mountVerso };
 })();
 
 const __m_app = (() => {
-const { KEYS } = __m_keymap;
 const { Engine } = __m_engine;
+const { getProfile } = __m_profiles;
 const { renderDisplay, bindKeyboard } = __m_display;
 const { mountDrawer } = __m_tape;
-const { loadState, saveState } = __m_storage;
+const { loadState, saveState, saveActiveProfile } = __m_storage;
+const { loadInto } = __m_memories;
 const { mountSettings } = __m_settings;
 const { startReflex } = __m_reflex;
 const { mountVerso } = __m_verso;
@@ -3512,14 +3926,7 @@ const NOTICE_MS = 2200;
 // Posição no layout horizontal (4 × 10): metade de baixo do vertical vai para as colunas 6 a 10.
 const hpos = (k) => (k.row < 4 ? { r: k.row, c: k.col } : { r: k.row - 4, c: k.col + 5 });
 
-// Linhas de ligação das funções agrupadas (como impressas na HP 12C): posição no retrato (r, c0..c1) e na paisagem (hr, hc0..hc1)
-const BRACKETS = [
-  { label: 'BOND', r: 1, c0: 0, c1: 1, hr: 1, hc0: 0, hc1: 1 },
-  { label: 'DEPRECIATION', r: 1, c0: 2, c1: 4, hr: 1, hc0: 2, hc1: 4 },
-  { label: 'CLEAR', r: 2, c0: 1, c1: 4, hr: 2, hc0: 1, hc1: 5 },
-  { label: '', r: 6, c0: 0, c1: 0, hr: 2, hc0: 5, hc1: 5, cls: 'pfx' }, // PREFIX: no retrato tem a linha própria; na paisagem a linha do CLEAR já a cobre
-];
-
+// As linhas de ligação das funções agrupadas (BOND, DEPRECIATION, CLEAR, PREFIX) vêm do perfil (profiles.js).
 function makeBracket(b) {
   const el = document.createElement('span');
   el.className = 'bracket' + (b.cls ? ' ' + b.cls : '');
@@ -3572,14 +3979,11 @@ function mountApp(root, engine = new Engine()) {
   notice.className = 'notice';
   notice.hidden = true;
   notice.setAttribute('role', 'status');
-  for (const k of KEYS) keys.append(makeKey(k));
-  for (const b of BRACKETS) keys.append(makeBracket(b));
   const top = document.createElement('div');
   top.className = 'top';
   const brand = document.createElement('div');
   brand.className = 'brand';
-  brand.setAttribute('aria-label', 'Calc 12c, calculadora financeira RPN');
-  brand.innerHTML = '<span class="name"><b class="title">Calc 12c</b></span><span class="rule" aria-hidden="true"></span>' +
+  brand.innerHTML = '<span class="name"><b class="title"></b></span><span class="rule" aria-hidden="true"></span>' +
     '<span class="badge" aria-hidden="true"><span class="mw"><svg viewBox="0 0 44 28" preserveAspectRatio="xMidYMid meet" focusable="false"><circle cx="22" cy="14" r="11" class="disc"/><g transform="translate(2.6 0) skewX(-11)" fill="none" stroke-width="2.3" stroke-linejoin="miter" stroke-miterlimit="4" class="lit"><polyline points="14,19.4 14,8.6 17.6,15.4 21.2,8.6 21.2,19.4"/><polyline points="22.7,8.6 24.6,19.4 26.7,12.6 28.8,19.4 30.6,8.6"/></g></svg></span><span class="model">RPN</span></span>';
   top.append(brand, display);
   calc.append(top, keys, notice);
@@ -3593,9 +3997,25 @@ function mountApp(root, engine = new Engine()) {
     timer = setTimeout(() => (notice.hidden = true), NOTICE_MS);
   };
 
-  const ctx = { root, calc, top, display, keys, notice, engine, showNotice, listeners: [], vibrate: false, sounder: makeSound() };
+  const ctx = { root, calc, top, display, keys, notice, engine, showNotice, listeners: [], vibrate: false, sounder: makeSound(), profile: getProfile(engine.profile) };
+  // teclado do perfil: teclas e linhas de ligação
+  const buildKeys = () => {
+    keys.replaceChildren();
+    for (const k of ctx.profile.keys) keys.append(makeKey(k));
+    for (const b of ctx.profile.brackets) keys.append(makeBracket(b));
+    bindOnKey();
+  };
+  // título e selo do topo seguem o perfil e o modo (RPN/ALG só nos perfis que têm os dois)
+  const paintBrand = (s) => {
+    const p = ctx.profile;
+    const modeLabel = p.modes.length > 1 ? s.mode.toUpperCase() : 'RPN';
+    brand.querySelector('.title').textContent = p.name;
+    brand.querySelector('.model').textContent = modeLabel;
+    brand.setAttribute('aria-label', `${p.name}, calculadora financeira ${modeLabel}`);
+  };
   ctx.render = () => {
     const s = engine.state;
+    paintBrand(s);
     renderDisplay(display, s);
     calc.dataset.shift = s.shift ?? '';
     ctx.listeners.forEach((fn) => fn(ctx, s));
@@ -3630,7 +4050,7 @@ function mountApp(root, engine = new Engine()) {
   };
   keys.addEventListener('pointerdown', (ev) => {
     const b = ev.target.closest('button.key');
-    const k = b && KEYS.find((x) => x.id === b.dataset.id);
+    const k = b && ctx.profile.keys.find((x) => x.id === b.dataset.id);
     if (!k?.enabled) return;
     const r = b.getBoundingClientRect();
     tapFx(b, ((ev.clientX - r.left) / r.width) * 100, ((ev.clientY - r.top) / r.height) * 100);
@@ -3685,26 +4105,31 @@ function mountApp(root, engine = new Engine()) {
   const HOLD_MS = 500;
   let holdTimer;
   let held = false;
-  const onKey = keys.querySelector('button.key[data-id="on"]');
-  onKey.addEventListener('pointerdown', () => {
-    held = false;
-    clearTimeout(holdTimer);
-    holdTimer = setTimeout(() => {
-      held = true;
-      haptic(20);
-      ctx.verso.toggle();
-    }, HOLD_MS);
-  });
-  for (const t of ['pointerup', 'pointercancel', 'pointerleave']) onKey.addEventListener(t, () => clearTimeout(holdTimer));
-  onKey.addEventListener('contextmenu', (ev) => ev.preventDefault()); // o menu de "segurar" do celular não deve abrir
+  const getOnKey = () => keys.querySelector('button.key[data-id="on"]');
+  function bindOnKey() { // a tecla é refeita quando o perfil muda: os ouvintes dela são ligados a cada montagem
+    const onKey = getOnKey();
+    onKey.addEventListener('pointerdown', () => {
+      held = false;
+      clearTimeout(holdTimer);
+      holdTimer = setTimeout(() => {
+        held = true;
+        haptic(20);
+        ctx.verso.toggle();
+      }, HOLD_MS);
+    });
+    for (const t of ['pointerup', 'pointercancel', 'pointerleave']) onKey.addEventListener(t, () => clearTimeout(holdTimer));
+    onKey.addEventListener('contextmenu', (ev) => ev.preventDefault()); // o menu de "segurar" do celular não deve abrir
+  }
   // rótulo da tecla ON: "≡" (menu) ou "ON"; sem o "OFF" impresso, já que a tecla agora abre as configurações
   ctx.setOnStyle = (style) => {
+    const onKey = getOnKey();
     const menu = style !== 'on';
     onKey.querySelector('.lm').textContent = menu ? '≡' : 'ON';
     onKey.querySelector('.lf').textContent = menu ? '' : 'OFF'; // no estilo ON mantém o rótulo impresso da HP
     onKey.classList.toggle('menu-key', menu);
     onKey.setAttribute('aria-label', (menu ? 'Menu' : 'ON') + ': toque para as configurações, segure para o verso');
   };
+  buildKeys();
   ctx.setOnStyle('on');
   ctx.onTap = () => {
     if (ctx.verso.isOpen()) ctx.verso.close();
@@ -3713,7 +4138,7 @@ function mountApp(root, engine = new Engine()) {
   keys.addEventListener('click', (ev) => {
     const b = ev.target.closest('button.key');
     if (!b) return;
-    const k = KEYS.find((x) => x.id === b.dataset.id);
+    const k = ctx.profile.keys.find((x) => x.id === b.dataset.id);
     if (k.id === 'on') {
       if (held) held = false; // o segurar já abriu o verso; o clique que vem ao soltar não faz mais nada
       else {
@@ -3754,6 +4179,25 @@ function mountApp(root, engine = new Engine()) {
     return motion;
   };
   ctx.verso = mountVerso(ctx);
+  // Troca de perfil: guarda o estado do atual, carrega o do novo (cada perfil tem o seu) e refaz teclado, selo e verso.
+  // `adoptProfile` também serve quando um arquivo de memórias de outro perfil é aberto.
+  ctx.adoptProfile = () => {
+    if (engine.profile === ctx.profile.id) return false;
+    ctx.profile = getProfile(engine.profile);
+    saveActiveProfile(engine.profile);
+    buildKeys();
+    ctx.setOnStyle(ctx.settings?.get().onStyle ?? 'on');
+    ctx.verso.el.remove();
+    ctx.verso = mountVerso(ctx);
+    ctx.render();
+    return true;
+  };
+  ctx.setProfile = (id) => {
+    if (id === engine.profile) return;
+    saveState(engine);
+    loadInto(engine, loadState(id));
+    ctx.adoptProfile();
+  };
   ctx.settings = mountSettings(ctx);
   ctx.listeners.push(() => saveState(engine)); // salvamento automático
   ctx.render();

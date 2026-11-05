@@ -91,7 +91,7 @@ export function mountDrawer(ctx) {
   confirm.querySelector('.ok').addEventListener('click', () => {
     confirm.hidden = true;
     engine.reset();
-    clearAll();
+    clearAll(engine.profile);
     ctx.render();
   });
   return { open: () => set(true), close: () => set(false) };
