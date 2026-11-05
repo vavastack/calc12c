@@ -86,4 +86,66 @@ export const VERSO = [
       },
     ],
   },
+  {
+    id: 'prog', tag: 'PRGM', title: 'Programação',
+    note: 'Gravar: f P/R liga o modo de programação (PRGM), f CLEAR PRGM limpa, depois aperte as teclas do cálculo; cada tecla vira uma linha (número de dois dígitos = duas linhas). f P/R sai. Rodar: digite os números e aperte R/S. SST executa uma linha de cada vez. Os exemplos gravam o programa sozinhos e apagam o que estava na memória de programa.',
+    items: [
+      {
+        id: 'prog-dobro', title: '1. Dobrar um número', text: 'O programa mais curto: multiplica X por 2. Rodar com 5 deixa 10; com SST dá para ver cada linha.', ready: true,
+        listing: ['01 · 2', '02 · ×'],
+        variants: [
+          { label: 'Gravar', keys: 'f rs f rdown 2 times f rs' },
+          { label: 'Rodar com 5', pre: 'Gravar', keys: '5 rs' },
+          { label: 'Linha 1 (SST)', pre: 'Gravar', keys: '5 sst' },
+          { label: 'Linhas 1 e 2 (SST)', pre: 'Gravar', keys: '5 sst sst' },
+        ],
+      },
+      {
+        id: 'prog-custo', title: '2. Custo líquido (manual da HP)', text: 'Preço menos 25% mais 5 de envio. ENTER guarda o preço para a função % usar.', ready: true,
+        listing: ['01 · ENTER', '02 · 2', '03 · 5', '04 · %', '05 · −', '06 · 5', '07 · +'],
+        variants: [
+          { label: 'Gravar', keys: 'f rs f rdown enter 2 5 pct minus 5 plus f rs' },
+          { label: 'Rodar com 625', pre: 'Gravar', keys: '625 rs' },
+          { label: 'Rodar com 159', pre: 'Gravar', keys: '159 rs' },
+        ],
+      },
+      {
+        id: 'prog-media', title: '3. Média de dois números', text: 'Dois valores na pilha (ENTER entre eles): soma e divide por 2.', ready: true,
+        listing: ['01 · +', '02 · 2', '03 · ÷'],
+        variants: [
+          { label: 'Gravar', keys: 'f rs f rdown plus 2 divide f rs' },
+          { label: 'Rodar com 8 e 6', pre: 'Gravar', keys: '8 enter 6 rs' },
+        ],
+      },
+      {
+        id: 'prog-fin', title: '4. Prestação de 12 meses a 1% a.m.', text: 'Usa as teclas financeiras: o valor em X vira PV e o programa calcula PMT. Altera n, i e PV.', ready: true,
+        listing: ['01 · PV', '02 · 1', '03 · 2', '04 · n', '05 · 1', '06 · i', '07 · PMT'],
+        variants: [
+          { label: 'Gravar', keys: 'f rs f rdown pv 1 2 n 1 i pmt f rs' },
+          { label: 'Rodar com 1000', pre: 'Gravar', keys: '1000 rs' },
+        ],
+      },
+      {
+        id: 'prog-soma', title: '5. Soma de 1 até n (laço com GTO)', text: 'R0 conta de n até 1 e R1 acumula a soma. O teste x=0 pula a linha 10 enquanto R0 não zerou; então GTO 04 repete. Quando zera, GTO 12 sai do laço. Usa R0 e R1.', ready: true,
+        listing: ['01 · STO 0', '02 · 0', '03 · STO 1', '04 · RCL 0', '05 · STO + 1', '06 · 1', '07 · STO − 0', '08 · RCL 0', '09 · g x=0', '10 · GTO 12', '11 · GTO 04', '12 · RCL 1'],
+        variants: [
+          { label: 'Gravar', keys: 'f rs f rdown sto 0 0 sto 1 rcl 0 sto plus 1 1 sto minus 0 rcl 0 g clx g rdown 1 2 g rdown 0 4 rcl 1 f rs' },
+          { label: 'Rodar com 5', pre: 'Gravar', keys: '5 rs' },
+          { label: 'Rodar com 100', pre: 'Gravar', keys: '100 rs' },
+        ],
+      },
+    ],
+  },
 ];
+
+// Uma variante pode depender da gravação do programa: `pre` é o rótulo de outra variante do mesmo exemplo,
+// cujas teclas são apertadas antes (rápido, sem animação). Devolve só essas teclas prévias.
+export function preKeys(item, variant) {
+  if (!variant.pre) return '';
+  const base = item.variants.find((v) => v.label === variant.pre);
+  if (!base) throw new Error(`variante prévia inexistente: ${variant.pre}`);
+  return base.keys;
+}
+
+// Sequência completa de teclas de uma variante (prévia + própria).
+export const fullKeys = (item, variant) => [preKeys(item, variant), variant.keys].filter(Boolean).join(' ');

@@ -1,6 +1,6 @@
 // Verso: guia de fórmulas com exemplos que podem ser executados na própria calculadora.
 import { KEY_BY_ID } from '../engine/keymap.js';
-import { VERSO, SIGMA_MAP } from './verso-data.js';
+import { VERSO, SIGMA_MAP, preKeys } from './verso-data.js';
 
 const STEP_MS = 140; // intervalo entre as teclas quando um exemplo é executado
 
@@ -54,9 +54,10 @@ export function mountVerso(ctx) {
         runs.set(key, { it, v });
         return variantHtml(v, it.ready, key);
       }).join('');
-      return `<article class="v-item"><h4>${esc(it.title)}</h4><p>${esc(it.text)}</p>${vs}</article>`;
+      const lst = it.listing ? `<ol class="listing">${it.listing.map((l) => `<li>${esc(l)}</li>`).join('')}</ol>` : '';
+      return `<article class="v-item"><h4>${esc(it.title)}</h4><p>${esc(it.text)}</p>${lst}${vs}</article>`;
     }).join('');
-    return `<section class="v-sec" data-sec="${g.id}"><span class="v-tag" aria-hidden="true">${esc(g.tag)}</span><div class="v-body"><h3>${esc(g.title)}</h3>${items}</div></section>`;
+    return `<section class="v-sec" data-sec="${g.id}"><span class="v-tag" aria-hidden="true">${esc(g.tag)}</span><div class="v-body"><h3>${esc(g.title)}</h3>${g.note ? `<p class="v-note">${esc(g.note)}</p>` : ''}${items}</div></section>`;
   }).join('');
   el.innerHTML =
     '<header class="verso-head"><span class="verso-title">Verso · guia rápido</span>' +
@@ -78,13 +79,18 @@ export function mountVerso(ctx) {
   const close = () => {
     el.hidden = true;
   };
-  const run = async (keys, label) => {
+  const run = async (keys, label, pre = '') => {
     const my = ++busy;
     close();
     const e = ctx.engine;
     e.shift = null; // começa limpo: sem prefixo f/g pendente nem erro na tela
     e.pending = null;
     e.error = null;
+    if (e.prgm) { // os exemplos supõem o modo de execução
+      ctx.pressKey('f');
+      ctx.pressKey('rs');
+    }
+    for (const id of expandKeys(pre)) ctx.pressKey(id); // gravação do programa: rápida, sem animação
     for (const id of expandKeys(keys)) {
       if (my !== busy) return;
       ctx.tapFx(id);
@@ -98,7 +104,7 @@ export function mountVerso(ctx) {
     const b = ev.target.closest('[data-run]');
     if (!b) return;
     const r = runs.get(b.dataset.run);
-    run(r.v.keys, `${r.it.title} (${r.v.label})`);
+    run(r.v.keys, `${r.it.title} (${r.v.label})`, preKeys(r.it, r.v));
   });
   return { el, open, close, isOpen: () => !el.hidden, toggle: () => (el.hidden ? open() : close()), run };
 }

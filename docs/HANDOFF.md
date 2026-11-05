@@ -44,7 +44,7 @@ Ordem combinada, com números de teste para o Wanderson conferir na HP real depo
 Critério de pronto: testes verdes e resultados idênticos aos da HP 12C real que o Wanderson tem em mãos.
 
 ## Depois da V2
-- **V2.1 (ideia do Wanderson):** aprendizagem de programação na calculadora: ligar PRGM/R/S/SST/GTO e criar um guia passo a passo com programas de exemplo executáveis, no estilo do verso. Começar quando o app estiver estável.
+- **V2.1 (feita em 05/11/2026):** grupo "Programação" (tag PRGM) no verso com 5 lições executáveis: dobro, custo líquido do manual, média, prestação com teclas financeiras e soma 1..n com laço (GTO e x=0). Variantes com `pre` gravam o programa rápido e depois animam a execução; `fullKeys` em `verso-data.js` junta as teclas; o verso sai do modo PRGM antes de rodar; cada lição mostra a listagem das linhas (`listing`). Resultados na tabela ESPERADO.
 - V1.2: salvar/carregar/compartilhar memórias em arquivo, editor de cores, orientação no Android.
 - Perfis/arquitetura de calculadoras: Black-Scholes, 10C, 11C, 16C, 15C e modo ALG (algébrico, como na 12C Platinum: parênteses e ENTER fazendo o papel de "=") como mais uma opção de cálculo (V3).
 - Integração futura como módulo da Pista Financeira.

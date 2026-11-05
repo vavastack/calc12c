@@ -202,3 +202,16 @@ test('vibração: vibra ao encostar e, se o navegador recusar, vibra ao soltar',
   assert.equal(await p.evaluate(() => window.__v.length), 2);
   await close();
 });
+
+test('verso: lição de programação grava o programa e roda; sair do modo PRGM antes não atrapalha', async () => {
+  const { page: p, close } = await openApp(browser, server.url);
+  await hold(p);
+  const idx = await p.evaluate(() => [...document.querySelectorAll('.verso [data-run]:not([disabled])')].findIndex((b) => b.closest('.variant').querySelector('.v-label').textContent === 'Rodar com 100'));
+  await p.evaluate(() => { window.calc12c.engine.press('f'); window.calc12c.engine.press('rs'); }); // deixa o modo PRGM ligado
+  assert.equal(await p.evaluate(() => window.calc12c.engine.state.prgm), true);
+  await p.locator('.verso [data-run]:not([disabled])').nth(idx).click();
+  await p.waitForFunction(() => window.calc12c.engine.state.display === '5.050,00');
+  assert.equal(await p.evaluate(() => window.calc12c.engine.state.prgm), false);
+  assert.ok((await p.locator('.verso .listing').count()) >= 5);
+  await close();
+});

@@ -283,6 +283,8 @@ html:not([data-theme^="moderno"]) .display { border: 4px solid transparent;
 .v-body h3 { margin: 0; font-size: 13px; font-weight: 700; }
 .v-item h4 { margin: 0 0 1px; font-size: 12px; font-weight: 600; }
 .v-item p { margin: 0 0 4px; font-size: 10.5px; color: var(--sub); line-height: 1.3; }
+.v-note { margin: 0 0 6px; font-size: 10.5px; line-height: 1.35; color: var(--sub); }
+.listing { list-style: none; margin: 0 0 4px; padding: 0; display: flex; flex-wrap: wrap; gap: 2px 8px; font-size: 10.5px; font-family: ui-monospace, "SF Mono", Menlo, monospace; color: var(--sub); }
 .variant { display: grid; grid-template-columns: 1fr auto; gap: 3px 8px; align-items: center; padding: 5px 0; border-top: 1px solid var(--key-border); }
 .v-label { grid-column: 1 / -1; font-size: 10px; font-weight: 600; color: var(--sub); }
 .chips { display: flex; flex-wrap: wrap; gap: 3px; min-width: 0; }

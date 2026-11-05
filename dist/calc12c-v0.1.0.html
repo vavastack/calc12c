@@ -409,6 +409,8 @@ html:not([data-theme^="moderno"]) .display { border: 4px solid transparent;
 .v-body h3 { margin: 0; font-size: 13px; font-weight: 700; }
 .v-item h4 { margin: 0 0 1px; font-size: 12px; font-weight: 600; }
 .v-item p { margin: 0 0 4px; font-size: 10.5px; color: var(--sub); line-height: 1.3; }
+.v-note { margin: 0 0 6px; font-size: 10.5px; line-height: 1.35; color: var(--sub); }
+.listing { list-style: none; margin: 0 0 4px; padding: 0; display: flex; flex-wrap: wrap; gap: 2px 8px; font-size: 10.5px; font-family: ui-monospace, "SF Mono", Menlo, monospace; color: var(--sub); }
 .variant { display: grid; grid-template-columns: 1fr auto; gap: 3px 8px; align-items: center; padding: 5px 0; border-top: 1px solid var(--key-border); }
 .v-label { grid-column: 1 / -1; font-size: 10px; font-weight: 600; color: var(--sub); }
 .chips { display: flex; flex-wrap: wrap; gap: 3px; min-width: 0; }
@@ -3078,15 +3080,77 @@ const VERSO = [
       },
     ],
   },
+  {
+    id: 'prog', tag: 'PRGM', title: 'Programação',
+    note: 'Gravar: f P/R liga o modo de programação (PRGM), f CLEAR PRGM limpa, depois aperte as teclas do cálculo; cada tecla vira uma linha (número de dois dígitos = duas linhas). f P/R sai. Rodar: digite os números e aperte R/S. SST executa uma linha de cada vez. Os exemplos gravam o programa sozinhos e apagam o que estava na memória de programa.',
+    items: [
+      {
+        id: 'prog-dobro', title: '1. Dobrar um número', text: 'O programa mais curto: multiplica X por 2. Rodar com 5 deixa 10; com SST dá para ver cada linha.', ready: true,
+        listing: ['01 · 2', '02 · ×'],
+        variants: [
+          { label: 'Gravar', keys: 'f rs f rdown 2 times f rs' },
+          { label: 'Rodar com 5', pre: 'Gravar', keys: '5 rs' },
+          { label: 'Linha 1 (SST)', pre: 'Gravar', keys: '5 sst' },
+          { label: 'Linhas 1 e 2 (SST)', pre: 'Gravar', keys: '5 sst sst' },
+        ],
+      },
+      {
+        id: 'prog-custo', title: '2. Custo líquido (manual da HP)', text: 'Preço menos 25% mais 5 de envio. ENTER guarda o preço para a função % usar.', ready: true,
+        listing: ['01 · ENTER', '02 · 2', '03 · 5', '04 · %', '05 · −', '06 · 5', '07 · +'],
+        variants: [
+          { label: 'Gravar', keys: 'f rs f rdown enter 2 5 pct minus 5 plus f rs' },
+          { label: 'Rodar com 625', pre: 'Gravar', keys: '625 rs' },
+          { label: 'Rodar com 159', pre: 'Gravar', keys: '159 rs' },
+        ],
+      },
+      {
+        id: 'prog-media', title: '3. Média de dois números', text: 'Dois valores na pilha (ENTER entre eles): soma e divide por 2.', ready: true,
+        listing: ['01 · +', '02 · 2', '03 · ÷'],
+        variants: [
+          { label: 'Gravar', keys: 'f rs f rdown plus 2 divide f rs' },
+          { label: 'Rodar com 8 e 6', pre: 'Gravar', keys: '8 enter 6 rs' },
+        ],
+      },
+      {
+        id: 'prog-fin', title: '4. Prestação de 12 meses a 1% a.m.', text: 'Usa as teclas financeiras: o valor em X vira PV e o programa calcula PMT. Altera n, i e PV.', ready: true,
+        listing: ['01 · PV', '02 · 1', '03 · 2', '04 · n', '05 · 1', '06 · i', '07 · PMT'],
+        variants: [
+          { label: 'Gravar', keys: 'f rs f rdown pv 1 2 n 1 i pmt f rs' },
+          { label: 'Rodar com 1000', pre: 'Gravar', keys: '1000 rs' },
+        ],
+      },
+      {
+        id: 'prog-soma', title: '5. Soma de 1 até n (laço com GTO)', text: 'R0 conta de n até 1 e R1 acumula a soma. O teste x=0 pula a linha 10 enquanto R0 não zerou; então GTO 04 repete. Quando zera, GTO 12 sai do laço. Usa R0 e R1.', ready: true,
+        listing: ['01 · STO 0', '02 · 0', '03 · STO 1', '04 · RCL 0', '05 · STO + 1', '06 · 1', '07 · STO − 0', '08 · RCL 0', '09 · g x=0', '10 · GTO 12', '11 · GTO 04', '12 · RCL 1'],
+        variants: [
+          { label: 'Gravar', keys: 'f rs f rdown sto 0 0 sto 1 rcl 0 sto plus 1 1 sto minus 0 rcl 0 g clx g rdown 1 2 g rdown 0 4 rcl 1 f rs' },
+          { label: 'Rodar com 5', pre: 'Gravar', keys: '5 rs' },
+          { label: 'Rodar com 100', pre: 'Gravar', keys: '100 rs' },
+        ],
+      },
+    ],
+  },
 ];
 
-return { SIGMA_MAP, VERSO };
+// Uma variante pode depender da gravação do programa: `pre` é o rótulo de outra variante do mesmo exemplo,
+// cujas teclas são apertadas antes (rápido, sem animação). Devolve só essas teclas prévias.
+function preKeys(item, variant) {
+  if (!variant.pre) return '';
+  const base = item.variants.find((v) => v.label === variant.pre);
+  if (!base) throw new Error(`variante prévia inexistente: ${variant.pre}`);
+  return base.keys;
+}
+
+// Sequência completa de teclas de uma variante (prévia + própria).
+const fullKeys = (item, variant) => [preKeys(item, variant), variant.keys].filter(Boolean).join(' ');
+
+return { SIGMA_MAP, VERSO, preKeys, fullKeys };
 })();
 
 const __m_verso = (() => {
 // Verso: guia de fórmulas com exemplos que podem ser executados na própria calculadora.
 const { KEY_BY_ID } = __m_keymap;
-const { VERSO, SIGMA_MAP } = __m_verso_data;
+const { VERSO, SIGMA_MAP, preKeys } = __m_verso_data;
 
 const STEP_MS = 140; // intervalo entre as teclas quando um exemplo é executado
 
@@ -3140,9 +3204,10 @@ function mountVerso(ctx) {
         runs.set(key, { it, v });
         return variantHtml(v, it.ready, key);
       }).join('');
-      return `<article class="v-item"><h4>${esc(it.title)}</h4><p>${esc(it.text)}</p>${vs}</article>`;
+      const lst = it.listing ? `<ol class="listing">${it.listing.map((l) => `<li>${esc(l)}</li>`).join('')}</ol>` : '';
+      return `<article class="v-item"><h4>${esc(it.title)}</h4><p>${esc(it.text)}</p>${lst}${vs}</article>`;
     }).join('');
-    return `<section class="v-sec" data-sec="${g.id}"><span class="v-tag" aria-hidden="true">${esc(g.tag)}</span><div class="v-body"><h3>${esc(g.title)}</h3>${items}</div></section>`;
+    return `<section class="v-sec" data-sec="${g.id}"><span class="v-tag" aria-hidden="true">${esc(g.tag)}</span><div class="v-body"><h3>${esc(g.title)}</h3>${g.note ? `<p class="v-note">${esc(g.note)}</p>` : ''}${items}</div></section>`;
   }).join('');
   el.innerHTML =
     '<header class="verso-head"><span class="verso-title">Verso · guia rápido</span>' +
@@ -3164,13 +3229,18 @@ function mountVerso(ctx) {
   const close = () => {
     el.hidden = true;
   };
-  const run = async (keys, label) => {
+  const run = async (keys, label, pre = '') => {
     const my = ++busy;
     close();
     const e = ctx.engine;
     e.shift = null; // começa limpo: sem prefixo f/g pendente nem erro na tela
     e.pending = null;
     e.error = null;
+    if (e.prgm) { // os exemplos supõem o modo de execução
+      ctx.pressKey('f');
+      ctx.pressKey('rs');
+    }
+    for (const id of expandKeys(pre)) ctx.pressKey(id); // gravação do programa: rápida, sem animação
     for (const id of expandKeys(keys)) {
       if (my !== busy) return;
       ctx.tapFx(id);
@@ -3184,7 +3254,7 @@ function mountVerso(ctx) {
     const b = ev.target.closest('[data-run]');
     if (!b) return;
     const r = runs.get(b.dataset.run);
-    run(r.v.keys, `${r.it.title} (${r.v.label})`);
+    run(r.v.keys, `${r.it.title} (${r.v.label})`, preKeys(r.it, r.v));
   });
   return { el, open, close, isOpen: () => !el.hidden, toggle: () => (el.hidden ? open() : close()), run };
 }
