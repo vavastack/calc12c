@@ -33,7 +33,7 @@
   --ind-on: #f0b429; --ind-off: #55555a; --handle: #3a3a3e;
   --glass: none;
   --glow: none;
-  --reflex: linear-gradient(115deg, transparent 30%, #fff6e24d 44%, #ffffff61 51%, transparent 64%);
+  --reflex: linear-gradient(115deg, transparent 36%, #fff6e24d 44%, #ffffff61 51%, transparent 60%);
 }
 
 /* Moderno escuro: vidro translúcido em grafite, halos dourado e azul nos cantos, reflexo suave */
@@ -58,7 +58,7 @@
   --glass: blur(14px) saturate(1.2);
   --glow: radial-gradient(260px 220px at 8% 6%, #f0b42947, transparent 70%),
           radial-gradient(300px 260px at 95% 92%, #3a8cff4d, transparent 70%);
-  --reflex: linear-gradient(115deg, transparent 30%, #ffffff4d 44%, #ffffff61 51%, transparent 64%);
+  --reflex: linear-gradient(115deg, transparent 36%, #ffffff4d 44%, #ffffff61 51%, transparent 60%);
 }
 
 /* Moderno claro: vidro claro em champanhe e marfim, com as mesmas cores de f e g */
@@ -83,7 +83,7 @@
   --glass: blur(14px) saturate(1.1);
   --glow: radial-gradient(260px 220px at 8% 6%, #f0b42961, transparent 70%),
           radial-gradient(300px 260px at 95% 92%, #3a8cff3d, transparent 70%);
-  --reflex: linear-gradient(115deg, transparent 30%, #ffffff8c 44%, #ffffffb3 51%, transparent 64%);
+  --reflex: linear-gradient(115deg, transparent 36%, #ffffff8c 44%, #ffffffb3 51%, transparent 60%);
 }
 
 /* Reduzir efeitos: vidro sólido, sem reflexo (liga sozinho em aparelhos simples) */
@@ -121,6 +121,10 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
   /* divisória fixa entre o metal e o vidro: fio escuro + fio de luz */
   border-bottom: 1px solid var(--plate-edge);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 1px 0 var(--engrave-hi), 0 3px 6px rgba(0,0,0,.28); }
+.reflex-clip.plate { z-index: 0; -webkit-mask-image: none; mask-image: none; border-radius: 0; }
+.reflex-clip .sheen { inset: -300% -60%; mix-blend-mode: screen; }
+.reflex-clip .sheen::before { background: linear-gradient(115deg, transparent 38%, #ffffff73 45%, #fffbe8d9 50%, #ffffff59 55%, transparent 62%); }
+.brand > :not(.reflex-clip) { position: relative; z-index: 1; }
 .brand .name { font-size: 24px; font-weight: 700; letter-spacing: .01em; color: var(--plate-ink); white-space: nowrap;
   text-shadow: 0 1px 0 var(--engrave-hi), 0 -1px 0 var(--engrave-lo); }
 .brand .name i { font-style: italic; font-weight: 800; }
@@ -181,18 +185,19 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
 
 /* recorte do reflexo: as bordas esmaecem, sem corte seco onde o teclado termina */
 .reflex-clip { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 2;
-  -webkit-mask-image: linear-gradient(180deg, transparent, #000 36px, #000 calc(100% - 36px), transparent), linear-gradient(90deg, transparent, #000 24px, #000 calc(100% - 24px), transparent);
-  mask-image: linear-gradient(180deg, transparent, #000 36px, #000 calc(100% - 36px), transparent), linear-gradient(90deg, transparent, #000 24px, #000 calc(100% - 24px), transparent);
+  border-radius: 24px;
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 56px, #000 calc(100% - 56px), transparent), linear-gradient(90deg, transparent, #000 44px, #000 calc(100% - 44px), transparent);
+  mask-image: linear-gradient(180deg, transparent, #000 56px, #000 calc(100% - 56px), transparent), linear-gradient(90deg, transparent, #000 44px, #000 calc(100% - 44px), transparent);
   -webkit-mask-composite: source-in; mask-composite: intersect; }
 /* reflexo: uma única camada de brilho sobre o teclado (a animação entra na Tarefa 11) */
-.reflex { position: absolute; inset: -30%; pointer-events: none; opacity: .7;
-  transform: translate3d(0, 0, 0); will-change: transform, opacity; border-radius: 6px; }
+.reflex, .sheen { position: absolute; inset: -60%; pointer-events: none; opacity: .7;
+  transform: translate3d(0, 0, 0); will-change: transform, opacity; }
 /* o brilho em si fica numa camada interna que vai e volta devagar (só transform, no compositor):
    o reflexo nunca fica parado, mesmo sem sensor de movimento nem toque; a camada externa segue a inclinação/dedo */
-.reflex::before { content: ""; position: absolute; inset: 0; background: var(--reflex); will-change: transform;
+.reflex::before, .sheen::before { content: ""; position: absolute; inset: 0; background: var(--reflex); will-change: transform;
   animation: reflex-drift 7s ease-in-out infinite alternate; }
 @keyframes reflex-drift { from { transform: translate3d(-16%, -6%, 0); } to { transform: translate3d(16%, 6%, 0); } }
-@media (prefers-reduced-motion: reduce) { .reflex::before { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .reflex::before, .sheen::before { animation: none; } }
 
 .notice { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); background: #000c; color: #fff;
   padding: 6px 12px; border-radius: 14px; font-size: 13px; max-width: 90%; text-align: center; z-index: 8; }
@@ -2031,6 +2036,18 @@ function ensureReflexLayer(reduce) {
   const keys = document.querySelector('.keys');
   if (!keys) return;
   const el = keys.querySelector('.reflex');
+  const brand = document.querySelector('.brand');
+  if (reduce) brand?.querySelector('.reflex-clip')?.remove();
+  else if (brand && !brand.querySelector('.reflex-clip')) {
+    // a placa metálica recebe o mesmo brilho (a camada .sheen acompanha a .reflex)
+    const c = document.createElement('div');
+    c.className = 'reflex-clip plate';
+    c.setAttribute('aria-hidden', 'true');
+    const sh = document.createElement('div');
+    sh.className = 'sheen';
+    c.append(sh);
+    brand.prepend(c);
+  }
   if (reduce && el) (el.closest('.reflex-clip') ?? el).remove();
   if (!reduce && !el) {
     const clip = document.createElement('div');
@@ -2132,14 +2149,14 @@ function mountSettings(ctx) {
     status.textContent = 'Inclinando o aparelho…';
     const ok = await ctx.enableMotion?.();
     if (!ok) {
-      status.textContent = 'Sem permissão ou sensor. O brilho segue o toque e se move sozinho.';
+      status.textContent = 'Sem permissão ou sensor. O brilho se move sozinho, devagar.';
       return;
     }
     // o Chrome só envia a inclinação em páginas seguras (https); em arquivo local pode não chegar nada
     await new Promise((r) => setTimeout(r, 1500));
     status.textContent = ctx.reflex?.tiltSeen
       ? 'Movimento ativo e calibrado na posição atual: incline o aparelho.'
-      : 'Este modo de abertura não envia a inclinação (precisa de https). O brilho segue o toque e se move sozinho.';
+      : 'Este modo de abertura não envia a inclinação (precisa de https). O brilho se move sozinho, devagar.';
   });
   btn.addEventListener('click', () => {
     panel.hidden = !panel.hidden;
@@ -2180,6 +2197,7 @@ function startReflex(layer) {
   let tiltSeen = false;
   let base = null; // posição neutra: a primeira leitura (e a seguinte a cada calibração)
 
+  const sheen = document.querySelector('.sheen'); // brilho da placa metálica: mesma posição e opacidade
   const frame = () => {
     raf = 0;
     if (stopped || document.hidden) return;
@@ -2188,7 +2206,12 @@ function startReflex(layer) {
     const done = Math.abs(target.x - cur.x) < EPS && Math.abs(target.y - cur.y) < EPS;
     if (done) cur = { ...target };
     layer.style.transform = `translate3d(${(cur.x * RANGE_X).toFixed(2)}px, ${(cur.y * RANGE_Y).toFixed(2)}px, 0)`;
-    layer.style.opacity = String((0.55 + 0.25 * Math.abs(cur.x)).toFixed(3));
+    const op = String((0.55 + 0.25 * Math.abs(cur.x)).toFixed(3));
+    layer.style.opacity = op;
+    if (sheen) {
+      sheen.style.transform = layer.style.transform;
+      sheen.style.opacity = op;
+    }
     if (!done) raf = requestAnimationFrame(frame);
   };
 
@@ -2201,7 +2224,8 @@ function startReflex(layer) {
     if (!raf) raf = requestAnimationFrame(frame); // várias entradas no mesmo quadro = 1 escrita
   };
 
-  const onMouse = (e) => aim((e.clientX / window.innerWidth) * 2 - 1, (e.clientY / window.innerHeight) * 2 - 1);
+  // só o mouse (PC) move o reflexo; toque e caneta não interferem
+  const onMouse = (e) => e.pointerType && e.pointerType !== 'mouse' ? undefined : aim((e.clientX / window.innerWidth) * 2 - 1, (e.clientY / window.innerHeight) * 2 - 1);
   const onTilt = (e) => {
     if (e.gamma == null && e.beta == null) return;
     tiltSeen = true;
@@ -2226,7 +2250,7 @@ function startReflex(layer) {
     }
   };
 
-  // mouse no PC; dedo no celular (qualquer toque ou arraste move o reflexo, mesmo sem sensor de movimento)
+  // mouse no PC; no celular vale só a inclinação (e a deriva lenta do CSS)
   document.addEventListener('pointermove', onMouse);
   document.addEventListener('pointerdown', onMouse);
   document.addEventListener('visibilitychange', onVisibility);

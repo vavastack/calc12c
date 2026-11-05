@@ -17,6 +17,7 @@ export function startReflex(layer) {
   let tiltSeen = false;
   let base = null; // posição neutra: a primeira leitura (e a seguinte a cada calibração)
 
+  const sheen = document.querySelector('.sheen'); // brilho da placa metálica: mesma posição e opacidade
   const frame = () => {
     raf = 0;
     if (stopped || document.hidden) return;
@@ -25,7 +26,12 @@ export function startReflex(layer) {
     const done = Math.abs(target.x - cur.x) < EPS && Math.abs(target.y - cur.y) < EPS;
     if (done) cur = { ...target };
     layer.style.transform = `translate3d(${(cur.x * RANGE_X).toFixed(2)}px, ${(cur.y * RANGE_Y).toFixed(2)}px, 0)`;
-    layer.style.opacity = String((0.55 + 0.25 * Math.abs(cur.x)).toFixed(3));
+    const op = String((0.55 + 0.25 * Math.abs(cur.x)).toFixed(3));
+    layer.style.opacity = op;
+    if (sheen) {
+      sheen.style.transform = layer.style.transform;
+      sheen.style.opacity = op;
+    }
     if (!done) raf = requestAnimationFrame(frame);
   };
 
@@ -38,7 +44,8 @@ export function startReflex(layer) {
     if (!raf) raf = requestAnimationFrame(frame); // várias entradas no mesmo quadro = 1 escrita
   };
 
-  const onMouse = (e) => aim((e.clientX / window.innerWidth) * 2 - 1, (e.clientY / window.innerHeight) * 2 - 1);
+  // só o mouse (PC) move o reflexo; toque e caneta não interferem
+  const onMouse = (e) => e.pointerType && e.pointerType !== 'mouse' ? undefined : aim((e.clientX / window.innerWidth) * 2 - 1, (e.clientY / window.innerHeight) * 2 - 1);
   const onTilt = (e) => {
     if (e.gamma == null && e.beta == null) return;
     tiltSeen = true;
@@ -63,7 +70,7 @@ export function startReflex(layer) {
     }
   };
 
-  // mouse no PC; dedo no celular (qualquer toque ou arraste move o reflexo, mesmo sem sensor de movimento)
+  // mouse no PC; no celular vale só a inclinação (e a deriva lenta do CSS)
   document.addEventListener('pointermove', onMouse);
   document.addEventListener('pointerdown', onMouse);
   document.addEventListener('visibilitychange', onVisibility);

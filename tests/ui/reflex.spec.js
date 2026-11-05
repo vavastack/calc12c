@@ -163,7 +163,7 @@ test('ao ligar de novo os efeitos, o reflexo volta a reagir', async () => {
   await app.close();
 });
 
-test('no celular o toque move o reflexo mesmo sem sensor de movimento', async () => {
+test('no celular o toque NÃO move o reflexo', async () => {
   const app = await openApp(browser, server.url, undefined, { hasTouch: true });
   const p = app.page;
   await modern(p);
@@ -171,7 +171,21 @@ test('no celular o toque move o reflexo mesmo sem sensor de movimento', async ()
   await p.locator('button.key[data-id="9"]').tap();
   await p.waitForTimeout(700);
   const depois = await p.locator('.reflex').evaluate((e) => e.style.transform);
-  assert.notEqual(antes, depois);
+  assert.equal(antes, depois);
+  await app.close();
+});
+
+test('a placa metálica também recebe o brilho, na mesma posição do teclado', async () => {
+  const app = await openApp(browser, server.url);
+  const p = app.page;
+  await modern(p);
+  assert.equal(await p.locator('.brand .sheen').count(), 1);
+  await p.mouse.move(40, 600);
+  await p.mouse.move(350, 300);
+  await p.waitForTimeout(700);
+  const [a, b] = await p.evaluate(() => [document.querySelector('.reflex').style.transform, document.querySelector('.sheen').style.transform]);
+  assert.notEqual(a, '');
+  assert.equal(a, b);
   await app.close();
 });
 

@@ -44,6 +44,18 @@ function ensureReflexLayer(reduce) {
   const keys = document.querySelector('.keys');
   if (!keys) return;
   const el = keys.querySelector('.reflex');
+  const brand = document.querySelector('.brand');
+  if (reduce) brand?.querySelector('.reflex-clip')?.remove();
+  else if (brand && !brand.querySelector('.reflex-clip')) {
+    // a placa metálica recebe o mesmo brilho (a camada .sheen acompanha a .reflex)
+    const c = document.createElement('div');
+    c.className = 'reflex-clip plate';
+    c.setAttribute('aria-hidden', 'true');
+    const sh = document.createElement('div');
+    sh.className = 'sheen';
+    c.append(sh);
+    brand.prepend(c);
+  }
   if (reduce && el) (el.closest('.reflex-clip') ?? el).remove();
   if (!reduce && !el) {
     const clip = document.createElement('div');
@@ -145,14 +157,14 @@ export function mountSettings(ctx) {
     status.textContent = 'Inclinando o aparelho…';
     const ok = await ctx.enableMotion?.();
     if (!ok) {
-      status.textContent = 'Sem permissão ou sensor. O brilho segue o toque e se move sozinho.';
+      status.textContent = 'Sem permissão ou sensor. O brilho se move sozinho, devagar.';
       return;
     }
     // o Chrome só envia a inclinação em páginas seguras (https); em arquivo local pode não chegar nada
     await new Promise((r) => setTimeout(r, 1500));
     status.textContent = ctx.reflex?.tiltSeen
       ? 'Movimento ativo e calibrado na posição atual: incline o aparelho.'
-      : 'Este modo de abertura não envia a inclinação (precisa de https). O brilho segue o toque e se move sozinho.';
+      : 'Este modo de abertura não envia a inclinação (precisa de https). O brilho se move sozinho, devagar.';
   });
   btn.addEventListener('click', () => {
     panel.hidden = !panel.hidden;
