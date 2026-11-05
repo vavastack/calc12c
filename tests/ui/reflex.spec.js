@@ -101,7 +101,7 @@ test('com a permissão de movimento negada o brilho fica fixo e o app segue func
   await page.goto(server.url + '/src/ui/index.html');
   await page.waitForSelector('button.key');
   await modern(page);
-  await page.locator('.settings-btn').click();
+  await page.locator('.key[data-id="on"]').click();
   await page.locator('.settings button.motion').click(); // toque do usuário pede a permissão
   await page.waitForTimeout(700); // o mouse do clique também move o brilho; espera assentar
   const fixo = await tf(page);
@@ -129,7 +129,7 @@ test('com a permissão concedida, a inclinação do aparelho move a camada', asy
   await page.goto(server.url + '/src/ui/index.html');
   await page.waitForSelector('button.key');
   await modern(page);
-  await page.locator('.settings-btn').click();
+  await page.locator('.key[data-id="on"]').click();
   await page.locator('.settings button.motion').click();
   await page.waitForTimeout(100);
   const antes = await tf(page);
@@ -236,7 +236,7 @@ test('calibração: a primeira leitura vira o centro, qualquer que seja o jeito 
   await p.goto(server.url + '/src/ui/index.html');
   await p.waitForSelector('button.key');
   await modern(p);
-  await p.locator('.settings-btn').click();
+  await p.locator('.key[data-id="on"]').click();
   await p.locator('.settings button.motion').click();
   await p.waitForTimeout(100);
   const tilt = (g, b) => p.evaluate(([g, b]) => window.dispatchEvent(Object.assign(new Event('deviceorientation'), { gamma: g, beta: b })), [g, b]);

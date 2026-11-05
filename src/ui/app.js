@@ -5,11 +5,30 @@ import { mountDrawer } from './tape.js';
 import { loadState, saveState } from './storage.js';
 import { mountSettings } from './settings.js';
 import { startReflex } from './reflex.js';
+import { mountVerso } from './verso.js';
+import { makeClick } from './extras.js';
 
 const NOTICE_MS = 2200;
 
 // Posição no layout horizontal (4 × 10): metade de baixo do vertical vai para as colunas 6 a 10.
 const hpos = (k) => (k.row < 4 ? { r: k.row, c: k.col } : { r: k.row - 4, c: k.col + 5 });
+
+// Linhas de ligação das funções agrupadas (como impressas na HP 12C): posição no retrato (r, c0..c1) e na paisagem (hr, hc0..hc1)
+const BRACKETS = [
+  { label: 'BOND', r: 1, c0: 0, c1: 1, hr: 1, hc0: 0, hc1: 1 },
+  { label: 'DEPRECIATION', r: 1, c0: 2, c1: 4, hr: 1, hc0: 2, hc1: 4 },
+  { label: 'CLEAR', r: 2, c0: 1, c1: 4, hr: 2, hc0: 1, hc1: 5 },
+  { label: '', r: 6, c0: 0, c1: 0, hr: 2, hc0: 5, hc1: 5, cls: 'pfx' }, // PREFIX: no retrato tem a linha própria; na paisagem a linha do CLEAR já a cobre
+];
+
+function makeBracket(b) {
+  const el = document.createElement('span');
+  el.className = 'bracket' + (b.cls ? ' ' + b.cls : '');
+  el.setAttribute('aria-hidden', 'true');
+  for (const [k, v] of Object.entries({ r: b.r, c0: b.c0, c1: b.c1, hr: b.hr, hc0: b.hc0, hc1: b.hc1 })) el.style.setProperty('--' + k, v);
+  el.innerHTML = b.label ? `<i></i><b>${b.label}</b><i></i>` : '<i></i>';
+  return el;
+}
 
 function ariaLabel(k) {
   const parts = [k.label];
@@ -55,6 +74,7 @@ export function mountApp(root, engine = new Engine()) {
   notice.hidden = true;
   notice.setAttribute('role', 'status');
   for (const k of KEYS) keys.append(makeKey(k));
+  for (const b of BRACKETS) keys.append(makeBracket(b));
   const top = document.createElement('div');
   top.className = 'top';
   const brand = document.createElement('div');
@@ -74,7 +94,7 @@ export function mountApp(root, engine = new Engine()) {
     timer = setTimeout(() => (notice.hidden = true), NOTICE_MS);
   };
 
-  const ctx = { root, calc, top, display, keys, notice, engine, showNotice, listeners: [], vibrate: false };
+  const ctx = { root, calc, top, display, keys, notice, engine, showNotice, listeners: [], vibrate: false, sound: false, clickSound: makeClick() };
   ctx.render = () => {
     const s = engine.state;
     renderDisplay(display, s);
@@ -86,28 +106,25 @@ export function mountApp(root, engine = new Engine()) {
     engine.setLocale(engine.locale === 'br' ? 'us' : 'br');
     ctx.render();
   });
-  // efeito do toque: realce só dentro da tecla, a partir de onde o dedo encostou
-  keys.addEventListener('pointerdown', (ev) => {
-    const b = ev.target.closest('button.key');
-    if (!b || !KEYS.find((x) => x.id === b.dataset.id)?.enabled) return;
-    const r = b.getBoundingClientRect();
-    b.style.setProperty('--tx', (((ev.clientX - r.left) / r.width) * 100).toFixed(1) + '%');
-    b.style.setProperty('--ty', (((ev.clientY - r.top) / r.height) * 100).toFixed(1) + '%');
+  // efeito do toque: realce só dentro da tecla, a partir de onde o dedo encostou (ou do centro, quando vem de um exemplo)
+  const tapFx = (b, x = 50, y = 50) => {
+    b.style.setProperty('--tx', x.toFixed(1) + '%');
+    b.style.setProperty('--ty', y.toFixed(1) + '%');
     b.classList.remove('touch');
     void b.offsetWidth;
     b.classList.add('touch');
     b.addEventListener('animationend', () => b.classList.remove('touch'), { once: true });
-  });
-  keys.addEventListener('click', (ev) => {
+  };
+  keys.addEventListener('pointerdown', (ev) => {
     const b = ev.target.closest('button.key');
-    if (!b) return;
-    const k = KEYS.find((x) => x.id === b.dataset.id);
-    if (!k.enabled) {
-      showNotice('Programação e estatística: não disponível nesta versão.');
-      return;
-    }
-    if (ctx.vibrate && navigator.vibrate) navigator.vibrate(8);
-    if (k.id === 'f' || k.id === 'g') {
+    if (!b || !KEYS.find((x) => x.id === b.dataset.id)?.enabled) return;
+    const r = b.getBoundingClientRect();
+    tapFx(b, ((ev.clientX - r.left) / r.width) * 100, ((ev.clientY - r.top) / r.height) * 100);
+  });
+  // aperta uma tecla do motor (usada pelo teclado da tela e pelos exemplos do verso)
+  ctx.pressKey = (id) => {
+    const b = keys.querySelector(`button.key[data-id="${id}"]`);
+    if (id === 'f' || id === 'g') {
       // brilho curto da tecla f/g; reinicia a animação a cada toque
       b.classList.remove('flash');
       void b.offsetWidth;
@@ -115,7 +132,7 @@ export function mountApp(root, engine = new Engine()) {
       b.addEventListener('animationend', () => b.classList.remove('flash'), { once: true });
     }
     clearTimeout(ctx.pauseTimer); // qualquer tecla interrompe as pausas (PSE) em andamento
-    engine.press(k.id);
+    engine.press(id);
     ctx.render();
     const pauses = engine.takePauses();
     if (pauses.length) {
@@ -129,6 +146,60 @@ export function mountApp(root, engine = new Engine()) {
       };
       step();
     }
+  };
+  ctx.tapFx = (id) => {
+    const b = keys.querySelector(`button.key[data-id="${id}"]`);
+    if (b) tapFx(b);
+  };
+  const haptic = (ms) => ctx.vibrate && navigator.vibrate && navigator.vibrate(ms);
+  // tecla ON: um toque abre/fecha as configurações; segurar abre/fecha o verso (guia de fórmulas)
+  const HOLD_MS = 500;
+  let holdTimer;
+  let held = false;
+  const onKey = keys.querySelector('button.key[data-id="on"]');
+  onKey.addEventListener('pointerdown', () => {
+    held = false;
+    clearTimeout(holdTimer);
+    holdTimer = setTimeout(() => {
+      held = true;
+      haptic(20);
+      ctx.verso.toggle();
+    }, HOLD_MS);
+  });
+  for (const t of ['pointerup', 'pointercancel', 'pointerleave']) onKey.addEventListener(t, () => clearTimeout(holdTimer));
+  onKey.addEventListener('contextmenu', (ev) => ev.preventDefault()); // o menu de "segurar" do celular não deve abrir
+  // rótulo da tecla ON: "≡" (menu) ou "ON"; sem o "OFF" impresso, já que a tecla agora abre as configurações
+  ctx.setOnStyle = (style) => {
+    const menu = style !== 'on';
+    onKey.querySelector('.lm').textContent = menu ? '≡' : 'ON';
+    onKey.querySelector('.lf').textContent = menu ? '' : 'OFF'; // no estilo ON mantém o rótulo impresso da HP
+    onKey.classList.toggle('menu-key', menu);
+    onKey.setAttribute('aria-label', (menu ? 'Menu' : 'ON') + ': toque para as configurações, segure para o verso');
+  };
+  ctx.setOnStyle('on');
+  ctx.onTap = () => {
+    if (ctx.verso.isOpen()) ctx.verso.close();
+    else ctx.settings.toggle();
+  };
+  keys.addEventListener('click', (ev) => {
+    const b = ev.target.closest('button.key');
+    if (!b) return;
+    const k = KEYS.find((x) => x.id === b.dataset.id);
+    if (k.id === 'on') {
+      if (held) held = false; // o segurar já abriu o verso; o clique que vem ao soltar não faz mais nada
+      else {
+        haptic(8);
+        ctx.onTap();
+      }
+      return;
+    }
+    if (!k.enabled) {
+      showNotice('Programação e estatística: não disponível nesta versão.');
+      return;
+    }
+    haptic(8);
+    if (ctx.sound) ctx.clickSound();
+    ctx.pressKey(k.id);
   });
   bindKeyboard(engine, ctx.render);
   ctx.drawer = mountDrawer(ctx);
@@ -152,6 +223,7 @@ export function mountApp(root, engine = new Engine()) {
     motion = (await ctx.reflex?.enableMotion()) ?? false;
     return motion;
   };
+  ctx.verso = mountVerso(ctx);
   ctx.settings = mountSettings(ctx);
   ctx.listeners.push(() => saveState(engine)); // salvamento automático
   ctx.render();

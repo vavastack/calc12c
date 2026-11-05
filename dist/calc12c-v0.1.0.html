@@ -132,7 +132,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
 /* ---- corpo da calculadora (o vidro fica só aqui e no visor) ---- */
 .calc { height: 100dvh; max-width: 560px; margin: 0 auto; display: grid;
   /* a borda da calculadora acompanha a área segura (notch, cantos, barra inferior) */
-  --pt: max(8px, env(safe-area-inset-top)); --pr: max(8px, env(safe-area-inset-right)); --pb: max(8px, env(safe-area-inset-bottom)); --pl: max(8px, env(safe-area-inset-left));
+  --pt: calc(max(8px, env(safe-area-inset-top)) + var(--top-extra, 0px)); --pr: max(8px, env(safe-area-inset-right)); --pb: max(8px, env(safe-area-inset-bottom)); --pl: max(8px, env(safe-area-inset-left));
   padding: var(--pt) var(--pr) var(--pb) var(--pl);
   grid-template-rows: auto 1fr; gap: 8px; background: var(--body); border: var(--edge-w, 1px) solid var(--edge); position: relative; isolation: isolate;
   -webkit-backdrop-filter: var(--glass); backdrop-filter: var(--glass);
@@ -271,10 +271,6 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
 .confirm p { margin: 0; flex: 1 1 100%; }
 
 /* ---- configurações ---- */
-.settings-btn { position: absolute; right: 2px; bottom: -4px; width: 26px; height: 22px; border: 0; background: transparent;
-  color: inherit; font-size: 15px; line-height: 1; opacity: .7; padding: 0; }
-.fs-btn { position: absolute; right: 30px; bottom: -4px; width: 26px; height: 22px; border: 0; background: transparent;
-  color: inherit; font-size: 15px; line-height: 1; opacity: .7; padding: 0; }
 .settings[hidden] { display: none; }
 .settings { position: absolute; left: 10px; right: 10px; top: 120px; max-height: calc(100% - 140px); overflow: auto; z-index: 5; display: grid; gap: 8px;
   padding: 10px 12px 12px; border-radius: 16px; background: var(--body-solid); color: var(--key-text);
@@ -314,8 +310,8 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
   .calc { --plate-h: 40px; }
   .brand { margin-left: calc(-1 * (var(--pl) + 238px)); padding: calc(var(--pt) + 4px) calc(var(--pr) + 14px) 6px calc(var(--pl) + 14px); margin-bottom: 8px; }
   .brand .title { font-size: 18px; }
-  .brand .badge { width: 44px; height: 44px; padding: 2px; gap: 2px; }
-  .brand .badge .model { font-size: 9px; padding: 2px 0 1px; }
+  .brand .badge { width: 40px; height: 36px; padding: 2px; gap: 2px; }
+  .brand .badge .model { font-size: 8px; padding: 1px 0; }
   .display { min-height: 60px; padding: 4px 14px; }
   .digits { font-size: 34px; }
   .indicators { font-size: 10px; }
@@ -366,6 +362,59 @@ html:not([data-theme^="moderno"]) .display { border: 4px solid transparent;
 
 /* troca de tema: fusão suave entre o visual antigo e o novo */
 ::view-transition-old(root), ::view-transition-new(root) { animation-duration: .5s; animation-timing-function: ease-in-out; }
+
+/* ---- tecla ON como menu (≡) ---- */
+.key.menu-key .lm { font-size: clamp(22px, 3.4dvh, 28px); font-weight: 400; }
+.key[data-id="on"] { -webkit-touch-callout: none; }
+
+/* ---- linhas de ligação das funções agrupadas (BOND, DEPRECIATION, CLEAR, PREFIX) ---- */
+.bracket { grid-row: calc(var(--r) + 1); grid-column: calc(var(--c0) + 1) / calc(var(--c1) + 2); align-self: start; z-index: 2;
+  display: flex; align-items: flex-start; height: 11px; margin: -9px 4px 0; pointer-events: none; color: var(--gold); }
+.bracket i { flex: 1; height: 6px; margin-top: 5px; border-top: 1px solid currentColor; opacity: .85; }
+.bracket i:first-child { border-left: 1px solid currentColor; }
+.bracket i:last-child { border-right: 1px solid currentColor; }
+.bracket b { flex: none; padding: 0 5px; font-size: 8.5px; line-height: 11px; font-weight: 700; letter-spacing: .05em; }
+@media (orientation: landscape) {
+  .bracket { grid-row: calc(var(--hr) + 1); grid-column: calc(var(--hc0) + 1) / calc(var(--hc1) + 2); height: 9px; margin: -7px 3px 0; }
+  .bracket i { height: 5px; margin-top: 4px; }
+  .bracket b { font-size: 7.5px; line-height: 9px; padding: 0 4px; }
+  .bracket.pfx { display: none; }
+}
+
+/* ---- verso: guia de fórmulas ---- */
+.verso[hidden] { display: none; }
+.verso { position: absolute; inset: 0; z-index: 9; overflow: auto; padding: calc(var(--pt) + 8px) calc(var(--pr) + 6px) calc(var(--pb) + 8px) calc(var(--pl) + 6px);
+  background: var(--body-solid); color: var(--key-text); display: grid; gap: 8px; align-content: start; transform-origin: center; }
+.verso.flip { animation: verso-in .45s ease-out; }
+@keyframes verso-in { from { transform: perspective(900px) rotateY(-80deg); opacity: .2; } to { transform: perspective(900px) rotateY(0); opacity: 1; } }
+[data-reduce="true"] .verso.flip { animation: none; }
+@media (prefers-reduced-motion: reduce) { .verso.flip { animation: none; } }
+.verso-head { display: flex; justify-content: space-between; align-items: center; }
+.verso-title { font-size: 15px; font-weight: 700; color: var(--brand); letter-spacing: .03em; }
+.verso-close { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--key-border); background: var(--key-flat); color: inherit; font-size: 12px; padding: 0; }
+.verso-hint { margin: 0; font-size: 11px; line-height: 1.35; color: var(--sub); }
+.v-sec { display: grid; grid-template-columns: 22px 1fr; gap: 8px; border: 1px solid var(--key-border); border-radius: 8px; padding: 8px 8px 8px 4px; }
+.v-tag { writing-mode: vertical-rl; transform: rotate(180deg); text-align: center; font-size: 10px; font-weight: 800; letter-spacing: .14em; color: var(--gold); align-self: stretch; }
+.v-body { display: grid; gap: 8px; min-width: 0; }
+.v-body h3 { margin: 0; font-size: 13px; font-weight: 700; }
+.v-item h4 { margin: 0 0 1px; font-size: 12px; font-weight: 600; }
+.v-item p { margin: 0 0 4px; font-size: 10.5px; color: var(--sub); line-height: 1.3; }
+.variant { display: grid; grid-template-columns: 1fr auto; gap: 3px 8px; align-items: center; padding: 5px 0; border-top: 1px solid var(--key-border); }
+.v-label { grid-column: 1 / -1; font-size: 10px; font-weight: 600; color: var(--sub); }
+.chips { display: flex; flex-wrap: wrap; gap: 3px; min-width: 0; }
+.chip { font-size: 10.5px; line-height: 1; padding: 4px 5px; border-radius: 3px; background: var(--key-flat); border: 1px solid var(--key-border); white-space: nowrap; }
+.chip.f { color: var(--gold); border-color: var(--gold); }
+.chip.g { color: var(--blue); border-color: var(--blue); }
+.chip.num { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+.run, .mini { font: inherit; font-size: 11.5px; font-weight: 600; min-height: 30px; padding: 0 12px; border-radius: 9px; cursor: pointer;
+  background: var(--keyg-bg); border: 1px solid var(--keyg-border); color: var(--keyg-text); box-shadow: var(--keyg-shadow); }
+.run:disabled { opacity: .45; cursor: default; }
+.run:active:not(:disabled), .mini:active { filter: brightness(1.15); }
+.sigma-map { display: grid; grid-template-columns: repeat(3, auto 14px auto); gap: 4px 6px; align-items: center; font-size: 12px; }
+.sg { font-weight: 600; text-align: right; } .ar { opacity: .6; text-align: center; } .sr { font-family: ui-monospace, monospace; }
+.settings input[type="range"] { flex: none; width: 110px; accent-color: var(--gold); }
+@media (orientation: landscape) { .verso { left: 0; right: 0; } .sigma-map { grid-template-columns: repeat(6, auto 14px auto); } }
+.v-tag.sigma-tag { writing-mode: horizontal-tb; transform: none; font-size: 16px; letter-spacing: 0; }
 
 </style>
 </head>
@@ -2075,19 +2124,84 @@ function mountDrawer(ctx) {
 return { mountDrawer };
 })();
 
+const __m_extras = (() => {
+// Extras das configurações: som de tecla (Web Audio) e "não dormir" (Screen Wake Lock). Tudo opcional e sem rede.
+
+// Clique curto e discreto. O contexto de áudio só nasce no primeiro toque (o navegador exige um gesto do usuário).
+function makeClick() {
+  let ac = null;
+  return () => {
+    try {
+      const AC = window.AudioContext ?? window.webkitAudioContext;
+      if (!AC) return;
+      ac ??= new AC();
+      if (ac.state === 'suspended') ac.resume();
+      const t = ac.currentTime;
+      const osc = ac.createOscillator();
+      const gain = ac.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(1900, t);
+      osc.frequency.exponentialRampToValueAtTime(700, t + 0.025);
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(0.07, t + 0.003);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.03);
+      osc.connect(gain).connect(ac.destination);
+      osc.start(t);
+      osc.stop(t + 0.035);
+    } catch {
+      /* sem áudio: o app segue funcionando */
+    }
+  };
+}
+
+const wakeSupported = () => typeof navigator !== 'undefined' && 'wakeLock' in navigator;
+
+// Mantém a tela acesa enquanto o app estiver visível; o navegador solta o bloqueio ao esconder a aba, então pedimos de novo ao voltar.
+function makeWake() {
+  let lock = null;
+  let want = false;
+  const request = async () => {
+    if (!want || !wakeSupported() || document.visibilityState !== 'visible') return;
+    try {
+      lock = await navigator.wakeLock.request('screen');
+      lock.addEventListener('release', () => (lock = null));
+    } catch {
+      lock = null; // bateria fraca, economia de energia etc.: tenta de novo na próxima vez
+    }
+  };
+  document.addEventListener('visibilitychange', request);
+  return async (on) => {
+    want = on;
+    if (on) await request();
+    else {
+      try {
+        await lock?.release();
+      } catch {
+        /* já solto */
+      }
+      lock = null;
+    }
+  };
+}
+
+return { makeClick, wakeSupported, makeWake };
+})();
+
 const __m_settings = (() => {
 // Temas e configurações. Só variáveis de cor mudam; o teclado e o motor nunca.
+const { makeWake, wakeSupported } = __m_extras;
 const KEY = 'calc12c.settings';
 const THEMES = ['retro', 'platinum', 'moderno']; // 'retro' = Gold (padrão), 'platinum' = prata, 'moderno' = Retro (vidro)
-const VERSION = 2; // v2: a vibração ao tocar passou a vir ligada
+const VERSION = 3; // v2: a vibração ao tocar passou a vir ligada; v3: som, não dormir, estilo da tecla ON e banda superior
 const MODES = ['auto', 'escuro', 'claro'];
+const ON_STYLES = ['menu', 'on'];
 
 const lowEnd = () => (navigator.hardwareConcurrency ?? 8) <= 2 || (navigator.deviceMemory ?? 8) <= 2 ||
   matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function defaultSettings() {
   // reduce: null = automático (liga sozinho em aparelhos simples); true/false = escolha do usuário
-  return { v: VERSION, theme: 'retro', mode: 'auto', reduce: null, vibrate: true };
+  return { v: VERSION, theme: 'retro', mode: 'auto', reduce: null, vibrate: true, sound: false, wake: false, onStyle: 'on', topPad: 0 };
 }
 
 function loadSettings() {
@@ -2101,7 +2215,11 @@ function loadSettings() {
       mode: MODES.includes(o.mode) ? o.mode : d.mode,
       reduce: typeof o.reduce === 'boolean' ? o.reduce : null,
       // quem salvou antes da versão 2 passa a ter a vibração ligada (dá para desligar nas configurações)
-      vibrate: (o.v ?? 1) < VERSION ? true : o.vibrate === true,
+      vibrate: (o.v ?? 1) < 2 ? true : o.vibrate === true,
+      sound: o.sound === true,
+      wake: o.wake === true,
+      onStyle: ON_STYLES.includes(o.onStyle) ? o.onStyle : d.onStyle,
+      topPad: Number.isFinite(o.topPad) ? Math.min(32, Math.max(0, Math.round(o.topPad))) : 0,
     };
   } catch {
     return d; // ausente, corrompido ou armazenamento bloqueado
@@ -2157,15 +2275,16 @@ function applyTheme(theme, mode, reduceEffects) {
 
 function mountSettings(ctx) {
   let s = loadSettings();
+  const wake = makeWake();
   const apply = () => {
     applyTheme(s.theme, s.mode, effectiveReduce(s));
     ctx.vibrate = s.vibrate;
+    ctx.sound = s.sound;
+    ctx.setOnStyle?.(s.onStyle);
+    ctx.calc.style.setProperty('--top-extra', s.topPad + 'px');
+    wake(s.wake && wakeSupported());
   };
-  const btn = document.createElement('button');
-  btn.type = 'button';
-  btn.className = 'settings-btn';
-  btn.setAttribute('aria-label', 'Configurações');
-  btn.textContent = '⚙';
+  const fsOk = !!document.fullscreenEnabled && !window.matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches;
   const panel = document.createElement('section');
   panel.className = 'settings';
   panel.hidden = true;
@@ -2176,16 +2295,32 @@ function mountSettings(ctx) {
     '<label class="row"><span class="txt">Tema<small>Gold e Platinum são metálicos e sempre escuros; Retro é de vidro</small></span>' +
     '<select name="theme"><option value="retro">Gold</option><option value="platinum">Platinum</option><option value="moderno">Retro</option></select></label>' +
     '<label class="row"><span class="txt">Modo<small>Automático segue o sistema; só vale no Retro</small></span>' +
-    '<select name="mode"><option value="auto">Automático</option><option value="escuro">Escuro</option><option value="claro">Claro</option></select></label></section>' +
-    '<section class="group"><h3 class="group-title">Efeitos</h3>' +
-    '<label class="row"><span class="txt">Reduzir efeitos<small>Vidro sólido e sem reflexo: poupa bateria</small></span>' +
-    '<input type="checkbox" name="reduce" role="switch"></label>' +
+    '<select name="mode"><option value="auto">Automático</option><option value="escuro">Escuro</option><option value="claro">Claro</option></select></label>' +
+    '<label class="row"><span class="txt">Tecla ON<small>Um toque abre estas configurações; segurar abre o verso</small></span>' +
+    '<select name="onStyle"><option value="on">ON</option><option value="menu">Menu (≡)</option></select></label>' +
+    '<label class="row"><span class="txt">Altura da banda superior<small>Desce a placa metálica (notch ou barra de status)</small></span>' +
+    '<input type="range" name="topPad" min="0" max="32" step="2"></label></section>' +
+    '<section class="group"><h3 class="group-title">Números e teclas</h3>' +
+    '<label class="row"><span class="txt">Separador decimal<small>Como os números aparecem no visor</small></span>' +
+    '<select name="locale"><option value="br">1.234,56 (pt-BR)</option><option value="us">1,234.56 (en-US)</option></select></label>' +
     '<label class="row"><span class="txt">Vibração leve ao tocar<small>Só em aparelhos que permitem vibrar</small></span>' +
-    '<input type="checkbox" name="vibrate" role="switch"></label></section>' +
+    '<input type="checkbox" name="vibrate" role="switch"></label>' +
+    '<label class="row"><span class="txt">Som de tecla<small>Clique curto a cada toque</small></span>' +
+    '<input type="checkbox" name="sound" role="switch"></label></section>' +
+    '<section class="group"><h3 class="group-title">Tela</h3>' +
+    (fsOk ? '<div class="row"><span class="txt">Tela cheia</span><button type="button" class="mini fs-btn" aria-pressed="false">Entrar</button></div>' : '') +
+    '<label class="row"><span class="txt">Manter a tela acesa<small class="wake-note">Evita que a tela apague enquanto você usa</small></span>' +
+    '<input type="checkbox" name="wake" role="switch"></label>' +
+    '<label class="row"><span class="txt">Reduzir efeitos<small>Vidro sólido e sem reflexo: poupa bateria</small></span>' +
+    '<input type="checkbox" name="reduce" role="switch"></label></section>' +
     '<section class="group"><h3 class="group-title">Brilho</h3>' +
     '<button type="button" class="motion">Testar movimento do aparelho</button>' +
-    '<small class="motion-status" role="status"></small></section>';
-  ctx.top.append(btn);
+    '<small class="motion-status" role="status"></small></section>' +
+    '<section class="group"><h3 class="group-title">Mais</h3>' +
+    '<div class="row"><span class="txt">Verso da calculadora<small>Guia de fórmulas com exemplos (ou segure a tecla ON)</small></span>' +
+    '<button type="button" class="mini open-verso">Abrir</button></div>' +
+    '<div class="row"><span class="txt">Redefinir configurações<small>Volta ao padrão; não apaga a memória da calculadora</small></span>' +
+    '<button type="button" class="mini reset-settings">Redefinir</button></div></section>';
   // altura da placa metálica: o brilho de ênfase fica restrito a ela
   const plate = ctx.top.querySelector('.brand');
   if (plate) {
@@ -2193,42 +2328,77 @@ function mountSettings(ctx) {
     setPlate();
     if (typeof ResizeObserver === 'function') new ResizeObserver(setPlate).observe(plate);
   }
-  // tela cheia: só aparece onde o navegador permite e o app ainda não está em tela cheia (PWA instalado)
-  const fsOk = document.fullscreenEnabled && !window.matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches;
-  if (fsOk) {
-    const fs = document.createElement('button');
-    fs.type = 'button';
-    fs.className = 'fs-btn';
-    const paint = () => {
-      const on = !!document.fullscreenElement;
-      fs.textContent = on ? '⤡' : '⛶';
-      fs.setAttribute('aria-label', on ? 'Sair da tela cheia' : 'Tela cheia');
-      fs.setAttribute('aria-pressed', String(on));
-    };
-    fs.addEventListener('click', () => {
-      const r = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
-      r?.catch(() => {});
-    });
-    document.addEventListener('fullscreenchange', paint);
-    paint();
-    ctx.top.append(fs);
-  }
   ctx.calc.append(panel);
-  // o tema Clássico é sempre escuro: a escolha de modo fica inativa
+  // os temas Gold e Platinum são sempre escuros: a escolha de modo fica inativa
   const lockMode = () => {
     const off = s.theme !== 'moderno';
     const sel = panel.querySelector('[name=mode]');
     sel.disabled = off;
     sel.closest('.row').classList.toggle('off', off);
   };
+  const fs = panel.querySelector('.fs-btn');
+  const paintFs = () => {
+    if (!fs) return;
+    const on = !!document.fullscreenElement;
+    fs.textContent = on ? 'Sair' : 'Entrar';
+    fs.setAttribute('aria-pressed', String(on));
+  };
+  const wakeOk = wakeSupported();
   const sync = () => {
     panel.querySelector('[name=theme]').value = s.theme;
     panel.querySelector('[name=mode]').value = s.mode;
+    panel.querySelector('[name=onStyle]').value = s.onStyle;
+    panel.querySelector('[name=topPad]').value = s.topPad;
+    panel.querySelector('[name=locale]').value = ctx.engine.locale;
     lockMode();
     panel.querySelector('[name=reduce]').checked = effectiveReduce(s);
     panel.querySelector('[name=vibrate]').checked = s.vibrate;
+    panel.querySelector('[name=sound]').checked = s.sound;
+    const w = panel.querySelector('[name=wake]');
+    w.checked = s.wake && wakeOk;
+    w.disabled = !wakeOk;
+    w.closest('.row').classList.toggle('off', !wakeOk);
+    if (!wakeOk) panel.querySelector('.wake-note').textContent = 'Este navegador não permite manter a tela acesa';
+    paintFs();
   };
-  panel.querySelector('.settings-close').addEventListener('click', () => (panel.hidden = true));
+  const close = () => (panel.hidden = true);
+  const open = () => {
+    ctx.verso?.close();
+    sync();
+    panel.hidden = false;
+  };
+  panel.querySelector('.settings-close').addEventListener('click', close);
+  if (fs) {
+    fs.addEventListener('click', () => {
+      const r = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+      r?.catch(() => {});
+    });
+    document.addEventListener('fullscreenchange', paintFs);
+  }
+  panel.querySelector('.open-verso').addEventListener('click', () => {
+    close();
+    ctx.verso.open();
+  });
+  const reset = panel.querySelector('.reset-settings');
+  let armed;
+  reset.addEventListener('click', () => {
+    if (!armed) {
+      // confirmação em dois toques, sem janela do navegador
+      reset.textContent = 'Toque de novo';
+      armed = setTimeout(() => {
+        armed = null;
+        reset.textContent = 'Redefinir';
+      }, 3000);
+      return;
+    }
+    clearTimeout(armed);
+    armed = null;
+    reset.textContent = 'Redefinir';
+    s = defaultSettings();
+    saveSettings(s);
+    sync();
+    apply();
+  });
   const status = panel.querySelector('.motion-status');
   panel.querySelector('.motion').addEventListener('click', async () => {
     status.textContent = 'Inclinando o aparelho…';
@@ -2243,27 +2413,32 @@ function mountSettings(ctx) {
       ? 'Movimento ativo e calibrado na posição atual: incline o aparelho.'
       : 'Este modo de abertura não envia a inclinação (precisa de https). O brilho se move sozinho, devagar.';
   });
-  btn.addEventListener('click', () => {
-    panel.hidden = !panel.hidden;
-    sync();
-  });
-  panel.addEventListener('change', (e) => {
+  const themeless = new Set(['vibrate', 'sound', 'wake', 'onStyle', 'topPad']);
+  const onInput = (e) => {
     const n = e.target.name;
-    if (n === 'theme' || n === 'mode') s[n] = e.target.value;
-    else s[n] = e.target.checked; // reduce, vibrate
+    if (n === 'locale') {
+      ctx.engine.setLocale(e.target.value);
+      ctx.render();
+      return;
+    }
+    if (n === 'theme' || n === 'mode' || n === 'onStyle') s[n] = e.target.value;
+    else if (n === 'topPad') s.topPad = Number(e.target.value);
+    else s[n] = e.target.checked; // reduce, vibrate, sound, wake
     saveSettings(s);
     lockMode();
     // troca de tema com fusão suave (View Transitions); sem suporte ou com movimento reduzido, troca direto
-    if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches && n !== 'vibrate') {
+    if (!themeless.has(n) && document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
       const vt = document.startViewTransition(() => apply());
       // trocas rápidas cancelam a transição anterior; isso é esperado, não é erro
       for (const k of ['ready', 'finished', 'updateCallbackDone']) vt[k] && vt[k].catch(() => {});
     } else {
       apply();
     }
-  });
+  };
+  panel.addEventListener('change', onInput);
+  panel.addEventListener('input', (e) => e.target.name === 'topPad' && onInput(e)); // a banda sobe e desce enquanto arrasta
   apply();
-  return { get: () => ({ ...s }) };
+  return { get: () => ({ ...s }), open, close, toggle: () => (panel.hidden ? open() : close()), isOpen: () => !panel.hidden };
 }
 
 return { defaultSettings, loadSettings, saveSettings, applyTheme, mountSettings };
@@ -2392,6 +2567,204 @@ function startReflex(layer) {
 return { startReflex };
 })();
 
+const __m_verso_data = (() => {
+// Guia do verso: exemplos de uso (sequências de teclas) escritos para este app, em português.
+// `keys` usa os ids do motor (ver keymap.js); números entram dígito a dígito, com "." para a vírgula decimal.
+// `ready:false` = função ainda não implementada (aparece como "em breve").
+
+const SIGMA_MAP = [
+  ['n', 'R1'], ['Σx', 'R2'], ['Σx²', 'R3'], ['Σy', 'R4'], ['Σy²', 'R5'], ['Σxy', 'R6'],
+];
+
+const VERSO = [
+  {
+    id: 'date', tag: 'DATE', title: 'Datas',
+    items: [
+      {
+        id: 'date-add', title: '31/05/2003 + 120 dias', text: 'Data futura e dia da semana (1 = segunda … 7 = domingo).', ready: true,
+        variants: [
+          { label: 'D.MY', keys: 'g 4 31.052003 enter 120 g chs' },
+          { label: 'M.DY', keys: 'g 5 5.312003 enter 120 g chs' },
+        ],
+      },
+      {
+        id: 'date-diff', title: 'De 03/06/2004 a 15/10/2005', text: 'Dias exatos (ΔDYS) e, com x≷y, dias no ano comercial de 360.', ready: true,
+        variants: [
+          { label: 'D.MY · dias exatos', keys: 'g 4 3.062004 enter 15.102005 g eex' },
+          { label: 'D.MY · base 360', keys: 'g 4 3.062004 enter 15.102005 g eex xy' },
+          { label: 'M.DY · dias exatos', keys: 'g 5 6.032004 enter 10.152005 g eex' },
+          { label: 'M.DY · base 360', keys: 'g 5 6.032004 enter 10.152005 g eex xy' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'int', tag: 'INT', title: 'Juros simples',
+    items: [
+      {
+        id: 'int-simple', title: '30 dias, 7% ao ano, principal 450', text: 'Juros simples no ano de 360 e de 365 dias, e o total (principal + juros).', ready: true,
+        variants: [
+          { label: 'Juros (360)', keys: 'f xy 30 n 7 i 450 chs pv f i' },
+          { label: 'Principal + juros (360)', keys: 'f xy 30 n 7 i 450 chs pv f i plus' },
+          { label: 'Juros (365)', keys: 'f xy 30 n 7 i 450 chs pv f i rdown xy' },
+          { label: 'Principal + juros (365)', keys: 'f xy 30 n 7 i 450 chs pv f i rdown plus' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'amort', tag: 'AMORT', title: 'Amortização',
+    items: [
+      {
+        id: 'amort-1', title: 'Financiamento de 50.000 em 30 anos a 5,25% a.a.', text: 'Juros e principal pagos nas 12 primeiras parcelas.', ready: false,
+        variants: [
+          { label: 'Prepara', keys: 'f xy 30 g n 5.25 g i 50000 pv pmt 0 n' },
+          { label: 'Juros pagos', keys: '12 f n' },
+          { label: 'Principal pago', keys: '12 f n xy' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'bond', tag: 'BOND', title: 'Títulos',
+    items: [
+      {
+        id: 'bond-price', title: 'YTM 6%, cupom 4,75%, de 28/04/2004 a 15/11/2013', text: 'Preço a partir da taxa.', ready: false,
+        variants: [{ label: 'D.MY', keys: 'g 4 6 i 4.75 pmt 28.042004 enter 15.112013 f yx' }],
+      },
+      {
+        id: 'bond-ytm', title: 'Preço 99,16, cupom 4,75%, de 28/04/2004 a 15/11/2013', text: 'Taxa a partir do preço.', ready: false,
+        variants: [{ label: 'D.MY', keys: 'g 4 99.16 pv 4.75 pmt 28.042004 enter 15.112013 f recip' }],
+      },
+    ],
+  },
+  {
+    id: 'depr', tag: 'DEPR', title: 'Depreciação',
+    items: [
+      {
+        id: 'depr-1', title: 'Custo 10.000, residual 500, vida 5 anos, ano 1', text: 'Linha reta, soma dos dígitos e saldo decrescente (125%).', ready: false,
+        variants: [
+          { label: 'Linha reta', keys: '10000 pv 500 fv 5 n 1 f pctT' },
+          { label: 'Soma dos dígitos', keys: '10000 pv 500 fv 5 n 1 f dpct' },
+          { label: 'Saldo decrescente', keys: '10000 pv 500 fv 5 n 125 i 1 f pct' },
+        ],
+      },
+    ],
+  },
+];
+
+return { SIGMA_MAP, VERSO };
+})();
+
+const __m_verso = (() => {
+// Verso: guia de fórmulas com exemplos que podem ser executados na própria calculadora.
+const { KEY_BY_ID } = __m_keymap;
+const { VERSO, SIGMA_MAP } = __m_verso_data;
+
+const STEP_MS = 140; // intervalo entre as teclas quando um exemplo é executado
+
+// "31.052003" → "31,052003"; ids do motor → rótulo impresso na tecla; f/g + tecla viram um chip só (ex.: "g ΔDYS")
+function chipsOf(keys) {
+  const out = [];
+  const t = keys.split(/\s+/).filter(Boolean);
+  for (let i = 0; i < t.length; i++) {
+    const id = t[i];
+    if (/^\d+(\.\d+)?$/.test(id)) out.push({ text: id.replace('.', ','), kind: 'num' });
+    else if ((id === 'f' || id === 'g') && t[i + 1] && !/^\d.+/.test(t[i + 1])) { // f/g + tecla (um dígito sozinho é tecla, ex.: g 4)
+      const next = KEY_BY_ID.get(t[++i]);
+      out.push({ text: `${id} ${next[id] ?? next.label}`, kind: id });
+    } else out.push({ text: KEY_BY_ID.get(id)?.label ?? id, kind: 'fn' });
+  }
+  return out;
+}
+
+// Quebra a sequência em teclas do motor: cada número vira dígitos (e "." vira a tecla da vírgula)
+function expandKeys(keys) {
+  const ids = [];
+  for (const tok of keys.split(/\s+/).filter(Boolean)) {
+    if (/^\d+(\.\d+)?$/.test(tok)) for (const c of tok) ids.push(c === '.' ? 'dot' : c);
+    else ids.push(tok);
+  }
+  return ids;
+}
+
+const esc = (x) => String(x).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+function variantHtml(v, ready, key) {
+  const chips = chipsOf(v.keys).map((c) => `<span class="chip ${c.kind}">${esc(c.text)}</span>`).join('');
+  const btn = ready
+    ? `<button type="button" class="run" data-run="${key}">Executar</button>`
+    : '<button type="button" class="run" disabled>Em breve</button>';
+  return `<div class="variant"><span class="v-label">${esc(v.label)}</span><div class="chips">${chips}</div>${btn}</div>`;
+}
+
+function mountVerso(ctx) {
+  const el = document.createElement('section');
+  el.className = 'verso';
+  el.hidden = true;
+  el.setAttribute('aria-label', 'Verso da calculadora: guia de fórmulas');
+  const sigma = SIGMA_MAP.map(([a, b]) => `<span class="sg">${esc(a)}</span><span class="ar">→</span><span class="sr">${esc(b)}</span>`).join('');
+  const runs = new Map();
+  let n = 0;
+  const secs = VERSO.map((g) => {
+    const items = g.items.map((it) => {
+      const vs = it.variants.map((v) => {
+        const key = 'r' + n++;
+        runs.set(key, { it, v });
+        return variantHtml(v, it.ready, key);
+      }).join('');
+      return `<article class="v-item"><h4>${esc(it.title)}</h4><p>${esc(it.text)}</p>${vs}</article>`;
+    }).join('');
+    return `<section class="v-sec" data-sec="${g.id}"><span class="v-tag" aria-hidden="true">${esc(g.tag)}</span><div class="v-body"><h3>${esc(g.title)}</h3>${items}</div></section>`;
+  }).join('');
+  el.innerHTML =
+    '<header class="verso-head"><span class="verso-title">Verso · guia rápido</span>' +
+    '<button type="button" class="verso-close" aria-label="Voltar à frente da calculadora">✕</button></header>' +
+    '<p class="verso-hint">Todos os exemplos usam a pilha RPN: digite o número, ENTER, e depois a função. Toque em Executar para ver as teclas sendo apertadas.</p>' +
+    `<section class="v-sec sigma"><span class="v-tag sigma-tag" aria-hidden="true">Σ</span><div class="v-body"><h3>Estatística: onde ficam os totais</h3><div class="sigma-map">${sigma}</div></div></section>` +
+    secs;
+  ctx.calc.append(el);
+
+  let busy = 0; // identifica a execução em andamento (outra execução ou fechar cancela a anterior)
+  const open = () => {
+    ctx.settings?.close?.();
+    el.hidden = false;
+    el.classList.remove('flip');
+    void el.offsetWidth;
+    el.classList.add('flip');
+    el.scrollTop = 0;
+  };
+  const close = () => {
+    el.hidden = true;
+  };
+  const run = async (keys, label) => {
+    const my = ++busy;
+    close();
+    const e = ctx.engine;
+    e.shift = null; // começa limpo: sem prefixo f/g pendente nem erro na tela
+    e.pending = null;
+    e.error = null;
+    for (const id of expandKeys(keys)) {
+      if (my !== busy) return;
+      ctx.tapFx(id);
+      ctx.pressKey(id);
+      await new Promise((r) => setTimeout(r, ctx.fast ? 0 : STEP_MS));
+    }
+    if (my === busy) ctx.showNotice(`Exemplo executado: ${label}`);
+  };
+  el.addEventListener('click', (ev) => {
+    if (ev.target.closest('.verso-close')) return close();
+    const b = ev.target.closest('[data-run]');
+    if (!b) return;
+    const r = runs.get(b.dataset.run);
+    run(r.v.keys, `${r.it.title} (${r.v.label})`);
+  });
+  return { el, open, close, isOpen: () => !el.hidden, toggle: () => (el.hidden ? open() : close()), run };
+}
+
+return { chipsOf, expandKeys, mountVerso };
+})();
+
 const __m_app = (() => {
 const { KEYS } = __m_keymap;
 const { Engine } = __m_engine;
@@ -2400,11 +2773,30 @@ const { mountDrawer } = __m_tape;
 const { loadState, saveState } = __m_storage;
 const { mountSettings } = __m_settings;
 const { startReflex } = __m_reflex;
+const { mountVerso } = __m_verso;
+const { makeClick } = __m_extras;
 
 const NOTICE_MS = 2200;
 
 // Posição no layout horizontal (4 × 10): metade de baixo do vertical vai para as colunas 6 a 10.
 const hpos = (k) => (k.row < 4 ? { r: k.row, c: k.col } : { r: k.row - 4, c: k.col + 5 });
+
+// Linhas de ligação das funções agrupadas (como impressas na HP 12C): posição no retrato (r, c0..c1) e na paisagem (hr, hc0..hc1)
+const BRACKETS = [
+  { label: 'BOND', r: 1, c0: 0, c1: 1, hr: 1, hc0: 0, hc1: 1 },
+  { label: 'DEPRECIATION', r: 1, c0: 2, c1: 4, hr: 1, hc0: 2, hc1: 4 },
+  { label: 'CLEAR', r: 2, c0: 1, c1: 4, hr: 2, hc0: 1, hc1: 5 },
+  { label: '', r: 6, c0: 0, c1: 0, hr: 2, hc0: 5, hc1: 5, cls: 'pfx' }, // PREFIX: no retrato tem a linha própria; na paisagem a linha do CLEAR já a cobre
+];
+
+function makeBracket(b) {
+  const el = document.createElement('span');
+  el.className = 'bracket' + (b.cls ? ' ' + b.cls : '');
+  el.setAttribute('aria-hidden', 'true');
+  for (const [k, v] of Object.entries({ r: b.r, c0: b.c0, c1: b.c1, hr: b.hr, hc0: b.hc0, hc1: b.hc1 })) el.style.setProperty('--' + k, v);
+  el.innerHTML = b.label ? `<i></i><b>${b.label}</b><i></i>` : '<i></i>';
+  return el;
+}
 
 function ariaLabel(k) {
   const parts = [k.label];
@@ -2450,6 +2842,7 @@ function mountApp(root, engine = new Engine()) {
   notice.hidden = true;
   notice.setAttribute('role', 'status');
   for (const k of KEYS) keys.append(makeKey(k));
+  for (const b of BRACKETS) keys.append(makeBracket(b));
   const top = document.createElement('div');
   top.className = 'top';
   const brand = document.createElement('div');
@@ -2469,7 +2862,7 @@ function mountApp(root, engine = new Engine()) {
     timer = setTimeout(() => (notice.hidden = true), NOTICE_MS);
   };
 
-  const ctx = { root, calc, top, display, keys, notice, engine, showNotice, listeners: [], vibrate: false };
+  const ctx = { root, calc, top, display, keys, notice, engine, showNotice, listeners: [], vibrate: false, sound: false, clickSound: makeClick() };
   ctx.render = () => {
     const s = engine.state;
     renderDisplay(display, s);
@@ -2481,28 +2874,25 @@ function mountApp(root, engine = new Engine()) {
     engine.setLocale(engine.locale === 'br' ? 'us' : 'br');
     ctx.render();
   });
-  // efeito do toque: realce só dentro da tecla, a partir de onde o dedo encostou
-  keys.addEventListener('pointerdown', (ev) => {
-    const b = ev.target.closest('button.key');
-    if (!b || !KEYS.find((x) => x.id === b.dataset.id)?.enabled) return;
-    const r = b.getBoundingClientRect();
-    b.style.setProperty('--tx', (((ev.clientX - r.left) / r.width) * 100).toFixed(1) + '%');
-    b.style.setProperty('--ty', (((ev.clientY - r.top) / r.height) * 100).toFixed(1) + '%');
+  // efeito do toque: realce só dentro da tecla, a partir de onde o dedo encostou (ou do centro, quando vem de um exemplo)
+  const tapFx = (b, x = 50, y = 50) => {
+    b.style.setProperty('--tx', x.toFixed(1) + '%');
+    b.style.setProperty('--ty', y.toFixed(1) + '%');
     b.classList.remove('touch');
     void b.offsetWidth;
     b.classList.add('touch');
     b.addEventListener('animationend', () => b.classList.remove('touch'), { once: true });
-  });
-  keys.addEventListener('click', (ev) => {
+  };
+  keys.addEventListener('pointerdown', (ev) => {
     const b = ev.target.closest('button.key');
-    if (!b) return;
-    const k = KEYS.find((x) => x.id === b.dataset.id);
-    if (!k.enabled) {
-      showNotice('Programação e estatística: não disponível nesta versão.');
-      return;
-    }
-    if (ctx.vibrate && navigator.vibrate) navigator.vibrate(8);
-    if (k.id === 'f' || k.id === 'g') {
+    if (!b || !KEYS.find((x) => x.id === b.dataset.id)?.enabled) return;
+    const r = b.getBoundingClientRect();
+    tapFx(b, ((ev.clientX - r.left) / r.width) * 100, ((ev.clientY - r.top) / r.height) * 100);
+  });
+  // aperta uma tecla do motor (usada pelo teclado da tela e pelos exemplos do verso)
+  ctx.pressKey = (id) => {
+    const b = keys.querySelector(`button.key[data-id="${id}"]`);
+    if (id === 'f' || id === 'g') {
       // brilho curto da tecla f/g; reinicia a animação a cada toque
       b.classList.remove('flash');
       void b.offsetWidth;
@@ -2510,7 +2900,7 @@ function mountApp(root, engine = new Engine()) {
       b.addEventListener('animationend', () => b.classList.remove('flash'), { once: true });
     }
     clearTimeout(ctx.pauseTimer); // qualquer tecla interrompe as pausas (PSE) em andamento
-    engine.press(k.id);
+    engine.press(id);
     ctx.render();
     const pauses = engine.takePauses();
     if (pauses.length) {
@@ -2524,6 +2914,60 @@ function mountApp(root, engine = new Engine()) {
       };
       step();
     }
+  };
+  ctx.tapFx = (id) => {
+    const b = keys.querySelector(`button.key[data-id="${id}"]`);
+    if (b) tapFx(b);
+  };
+  const haptic = (ms) => ctx.vibrate && navigator.vibrate && navigator.vibrate(ms);
+  // tecla ON: um toque abre/fecha as configurações; segurar abre/fecha o verso (guia de fórmulas)
+  const HOLD_MS = 500;
+  let holdTimer;
+  let held = false;
+  const onKey = keys.querySelector('button.key[data-id="on"]');
+  onKey.addEventListener('pointerdown', () => {
+    held = false;
+    clearTimeout(holdTimer);
+    holdTimer = setTimeout(() => {
+      held = true;
+      haptic(20);
+      ctx.verso.toggle();
+    }, HOLD_MS);
+  });
+  for (const t of ['pointerup', 'pointercancel', 'pointerleave']) onKey.addEventListener(t, () => clearTimeout(holdTimer));
+  onKey.addEventListener('contextmenu', (ev) => ev.preventDefault()); // o menu de "segurar" do celular não deve abrir
+  // rótulo da tecla ON: "≡" (menu) ou "ON"; sem o "OFF" impresso, já que a tecla agora abre as configurações
+  ctx.setOnStyle = (style) => {
+    const menu = style !== 'on';
+    onKey.querySelector('.lm').textContent = menu ? '≡' : 'ON';
+    onKey.querySelector('.lf').textContent = menu ? '' : 'OFF'; // no estilo ON mantém o rótulo impresso da HP
+    onKey.classList.toggle('menu-key', menu);
+    onKey.setAttribute('aria-label', (menu ? 'Menu' : 'ON') + ': toque para as configurações, segure para o verso');
+  };
+  ctx.setOnStyle('on');
+  ctx.onTap = () => {
+    if (ctx.verso.isOpen()) ctx.verso.close();
+    else ctx.settings.toggle();
+  };
+  keys.addEventListener('click', (ev) => {
+    const b = ev.target.closest('button.key');
+    if (!b) return;
+    const k = KEYS.find((x) => x.id === b.dataset.id);
+    if (k.id === 'on') {
+      if (held) held = false; // o segurar já abriu o verso; o clique que vem ao soltar não faz mais nada
+      else {
+        haptic(8);
+        ctx.onTap();
+      }
+      return;
+    }
+    if (!k.enabled) {
+      showNotice('Programação e estatística: não disponível nesta versão.');
+      return;
+    }
+    haptic(8);
+    if (ctx.sound) ctx.clickSound();
+    ctx.pressKey(k.id);
   });
   bindKeyboard(engine, ctx.render);
   ctx.drawer = mountDrawer(ctx);
@@ -2547,6 +2991,7 @@ function mountApp(root, engine = new Engine()) {
     motion = (await ctx.reflex?.enableMotion()) ?? false;
     return motion;
   };
+  ctx.verso = mountVerso(ctx);
   ctx.settings = mountSettings(ctx);
   ctx.listeners.push(() => saveState(engine)); // salvamento automático
   ctx.render();

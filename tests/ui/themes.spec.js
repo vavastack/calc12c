@@ -122,7 +122,7 @@ for (const [t, m] of [['retro', 'auto'], ['moderno', 'escuro'], ['moderno', 'cla
 test('configurações pela tela: escolher tema/modo/efeitos e vibração; a escolha fica salva', async () => {
   const app = await openApp(browser, server.url);
   const p = app.page;
-  await p.locator('.settings-btn').click();
+  await p.locator('.key[data-id="on"]').click();
   await p.locator('.settings select[name="theme"]').selectOption('moderno');
   await p.locator('.settings select[name="mode"]').selectOption('claro');
   await p.locator('.settings input[name="reduce"]').check();
@@ -146,7 +146,7 @@ test('em aparelho simples (≤ 4 núcleos) "reduzir efeitos" liga sozinho; a esc
   await page.goto(server.url + '/src/ui/index.html');
   await page.waitForSelector('button.key');
   assert.equal(await attr(page, 'data-reduce'), 'true');
-  await page.locator('.settings-btn').click();
+  await page.locator('.key[data-id="on"]').click();
   await page.locator('.settings input[name="reduce"]').uncheck();
   await page.reload();
   await page.waitForSelector('button.key');
@@ -167,9 +167,9 @@ test('configurações corrompidas no armazenamento caem nos padrões, sem erro',
 test('painel de configurações: cabeçalho, grupos, interruptores e botão fechar', async () => {
   const app = await openApp(browser, server.url);
   const p = app.page;
-  await p.locator('.settings-btn').click();
+  await p.locator('.key[data-id="on"]').click();
   assert.equal(await p.locator('.settings-title').innerText(), 'Configurações');
-  assert.deepEqual((await p.locator('.group-title').allTextContents()).map((t) => t.toLowerCase()), ['aparência', 'efeitos', 'brilho']);
+  assert.deepEqual((await p.locator('.group-title').allTextContents()).map((t) => t.toLowerCase()), ['aparência', 'números e teclas', 'tela', 'brilho', 'mais']);
   const w = await p.locator('input[name="vibrate"]').evaluate((e) => e.getBoundingClientRect().width);
   assert.ok(w >= 40, `interruptor largo o bastante para o toque (${w}px)`);
   await p.locator('input[name="vibrate"]').check();
@@ -184,7 +184,7 @@ test('painel de configurações: cabeçalho, grupos, interruptores e botão fech
 test('temas Gold, Platinum e Retro; modo claro/escuro só vale no Retro', async () => {
   const app = await openApp(browser, server.url);
   const p = app.page;
-  await p.locator('.settings-btn').click();
+  await p.locator('.key[data-id="on"]').click();
   assert.deepEqual(await p.locator('select[name="theme"] option').allTextContents(), ['Gold', 'Platinum', 'Retro']);
   assert.equal(await p.locator('select[name="theme"]').inputValue(), 'retro'); // padrão: Gold
   assert.equal(await p.locator('select[name="mode"]').isDisabled(), true);
@@ -259,7 +259,7 @@ test('trocar o tema pelas configurações usa transição suave (fusão) e chega
   const app = await openApp(browser, server.url);
   const p = app.page;
   await p.evaluate(() => { window.__vt = 0; const o = document.startViewTransition?.bind(document); if (o) document.startViewTransition = (f) => { window.__vt++; return o(f); }; });
-  await p.locator('.settings-btn').click();
+  await p.locator('.key[data-id="on"]').click();
   await p.locator('select[name="theme"]').selectOption('platinum');
   await p.waitForFunction(() => document.documentElement.getAttribute('data-theme') === 'platinum');
   assert.equal(await p.evaluate(() => window.__vt), 1);

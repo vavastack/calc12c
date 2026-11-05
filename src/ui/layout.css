@@ -6,7 +6,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
 /* ---- corpo da calculadora (o vidro fica só aqui e no visor) ---- */
 .calc { height: 100dvh; max-width: 560px; margin: 0 auto; display: grid;
   /* a borda da calculadora acompanha a área segura (notch, cantos, barra inferior) */
-  --pt: max(8px, env(safe-area-inset-top)); --pr: max(8px, env(safe-area-inset-right)); --pb: max(8px, env(safe-area-inset-bottom)); --pl: max(8px, env(safe-area-inset-left));
+  --pt: calc(max(8px, env(safe-area-inset-top)) + var(--top-extra, 0px)); --pr: max(8px, env(safe-area-inset-right)); --pb: max(8px, env(safe-area-inset-bottom)); --pl: max(8px, env(safe-area-inset-left));
   padding: var(--pt) var(--pr) var(--pb) var(--pl);
   grid-template-rows: auto 1fr; gap: 8px; background: var(--body); border: var(--edge-w, 1px) solid var(--edge); position: relative; isolation: isolate;
   -webkit-backdrop-filter: var(--glass); backdrop-filter: var(--glass);
@@ -145,10 +145,6 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
 .confirm p { margin: 0; flex: 1 1 100%; }
 
 /* ---- configurações ---- */
-.settings-btn { position: absolute; right: 2px; bottom: -4px; width: 26px; height: 22px; border: 0; background: transparent;
-  color: inherit; font-size: 15px; line-height: 1; opacity: .7; padding: 0; }
-.fs-btn { position: absolute; right: 30px; bottom: -4px; width: 26px; height: 22px; border: 0; background: transparent;
-  color: inherit; font-size: 15px; line-height: 1; opacity: .7; padding: 0; }
 .settings[hidden] { display: none; }
 .settings { position: absolute; left: 10px; right: 10px; top: 120px; max-height: calc(100% - 140px); overflow: auto; z-index: 5; display: grid; gap: 8px;
   padding: 10px 12px 12px; border-radius: 16px; background: var(--body-solid); color: var(--key-text);
@@ -188,8 +184,8 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
   .calc { --plate-h: 40px; }
   .brand { margin-left: calc(-1 * (var(--pl) + 238px)); padding: calc(var(--pt) + 4px) calc(var(--pr) + 14px) 6px calc(var(--pl) + 14px); margin-bottom: 8px; }
   .brand .title { font-size: 18px; }
-  .brand .badge { width: 44px; height: 44px; padding: 2px; gap: 2px; }
-  .brand .badge .model { font-size: 9px; padding: 2px 0 1px; }
+  .brand .badge { width: 40px; height: 36px; padding: 2px; gap: 2px; }
+  .brand .badge .model { font-size: 8px; padding: 1px 0; }
   .display { min-height: 60px; padding: 4px 14px; }
   .digits { font-size: 34px; }
   .indicators { font-size: 10px; }
@@ -240,3 +236,56 @@ html:not([data-theme^="moderno"]) .display { border: 4px solid transparent;
 
 /* troca de tema: fusão suave entre o visual antigo e o novo */
 ::view-transition-old(root), ::view-transition-new(root) { animation-duration: .5s; animation-timing-function: ease-in-out; }
+
+/* ---- tecla ON como menu (≡) ---- */
+.key.menu-key .lm { font-size: clamp(22px, 3.4dvh, 28px); font-weight: 400; }
+.key[data-id="on"] { -webkit-touch-callout: none; }
+
+/* ---- linhas de ligação das funções agrupadas (BOND, DEPRECIATION, CLEAR, PREFIX) ---- */
+.bracket { grid-row: calc(var(--r) + 1); grid-column: calc(var(--c0) + 1) / calc(var(--c1) + 2); align-self: start; z-index: 2;
+  display: flex; align-items: flex-start; height: 11px; margin: -9px 4px 0; pointer-events: none; color: var(--gold); }
+.bracket i { flex: 1; height: 6px; margin-top: 5px; border-top: 1px solid currentColor; opacity: .85; }
+.bracket i:first-child { border-left: 1px solid currentColor; }
+.bracket i:last-child { border-right: 1px solid currentColor; }
+.bracket b { flex: none; padding: 0 5px; font-size: 8.5px; line-height: 11px; font-weight: 700; letter-spacing: .05em; }
+@media (orientation: landscape) {
+  .bracket { grid-row: calc(var(--hr) + 1); grid-column: calc(var(--hc0) + 1) / calc(var(--hc1) + 2); height: 9px; margin: -7px 3px 0; }
+  .bracket i { height: 5px; margin-top: 4px; }
+  .bracket b { font-size: 7.5px; line-height: 9px; padding: 0 4px; }
+  .bracket.pfx { display: none; }
+}
+
+/* ---- verso: guia de fórmulas ---- */
+.verso[hidden] { display: none; }
+.verso { position: absolute; inset: 0; z-index: 9; overflow: auto; padding: calc(var(--pt) + 8px) calc(var(--pr) + 6px) calc(var(--pb) + 8px) calc(var(--pl) + 6px);
+  background: var(--body-solid); color: var(--key-text); display: grid; gap: 8px; align-content: start; transform-origin: center; }
+.verso.flip { animation: verso-in .45s ease-out; }
+@keyframes verso-in { from { transform: perspective(900px) rotateY(-80deg); opacity: .2; } to { transform: perspective(900px) rotateY(0); opacity: 1; } }
+[data-reduce="true"] .verso.flip { animation: none; }
+@media (prefers-reduced-motion: reduce) { .verso.flip { animation: none; } }
+.verso-head { display: flex; justify-content: space-between; align-items: center; }
+.verso-title { font-size: 15px; font-weight: 700; color: var(--brand); letter-spacing: .03em; }
+.verso-close { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--key-border); background: var(--key-flat); color: inherit; font-size: 12px; padding: 0; }
+.verso-hint { margin: 0; font-size: 11px; line-height: 1.35; color: var(--sub); }
+.v-sec { display: grid; grid-template-columns: 22px 1fr; gap: 8px; border: 1px solid var(--key-border); border-radius: 8px; padding: 8px 8px 8px 4px; }
+.v-tag { writing-mode: vertical-rl; transform: rotate(180deg); text-align: center; font-size: 10px; font-weight: 800; letter-spacing: .14em; color: var(--gold); align-self: stretch; }
+.v-body { display: grid; gap: 8px; min-width: 0; }
+.v-body h3 { margin: 0; font-size: 13px; font-weight: 700; }
+.v-item h4 { margin: 0 0 1px; font-size: 12px; font-weight: 600; }
+.v-item p { margin: 0 0 4px; font-size: 10.5px; color: var(--sub); line-height: 1.3; }
+.variant { display: grid; grid-template-columns: 1fr auto; gap: 3px 8px; align-items: center; padding: 5px 0; border-top: 1px solid var(--key-border); }
+.v-label { grid-column: 1 / -1; font-size: 10px; font-weight: 600; color: var(--sub); }
+.chips { display: flex; flex-wrap: wrap; gap: 3px; min-width: 0; }
+.chip { font-size: 10.5px; line-height: 1; padding: 4px 5px; border-radius: 3px; background: var(--key-flat); border: 1px solid var(--key-border); white-space: nowrap; }
+.chip.f { color: var(--gold); border-color: var(--gold); }
+.chip.g { color: var(--blue); border-color: var(--blue); }
+.chip.num { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+.run, .mini { font: inherit; font-size: 11.5px; font-weight: 600; min-height: 30px; padding: 0 12px; border-radius: 9px; cursor: pointer;
+  background: var(--keyg-bg); border: 1px solid var(--keyg-border); color: var(--keyg-text); box-shadow: var(--keyg-shadow); }
+.run:disabled { opacity: .45; cursor: default; }
+.run:active:not(:disabled), .mini:active { filter: brightness(1.15); }
+.sigma-map { display: grid; grid-template-columns: repeat(3, auto 14px auto); gap: 4px 6px; align-items: center; font-size: 12px; }
+.sg { font-weight: 600; text-align: right; } .ar { opacity: .6; text-align: center; } .sr { font-family: ui-monospace, monospace; }
+.settings input[type="range"] { flex: none; width: 110px; accent-color: var(--gold); }
+@media (orientation: landscape) { .verso { left: 0; right: 0; } .sigma-map { grid-template-columns: repeat(6, auto 14px auto); } }
+.v-tag.sigma-tag { writing-mode: horizontal-tb; transform: none; font-size: 16px; letter-spacing: 0; }
