@@ -21,7 +21,8 @@ test('o nome do arquivo leva a data e o conteúdo é um JSON identificável', ()
   assert.equal(name, 'calc12c-memorias-2026-11-05.json');
   const o = JSON.parse(text);
   assert.equal(o.tipo, MEM_KIND);
-  assert.equal(o.versao, 1);
+  assert.equal(o.versao, 2);
+  assert.equal(o.perfil, '12c');
   assert.equal(o.criado, NOW.toISOString());
 });
 

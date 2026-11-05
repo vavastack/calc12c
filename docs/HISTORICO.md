@@ -20,12 +20,17 @@ Complementa o `HANDOFF.md`: aqui ficam o caminho percorrido, as decisões do Wan
 
 12. **Ordem e diferenciação (05/11/2026, 10:34):** a 16C sobe para V3.1; Black-Scholes V3.2; 10C/11C V3.3; 15C V3.4. Nome do modelo no topo; indicador RPN/ALG só na 12C; todos os perfis fiéis ao manual oficial, inclusive o ALG da Platinum.
 
+13. **V3.0 (05/11/2026):** arquitetura de perfis (registro em `profiles.js`, estado salvo por perfil, memórias versão 2 com perfil, verso por perfil, seletor em Configurações > Calculadora) e modo ALG da 12C Platinum. A 12C dele é a **clássica**, então o ALG foi conferido só pelos exemplos do manual da Platinum (cadeia 456 − 75 ÷ 18,5 × 68 ÷ 1,9 = 737,07, 21,1 + 23,8 = 44,90, −75 × 7,1 = −532,50, Δ% 35,5 → 31,25 = −11,97, 200 − 25 % = 150, 8 ÷ 5 − 1 = 0,60). Descobertas do manual: f CHS = RPN e f EEX = ALG; "(" e ")" ficam em g STO e g RCL; no máximo 13 parênteses; o ALG da Platinum calcula sem hierarquia. Os exemplos do verso passaram a rodar em RPN mesmo com o ALG ligado.
+
+14. **Clássica x Platinum e modo desenvolvedor (05/11/2026):** ele quis a Platinum como perfil próprio (título "Platinum" com "12c" menor embaixo, à esquerda) e temas fiéis à máquina: Gold só na clássica, Platinum só na Platinum, Retro nos dois. Para quem quiser misturar, criou-se um **modo desenvolvedor** ativado por cliques (7 toques na versão), que libera o editor de cores e todos os temas em qualquer modelo. Por padrão os dois modelos são distintos.
+
 ## 2. Decisões do Wanderson (valem daqui para frente)
 - Seguir o nosso layout, não o do Touch RPN; copiar só as linhas de ligação das fórmulas.
 - Toque na ON = configurações; segurar = verso. ON sempre escrito "ON" por padrão.
 - Som padrão desligado; opções Suave e Mecânico (ele prefere o mecânico).
 - 12C completa é a V2. Depois: V1.2, perfis e outras calculadoras (V3).
-- ALG (modo algébrico) fica para a V3, como mais uma opção de cálculo; a V2 é só RPN.
+- ALG (modo algébrico) entrou na V3.0 só no perfil 12C Platinum (f EEX liga, f CHS volta ao RPN); RPN continua o padrão. A clássica não tem ALG.
+- Temas fiéis por modelo por padrão; modo desenvolvedor (7 toques na versão) libera cores e todos os temas. A 12C dele é a clássica (não confere o ALG na máquina).
 - Quer incluir a aprendizagem de programação da calculadora quando o app estiver estável (V2.1).
 - App completo: todos os modelos da família, com ênfase no que importa agora (finanças). Integração com o Pista só mais à frente (link de acesso ou motor adaptado, a definir).
 - Responder sempre em português; autorização antes de instalar programas ou mexer no PC; chaves de API ele digita; não aceitar compartilhamento de dados.
@@ -44,5 +49,8 @@ Complementa o `HANDOFF.md`: aqui ficam o caminho percorrido, as decisões do Wan
 - INT 30 dias, 7%, 450: 2,63 (360) / 452,63; 2,59 (365) / 452,59.
 - PV, n, i, FV: conferidos pelo Wanderson na HP real.
 
+## 4b. Escopo da Platinum (fechado antes da V3.1)
+400 linhas de programa com número de linha e GTO de 3 dígitos, 30 fluxos CFj, registradores .0-.9, Backspace (g −) e Undo (g ÷) com o indicador UNDO, f CLEAR PRGM em RUN mantendo a linha. Limites por perfil em `profiles.js`. 314 testes do motor e 122 de interface.
+
 ## 5. Próximos passos
-V2 fechada. Ver `docs/HANDOFF.md`: V2.1 (aprendizagem de programação), V1.2 e V3 (perfis e ALG).
+V3.0 fechada. Ver `docs/HANDOFF.md`: V3.1 (HP-16C), V3.2 (Black-Scholes), V3.3 (10C e 11C), V3.4 (15C), V3.5 (manual próprio).

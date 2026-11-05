@@ -2,11 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Engine } from '../../src/engine/engine.js';
 import { KEY_BY_ID } from '../../src/engine/keymap.js';
-import { VERSO, fullKeys } from '../../src/ui/verso-data.js';
+import { VERSO, VERSO_BY_PROFILE, fullKeys } from '../../src/ui/verso-data.js';
 import { chipsOf, expandKeys } from '../../src/ui/verso.js';
 
-const run = (keys) => {
-  const e = new Engine();
+const run = (keys, profile = '12cp') => {
+  const e = new Engine({ profile });
   for (const id of expandKeys(keys)) e.press(id);
   return e.state.display;
 };
@@ -34,6 +34,14 @@ const ESPERADO = {
   'depr-1|Linha reta': '1.900,00',
   'depr-1|Soma dos dígitos': '3.166,67',
   'depr-1|Saldo decrescente': '2.500,00',
+  'alg-soma|Soma': '44,90',
+  'alg-cadeia|Cadeia': '737,07',
+  'alg-cadeia|Sem hierarquia · 1 + 2 × 3': '9,00',
+  'alg-paren|Sem parênteses': '0,60',
+  'alg-paren|Com parênteses': '2,00',
+  'alg-pct|25% de 200': '50,00',
+  'alg-pct|200 reduzido em 25%': '150,00',
+  'alg-delta|Δ%': '-11,97',
   'prog-dobro|Gravar': '0,00',
   'prog-dobro|Rodar com 5': '10,00',
   'prog-dobro|Linha 1 (SST)': '2',
@@ -50,20 +58,29 @@ const ESPERADO = {
   'prog-soma|Rodar com 100': '5.050,00',
 };
 
-test('verso: todo exemplo pronto dá o resultado esperado, e só os prontos estão na tabela', () => {
-  const vistos = new Set();
-  for (const g of VERSO) {
-    for (const it of g.items) {
-      for (const v of it.variants) {
-        if (!it.ready) continue;
-        const chave = `${it.id}|${v.label}`;
-        assert.ok(chave in ESPERADO, `exemplo sem resultado esperado: ${chave}`);
-        assert.equal(run(fullKeys(it, v)), ESPERADO[chave], chave);
-        vistos.add(chave);
+test('verso: todo exemplo pronto dá o resultado esperado nos dois perfis, e só os prontos estão na tabela', () => {
+  for (const profile of ['12c', '12cp']) {
+    const vistos = new Set();
+    for (const g of VERSO_BY_PROFILE[profile].sections) {
+      for (const it of g.items) {
+        for (const v of it.variants) {
+          if (!it.ready) continue;
+          const chave = `${it.id}|${v.label}`;
+          assert.ok(chave in ESPERADO, `exemplo sem resultado esperado: ${chave}`);
+          assert.equal(run(fullKeys(it, v), profile), ESPERADO[chave], `${profile} ${chave}`);
+          vistos.add(chave);
+        }
       }
     }
+    const esperadas = Object.keys(ESPERADO).filter((k) => profile === '12cp' || !k.startsWith('alg-'));
+    assert.deepEqual([...vistos].sort(), esperadas.sort(), profile);
   }
-  assert.deepEqual([...vistos].sort(), Object.keys(ESPERADO).sort());
+});
+
+test('verso: a clássica não tem o grupo ALG e a Platinum tem todos', () => {
+  assert.equal(VERSO_BY_PROFILE['12c'].sections.some((g) => g.id === 'alg'), false);
+  assert.equal(VERSO_BY_PROFILE['12cp'].sections.some((g) => g.id === 'alg'), true);
+  assert.equal(VERSO_BY_PROFILE['12cp'].sections.length, VERSO.length);
 });
 
 test('verso: toda tecla citada existe, inclusive nos exemplos "em breve"', () => {

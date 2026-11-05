@@ -1,4 +1,4 @@
-// Mapa único do teclado (39 teclas). Posição no layout vertical: 5 colunas × 8 linhas.
+// Mapa do teclado da HP 12C clássica (39 teclas). A Platinum usa as mesmas teclas e acrescenta rótulos (KEYS_PLATINUM). Posição no layout vertical: 5 colunas × 8 linhas.
 // Metade de cima = colunas 1 a 5 da HP 12C original; metade de baixo = colunas 6 a 10.
 // `f` (dourado) e `g` (azul) são os rótulos oficiais; `enabled:false` = fora do escopo (PRGM, estatística).
 const k = (id, label, f, g, row, col, extra = {}) => ({ id, label, f, g, row, col, enabled: true, ...extra });
@@ -53,3 +53,8 @@ export const KEYS = [
 ];
 
 export const KEY_BY_ID = new Map(KEYS.map((x) => [x.id, x]));
+
+// 12C Platinum: f CHS = RPN, f EEX = ALG, g STO = "(" e g RCL = ")", g − = ← (Backspace), g ÷ = Undo.
+const PLATINUM_LABELS = { chs: { f: 'RPN' }, eex: { f: 'ALG' }, sto: { g: '(' }, rcl: { g: ')' }, minus: { g: '←' }, divide: { g: 'UNDO' } };
+export const KEYS_PLATINUM = KEYS.map((x) => ({ ...x, ...PLATINUM_LABELS[x.id] }));
+export const KEY_BY_ID_PLATINUM = new Map(KEYS_PLATINUM.map((x) => [x.id, x]));

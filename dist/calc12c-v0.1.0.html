@@ -151,6 +151,10 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
   border-bottom: 1px solid var(--plate-edge);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 1px 0 var(--engrave-hi), 0 3px 6px rgba(0,0,0,.28); }
 .brand .name { display: grid; gap: 2px; line-height: 1; }
+/* perfis com título em duas linhas (Platinum): o nome do modelo, menor, embaixo e à esquerda */
+.brand .title.two { display: grid; gap: 1px; }
+.brand .title.two .l1 { font-size: 1em; line-height: .95; }
+.brand .title.two .l2 { font-size: .52em; font-weight: 800; letter-spacing: .32em; line-height: 1; text-align: left; padding-left: .1em; }
 .brand .title { font-size: 25px; font-weight: 800; letter-spacing: .02em; color: var(--plate-ink); white-space: nowrap;
   text-shadow: 0 1px 0 var(--engrave-hi), 0 -1px 0 var(--engrave-lo); }
 .brand .rule { flex: 1; height: 2px; border-radius: 1px; background: var(--plate-ink); opacity: .75;
@@ -175,8 +179,11 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
   box-shadow: var(--display-shadow), 0 0 0 3px var(--display-bezel, #000), 0 0 0 4px #ffffff12;
   display: grid; grid-template-rows: auto 1fr auto; gap: 2px; }
 .indicators { display: flex; gap: 10px; font-size: 11px; font-weight: 700; align-items: center; }
-.indicators [data-ind] { color: var(--ind-off); }
+.indicators [data-ind] { color: var(--ind-off); white-space: nowrap; }
 .indicators [data-ind].on { color: var(--ind-on); }
+/* com RPN, ALG, ( ) e UNDO são onze indicadores: em telas estreitas encolhem para caber sem rolagem lateral */
+@media (max-width: 420px) { .indicators { gap: 4px; font-size: 9px; } .fmt-toggle { padding: 1px 6px; } }
+@media (max-width: 350px) { .indicators { gap: 3px; font-size: 8px; } .fmt-toggle { font-size: 8px; padding: 0 3px; } .display { padding-left: 10px; padding-right: 10px; } }
 .fmt-toggle { margin-left: auto; font: inherit; font-size: 11px; border: 1px solid currentColor; background: transparent;
   color: inherit; border-radius: 8px; padding: 1px 8px; opacity: .7; }
 .digits { font-family: "Share Tech Mono", ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 1px; font-size: 44px; text-align: right; white-space: nowrap;
@@ -428,6 +435,7 @@ html:not([data-theme^="moderno"]) .display { border: 4px solid transparent;
 .settings input[type="range"] { flex: none; width: 110px; accent-color: var(--gold); }
 @media (orientation: landscape) { .verso { left: 0; right: 0; } .sigma-map { grid-template-columns: repeat(6, auto 14px auto); } }
 .v-tag.sigma-tag { writing-mode: horizontal-tb; transform: none; font-size: 16px; letter-spacing: 0; }
+.settings .group[hidden] { display: none; } /* grupos que só aparecem no modo desenvolvedor */
 
 </style>
 </head>
@@ -435,7 +443,7 @@ html:not([data-theme^="moderno"]) .display { border: 4px solid transparent;
 <div id="app"></div>
 <script>
 const __m_keymap = (() => {
-// Mapa único do teclado (39 teclas). Posição no layout vertical: 5 colunas × 8 linhas.
+// Mapa do teclado da HP 12C clássica (39 teclas). A Platinum usa as mesmas teclas e acrescenta rótulos (KEYS_PLATINUM). Posição no layout vertical: 5 colunas × 8 linhas.
 // Metade de cima = colunas 1 a 5 da HP 12C original; metade de baixo = colunas 6 a 10.
 // `f` (dourado) e `g` (azul) são os rótulos oficiais; `enabled:false` = fora do escopo (PRGM, estatística).
 const k = (id, label, f, g, row, col, extra = {}) => ({ id, label, f, g, row, col, enabled: true, ...extra });
@@ -491,7 +499,170 @@ const KEYS = [
 
 const KEY_BY_ID = new Map(KEYS.map((x) => [x.id, x]));
 
-return { KEYS, KEY_BY_ID };
+// 12C Platinum: f CHS = RPN, f EEX = ALG, g STO = "(" e g RCL = ")", g − = ← (Backspace), g ÷ = Undo.
+const PLATINUM_LABELS = { chs: { f: 'RPN' }, eex: { f: 'ALG' }, sto: { g: '(' }, rcl: { g: ')' }, minus: { g: '←' }, divide: { g: 'UNDO' } };
+const KEYS_PLATINUM = KEYS.map((x) => ({ ...x, ...PLATINUM_LABELS[x.id] }));
+const KEY_BY_ID_PLATINUM = new Map(KEYS_PLATINUM.map((x) => [x.id, x]));
+
+return { KEYS, KEY_BY_ID, KEYS_PLATINUM, KEY_BY_ID_PLATINUM };
+})();
+
+const __m_profiles = (() => {
+// Perfis de calculadora. Cada perfil define o que muda de um modelo para outro: identidade, mapa de teclas,
+// modos de cálculo, indicadores do visor e as linhas de ligação (colchetes) do teclado.
+// O motor (engine.js) consulta o perfil pelo id; a interface monta o teclado a partir dele.
+const { KEYS, KEY_BY_ID, KEYS_PLATINUM, KEY_BY_ID_PLATINUM } = __m_keymap;
+
+const DEFAULT_PROFILE = '12c';
+
+// Colchetes impressos acima das teclas: posição no retrato (r, c0..c1) e na paisagem (hr, hc0..hc1)
+const BRACKETS_12C = [
+  { label: 'BOND', r: 1, c0: 0, c1: 1, hr: 1, hc0: 0, hc1: 1 },
+  { label: 'DEPRECIATION', r: 1, c0: 2, c1: 4, hr: 1, hc0: 2, hc1: 4 },
+  { label: 'CLEAR', r: 2, c0: 1, c1: 4, hr: 2, hc0: 1, hc1: 5 },
+  { label: '', r: 6, c0: 0, c1: 0, hr: 2, hc0: 5, hc1: 5, cls: 'pfx' }, // PREFIX: no retrato tem a linha própria; na paisagem a do CLEAR já a cobre
+];
+
+// Limites e comportamentos que variam entre os modelos (a clássica é o padrão):
+// maxLines = linhas de programa; maxFlows = fluxos CFj além do CFo; regCount = registradores (10 = R0-R9, 20 = + .0-.9);
+// undo = teclas g ← (Backspace) e g Undo; clearPrgmKeepsPc = f CLEAR PRGM em RUN não leva à linha 00.
+const LIMITS_12C = { maxLines: 99, maxFlows: 20, regCount: 10, undo: false, clearPrgmKeepsPc: false };
+
+const PROFILES = new Map();
+
+// Temas: 'retro' = Gold, 'platinum' = prata, 'moderno' = Retro (vidro). Cada perfil só mostra os seus (Gold na clássica,
+// Platinum na Platinum) e o Retro vale para todos; o modo desenvolvedor libera todos em qualquer perfil.
+const ALL_THEMES = ['retro', 'platinum', 'moderno'];
+
+// Perfil: { id, name (título no topo), title (opcional: duas linhas), label (nome na lista), model (selo), keys, keyById,
+//   modes, defaultMode, indicators, brackets, themes, defaultTheme }
+function registerProfile(p) {
+  for (const f of ['id', 'name', 'model', 'keys', 'keyById', 'modes', 'indicators', 'brackets', 'themes', 'defaultTheme']) {
+    if (p[f] === undefined) throw new Error(`perfil sem ${f}`);
+  }
+  PROFILES.set(p.id, { defaultMode: p.modes[0], label: p.name, ...LIMITS_12C, ...p });
+}
+
+function hasProfile(id) {
+  return PROFILES.has(id);
+}
+
+function getProfile(id) {
+  const p = PROFILES.get(id);
+  if (!p) throw new Error('perfil desconhecido: ' + id);
+  return p;
+}
+
+function listProfiles() {
+  return [...PROFILES.values()];
+}
+
+// Temas que o perfil oferece (todos, no modo desenvolvedor).
+function allowedThemes(id, dev = false) {
+  return dev ? [...ALL_THEMES] : [...getProfile(id).themes];
+}
+
+// Tema que vale de fato: a escolha da pessoa, se o perfil a oferece; senão o tema padrão do perfil.
+function themeFor(id, chosen, dev = false) {
+  return allowedThemes(id, dev).includes(chosen) ? chosen : getProfile(id).defaultTheme;
+}
+
+const INDICATORS_CLASSIC = ['f', 'g', 'BEGIN', 'D.MY', 'C', 'USER', 'PRGM'];
+
+// HP 12C clássica: só RPN, placa dourada.
+registerProfile({
+  id: '12c',
+  name: 'Calc 12c',
+  label: 'Calc 12c (clássica)',
+  model: '12C',
+  keys: KEYS,
+  keyById: KEY_BY_ID,
+  modes: ['rpn'],
+  indicators: INDICATORS_CLASSIC,
+  brackets: BRACKETS_12C,
+  themes: ['retro', 'moderno'],
+  defaultTheme: 'retro',
+});
+
+// HP 12C Platinum: RPN e ALG, placa prateada, título "Platinum" com "12c" embaixo.
+registerProfile({
+  id: '12cp',
+  name: 'Calc 12c Platinum',
+  label: 'Calc 12c Platinum',
+  title: ['Platinum', '12c'],
+  model: '12C',
+  keys: KEYS_PLATINUM,
+  keyById: KEY_BY_ID_PLATINUM,
+  modes: ['rpn', 'alg'],
+  indicators: ['RPN', 'ALG', '( )', 'UNDO', ...INDICATORS_CLASSIC],
+  maxLines: 400,
+  maxFlows: 30,
+  regCount: 20,
+  undo: true,
+  clearPrgmKeepsPc: true,
+  brackets: BRACKETS_12C,
+  themes: ['platinum', 'moderno'],
+  defaultTheme: 'platinum',
+});
+
+return { DEFAULT_PROFILE, ALL_THEMES, registerProfile, hasProfile, getProfile, listProfiles, allowedThemes, themeFor };
+})();
+
+const __m_alg = (() => {
+// Modo ALG da HP 12C Platinum (Apêndice B do manual): as operações são feitas na ordem em que são digitadas,
+// da esquerda para a direita, sem hierarquia (1 + 2 × 3 = 9). ENTER faz o papel de "=" e fecha os parênteses.
+// Este módulo guarda só o estado das operações pendentes; quem calcula e mexe na pilha é o engine.js.
+const MAX_PARENS = 13; // parênteses abertos ao mesmo tempo (manual, p. 26)
+
+class AlgState {
+  constructor() {
+    this.lastResult = 0; // último resultado concluído (alimenta a pilha de histórico)
+    this.fresh = false; // a última tecla foi um operador ou "(": o próximo número começa do zero
+    this.wasFresh = false; // valor de `fresh` antes da tecla que está sendo tratada
+    this.clxPrev = false; // a tecla anterior foi CLx
+    this.wasClx = false;
+    this.clearPending();
+  }
+
+  // Cada nível (o principal e um por parêntese aberto) guarda o acumulado e o operador esperando o próximo número.
+  clearPending() {
+    this.frames = [{ acc: null, op: null }];
+    this.fresh = false;
+  }
+
+  get depth() {
+    return this.frames.length - 1;
+  }
+
+  get top() {
+    return this.frames[this.frames.length - 1];
+  }
+
+  // Há algo a calcular quando o ENTER for apertado?
+  get pending() {
+    return this.depth > 0 || this.top.op !== null;
+  }
+
+  toJSON() {
+    return { frames: this.frames.map((f) => ({ ...f })), lastResult: this.lastResult };
+  }
+
+  static valid(o) {
+    const num = (v) => typeof v === 'number' && Number.isFinite(v);
+    return !!o && typeof o === 'object' && num(o.lastResult) && Array.isArray(o.frames) && o.frames.length >= 1 &&
+      o.frames.length <= MAX_PARENS + 1 &&
+      o.frames.every((f) => f && (f.acc === null || num(f.acc)) && (f.op === null || ['plus', 'minus', 'times', 'divide', 'yx'].includes(f.op)));
+  }
+
+  static fromJSON(o) {
+    const a = new AlgState();
+    a.frames = o.frames.map((f) => ({ acc: f.acc, op: f.op }));
+    a.lastResult = o.lastResult;
+    return a;
+  }
+}
+
+return { MAX_PARENS, AlgState };
 })();
 
 const __m_stack = (() => {
@@ -760,14 +931,18 @@ return { ERRORS, CalcError };
 const __m_registers = (() => {
 const { CalcError } = __m_errors;
 
-// Registradores de armazenamento R0 a R9.
+// Registradores de armazenamento: R0 a R9 e, na Platinum, também .0 a .9 (índices 10 a 19).
 class Registers {
-  constructor() {
-    this._r = new Array(10).fill(0);
+  constructor(count = 10) {
+    this._r = new Array(count).fill(0);
+  }
+
+  get size() {
+    return this._r.length;
   }
 
   _check(n) {
-    if (!Number.isInteger(n) || n < 0 || n > 9) throw new CalcError(6);
+    if (!Number.isInteger(n) || n < 0 || n >= this._r.length) throw new CalcError(6);
   }
 
   store(n, v) {
@@ -936,11 +1111,12 @@ const { CalcError } = __m_errors;
 const { firstRoot, POS, NEG } = __m_tvm;
 
 // Fluxos de caixa da HP 12C: CFo + até 20 fluxos CFj, cada um repetido Nj vezes (1 a 99).
-const MAX_FLOWS = 20;
+const MAX_FLOWS = 20; // padrão (clássica); a Platinum aceita 30
 const MAX_NJ = 99;
 
 class CashFlows {
-  constructor() {
+  constructor(maxFlows = MAX_FLOWS) {
+    this.max = maxFlows;
     this.cf0 = 0;
     this.flows = []; // { amt, nj }
   }
@@ -951,7 +1127,7 @@ class CashFlows {
   }
 
   addFlow(x) {
-    if (this.flows.length >= MAX_FLOWS) throw new CalcError(6);
+    if (this.flows.length >= this.max) throw new CalcError(6);
     this.flows.push({ amt: x, nj: 1 });
   }
 
@@ -1012,14 +1188,14 @@ class CashFlows {
     return { cf0: this.cf0, flows: this.flows.map((f) => ({ amt: f.amt, nj: f.nj })) };
   }
 
-  static valid(o) {
+  static valid(o, max = MAX_FLOWS) {
     const num = (v) => typeof v === 'number' && Number.isFinite(v);
-    return !!o && num(o.cf0) && Array.isArray(o.flows) && o.flows.length <= MAX_FLOWS
+    return !!o && num(o.cf0) && Array.isArray(o.flows) && o.flows.length <= max
       && o.flows.every((f) => f && num(f.amt) && Number.isInteger(f.nj) && f.nj >= 1 && f.nj <= MAX_NJ);
   }
 
-  static fromJSON(o) {
-    const c = new CashFlows();
+  static fromJSON(o, max = MAX_FLOWS) {
+    const c = new CashFlows(max);
     c.cf0 = o.cf0;
     c.flows = o.flows.map((f) => ({ amt: f.amt, nj: f.nj }));
     return c;
@@ -1384,7 +1560,22 @@ function applyOp(stack, op) {
   throw new Error('operação desconhecida: ' + op);
 }
 
-return { applyOp };
+// Operação de dois números (y op x) sem tocar na pilha: usada pelo modo ALG. op: plus, minus, times, divide, yx.
+function compute(op, y, x) {
+  if (!BINARY[op]) throw new Error('operação desconhecida: ' + op);
+  return fin(BINARY[op](y, x));
+}
+
+// y% de x quando há uma operação pendente (ALG): a base é o primeiro operando.
+function percentOf(base, pct) {
+  return fin((base * pct) / 100);
+}
+
+function divide100(x) {
+  return fin(x / 100);
+}
+
+return { applyOp, compute, percentOf, divide100 };
 })();
 
 const __m_program = (() => {
@@ -1392,7 +1583,7 @@ const { KEY_BY_ID } = __m_keymap;
 
 // Códigos de tecla da HP 12C: linha (1 a 4, de cima) e posição na linha (1 a 9; 0 = décima), como no manual.
 // Dígitos têm como código o próprio dígito. O teclado vertical (5×8) é a HP original (4×10) dobrada ao meio.
-const MAX_LINES = 99;
+const MAX_LINES = 99; // padrão (clássica); a Platinum tem 400 (profiles.js)
 
 function keyCode(id) {
   if (/^[0-9]$/.test(id)) return Number(id);
@@ -1405,15 +1596,16 @@ function keyCode(id) {
 const OP_CODE = { plus: 40, minus: 30, times: 20, divide: 10 };
 
 // Linha de programa: { s: null|'f'|'g', id, arg?, op? }
-function lineCodes(line) {
-  if (!line) return ['43', '33', '00']; // linha vazia = GTO 00
+function lineCodes(line, width = 2) {
+  if (!line) return ['43', '33', '0'.repeat(width)]; // linha vazia = GTO 00
   if (line.id === 'sto' || line.id === 'rcl') {
     const out = [line.id === 'sto' ? 44 : 45];
     if (line.op) out.push(OP_CODE[line.op]);
-    out.push(/^[0-9]$/.test(line.arg) ? line.arg : keyCode(line.arg));
+    if (/^\.[0-9]$/.test(line.arg)) out.push(48, line.arg[1]); // registrador .d: código da tecla "." (48) e o dígito
+    else out.push(/^[0-9]$/.test(line.arg) ? line.arg : keyCode(line.arg));
     return out.map(String);
   }
-  if (line.s === 'g' && line.id === 'rdown') return ['43', '33', String(line.arg ?? '00')];
+  if (line.s === 'g' && line.id === 'rdown') return ['43', '33', String(line.arg ?? '0'.repeat(width))];
   const out = [];
   if (line.s === 'f') out.push(42);
   if (line.s === 'g') out.push(43);
@@ -1421,10 +1613,10 @@ function lineCodes(line) {
   return out.map(String);
 }
 
-function lineText(n, line) {
-  const nn = String(n).padStart(2, '0');
+function lineText(n, line, width = 2) {
+  const nn = String(n).padStart(width, '0');
   if (n === 0) return nn + '–';
-  const c = lineCodes(line);
+  const c = lineCodes(line, width);
   const body = c[0] === '43' && c[1] === '33' ? `43, 33 ${c[2]}` : c.join(' ');
   return `${nn}–  ${body}`;
 }
@@ -1432,7 +1624,7 @@ function lineText(n, line) {
 // Linhas e registradores mostrados por g MEM: a memória cresce de 7 em 7 linhas (cada 7 linhas = 1 registrador).
 function memoryText(count) {
   const lines = count <= 8 ? 8 : 8 + 7 * Math.ceil((count - 8) / 7);
-  const regs = 20 - (lines - 8) / 7;
+  const regs = Math.max(0, 20 - (lines - 8) / 7);
   return `P-${String(lines).padStart(2, '0')} r-${String(regs).padStart(2, '0')}`;
 }
 
@@ -1514,17 +1706,18 @@ return { accumulate, means, deviations, weightedMean, estimateY, estimateX, rnd 
 })();
 
 const __m_engine = (() => {
-const { KEY_BY_ID } = __m_keymap;
+const { getProfile, hasProfile, DEFAULT_PROFILE } = __m_profiles;
+const { AlgState, MAX_PARENS } = __m_alg;
 const { Stack } = __m_stack;
 const { Registers } = __m_registers;
 const { CashFlows } = __m_cashflow;
 const { amortize, roundDec } = __m_amort;
 const { sl, soyd, db } = __m_depreciation;
 const { bondPrice, bondYield } = __m_bonds;
-const { applyOp } = __m_math;
+const { applyOp, compute, percentOf, divide100 } = __m_math;
 const { solve, simpleInterest } = __m_tvm;
 const { CalcError } = __m_errors;
-const { MAX_LINES, lineText, memoryText, validLine } = __m_program;
+const { lineText, memoryText, validLine } = __m_program;
 const { addDays, daysBetween, formatDate } = __m_dates;
 const { accumulate, means, deviations, weightedMean, estimateX, estimateY } = __m_stats;
 const { round10, formatNumber } = __m_number;
@@ -1535,17 +1728,26 @@ const FIN = ['n', 'i', 'pv', 'pmt', 'fv'];
 const FIN_LABEL = { n: 'n', i: 'i', pv: 'PV', pmt: 'PMT', fv: 'FV' };
 const PRIMARY_OPS = ['plus', 'minus', 'times', 'divide', 'yx', 'recip', 'pctT', 'dpct', 'pct'];
 const OPKEYS = ['plus', 'minus', 'times', 'divide'];
+const ALG_OPS = ['plus', 'minus', 'times', 'divide', 'yx']; // operações de dois números do modo ALG
 const STAT_G = { '0': 'mean', dot: 'sd', '6': 'wmean', '1': 'estx', '2': 'esty', sigma: 'sigmaminus' };
 const G_OPS = { yx: 'sqrt', recip: 'expx', pctT: 'ln', dpct: 'frac', pct: 'intg', 3: 'fact' };
+const regName = (n) => (n >= 10 ? '.' + (n - 10) : String(n));
 const isDigit = (id) => /^[0-9]$/.test(id);
 const zeroFin = () => ({ n: 0, i: 0, pv: 0, pmt: 0, fv: 0 });
 
 class Engine {
   constructor(opts = {}) {
+    this.profile = opts.profile ?? DEFAULT_PROFILE; // perfil de calculadora (mapa de teclas, modos); ver profiles.js
+    const def = getProfile(this.profile);
+    this.mode = opts.mode && def.modes.includes(opts.mode) ? opts.mode : def.defaultMode; // 'rpn' | 'alg'
+    this.alg = new AlgState(); // operações pendentes do modo ALG
     this.stack = new Stack();
-    this.regs = new Registers();
+    this.regs = new Registers(def.regCount);
+    this.maxLines = def.maxLines; // linhas de programa do modelo (99 ou 400)
+    this.lineWidth = String(def.maxLines).length; // dígitos do número da linha e do GTO (2 ou 3)
+    this.undoSnap = null; // Platinum: estado antes da última limpeza, para g Undo
     this.fin = zeroFin();
-    this.cf = new CashFlows(); // CFo, CFj, Nj (V2)
+    this.cf = new CashFlows(def.maxFlows); // CFo, CFj, Nj (V2)
     this.amortFresh = true; // nenhuma prestação amortizada desde a última mudança em n, i, PV, PMT ou FV
     this.begin = false;
     this.prgm = false; // modo de programação (indicador PRGM)
@@ -1568,11 +1770,18 @@ class Engine {
     this.tokens = []; // teclas desde a última linha da fita
   }
 
+  get keyById() {
+    return getProfile(this.profile).keyById;
+  }
+
   // ---------- estado ----------
   get state() {
     const s = this.stack;
     return {
       display: this._display(),
+      profile: this.profile,
+      mode: this.mode,
+      parens: this.alg.depth,
       stack: { x: s.x, y: s.y, z: s.z, t: s.t, lastX: s.lastX },
       regs: this.regs.values(),
       fin: { ...this.fin },
@@ -1587,6 +1796,7 @@ class Engine {
       error: this.error ? { ...this.error } : null,
       tape: this.tape.map((l) => ({ ...l })),
       pending: this.pending,
+      undo: this.undoSnap !== null,
     };
   }
 
@@ -1597,7 +1807,7 @@ class Engine {
 
   // ---------- teclas ----------
   press(id) {
-    const key = KEY_BY_ID.get(id);
+    const key = this.keyById.get(id);
     if (!key) throw new Error('tecla desconhecida: ' + id);
     if (id !== 'f' && id !== 'g') this.dateText = null;
     if (this.error) {
@@ -1617,21 +1827,48 @@ class Engine {
       this.shift = id;
       return;
     }
+    const prof = getProfile(this.profile);
+    if (prof.undo && this.shift === 'g' && id === 'divide' && !this.prgm && !this.pending) return this._undo(); // g Undo
+    const snap = prof.undo && this._clears(key) ? this.serialize() : null;
     try {
       this._dispatch(key);
+      if (prof.undo) this.undoSnap = snap;
     } catch (e) {
       if (!(e instanceof CalcError)) throw e;
+      this.undoSnap = null;
       this.error = { code: e.code, message: e.message };
+      this.alg.clearPending(); // um erro cancela as operações pendentes do ALG
       this.shift = null;
       this.pending = null;
       this.tokens = [];
     }
   }
 
+  // A tecla (com o prefixo atual) apaga dados? São as limpezas que a Platinum deixa desfazer com g Undo.
+  _clears(key) {
+    if (this.prgm || this.pending) return false;
+    const id = key.id;
+    if (this.shift === null) return id === 'clx';
+    if (this.shift === 'g') return id === 'minus'; // g ←
+    return id === 'clx' || id === 'sst' || id === 'xy'; // f CLEAR REG, Σ, FIN
+  }
+
+  // g Undo: devolve o estado de antes da última limpeza. Sem limpeza recente, não faz nada.
+  _undo() {
+    this.shift = null;
+    const snap = this.undoSnap;
+    this.undoSnap = null;
+    if (!snap) return;
+    const r = Engine.restore(snap);
+    r.shift = null;
+    r.pending = null;
+    Object.assign(this, r);
+  }
+
   // Limpar tudo: pilha, registradores, financeiros, fita; mantém o formato (pt-BR / en-US).
   reset() {
     const locale = this.locale;
-    Object.assign(this, new Engine({ locale }));
+    Object.assign(this, new Engine({ locale, profile: this.profile, mode: this.mode }));
   }
 
   // Linha da fita tocada: o valor entra em X, respeitando a regra de elevação da pilha.
@@ -1664,7 +1901,13 @@ class Engine {
     if (this.pending) return this._finishPending(key);
     if (key.id === 'on') return;
     const s = this.stack;
-    const entryKey = shift === null && (isDigit(key.id) || key.id === 'dot' || key.id === 'eex' || key.id === 'chs');
+    const a = this.alg;
+    a.wasFresh = a.fresh; // ALG: a tecla anterior foi um operador? e foi CLx?
+    a.fresh = false;
+    a.wasClx = a.clxPrev;
+    a.clxPrev = false;
+    const backspace = shift === 'g' && key.id === 'minus' && getProfile(this.profile).undo;
+    const entryKey = backspace || (shift === null && (isDigit(key.id) || key.id === 'dot' || key.id === 'eex' || key.id === 'chs'));
     if (!entryKey && s.entering) this.tokens.push(s.entryText());
     const wasStored = this.justStored;
     this.justStored = false;
@@ -1676,6 +1919,7 @@ class Engine {
   _primary(key, wasStored) {
     const id = key.id;
     const s = this.stack;
+    if (this.mode === 'alg' && this._algPrimary(key)) return;
     if (isDigit(id)) return s.digit(id);
     if (PRIMARY_OPS.includes(id)) {
       applyOp(s, id);
@@ -1759,8 +2003,13 @@ class Engine {
       return;
     }
     if (id === 'enter') {
+      if (this.mode === 'alg') return this._algLastX(); // no ALG, LSTx troca X com LAST X
       s.recall(s.lastX);
       this.tokens.push('LSTx');
+      return;
+    }
+    if (id === 'sto' || id === 'rcl') { // g ( e g ): só existem no ALG
+      if (this.mode === 'alg') return id === 'sto' ? this._algOpen() : this._algClose();
       return;
     }
     if (id === '4' || id === '5') {
@@ -1768,9 +2017,13 @@ class Engine {
       this.justStored = wasStored;
       return;
     }
+    if (id === 'minus' && getProfile(this.profile).undo) {
+      s.backspace(); // g ←: apaga o último dígito; fora da digitação, zera X
+      return;
+    }
     if (id === 'sst') {
       this.pc = Math.max(0, this.pc - 1); // g BST
-      this.dateText = lineText(this.pc, this.prog[this.pc - 1]);
+      this.dateText = lineText(this.pc, this.prog[this.pc - 1], this.lineWidth);
       return;
     }
     if (id === 'rdown') {
@@ -1816,6 +2069,9 @@ class Engine {
       return;
     }
     switch (id) {
+      case 'chs': // f RPN
+      case 'eex': // f ALG
+        return this._setMode(id === 'chs' ? 'rpn' : 'alg');
       case 'i': {
         s.commit();
         const r = simpleInterest(this.fin.n, this.fin.i, this.fin.pv);
@@ -1874,15 +2130,17 @@ class Engine {
         this.fin = zeroFin();
         this.amortFresh = true;
         return;
-      case 'rdown': // CLEAR PRGM (no modo de execução só volta à linha 00)
-        this.pc = 0;
+      case 'rdown': // CLEAR PRGM (no modo de execução a clássica volta à linha 00; a Platinum mantém a linha atual)
+        if (!getProfile(this.profile).clearPrgmKeepsPc) this.pc = 0;
         return;
       case 'sst': // CLEAR Σ: zera R1..R6, a pilha e o visor
+        this.alg.clearPending();
         for (let n = 1; n <= 6; n++) this.regs.store(n, 0);
         s.clearAll();
         this.tokens = [];
         return;
       case 'clx': // CLEAR REG
+        this.alg.clearPending();
         this.regs.clear();
         this.cf.clear();
         this.amortFresh = true;
@@ -1894,6 +2152,160 @@ class Engine {
     }
   }
 
+  // ---------- modo ALG (HP 12C Platinum, Apêndice B) ----------
+  _setMode(mode) {
+    this.stack.commit();
+    if (!getProfile(this.profile).modes.includes(mode)) return;
+    this.mode = mode;
+    this.alg.clearPending(); // trocar de modo cancela o que estava pendente
+  }
+
+  // Teclas que mudam de significado no ALG. Devolve true se tratou a tecla.
+  _algPrimary(key) {
+    const id = key.id;
+    const s = this.stack;
+    if (ALG_OPS.includes(id)) return this._algOp(key), true;
+    if (id === 'enter') return this._algEquals(), true;
+    if (id === 'pct') return this._algPercent(), true;
+    if (id === 'pctT' || id === 'dpct') return this._algRelative(key), true;
+    if (id === 'clx') return this._algClx(), true;
+    // começar um número novo guarda o que estava no visor em LAST X (manual, p. 239)
+    if ((isDigit(id) || id === 'dot' || id === 'eex') && !s.entering) s.lastX = s.x;
+    return false;
+  }
+
+  // + − × ÷ yˣ: faz a conta pendente com o que está no visor e deixa o novo operador esperando o próximo número.
+  _algOp(key) {
+    const s = this.stack;
+    const a = this.alg;
+    const f = a.top;
+    s.commit();
+    if (a.wasFresh && f.op) { // dois operadores seguidos: vale o último
+      f.op = key.id;
+      a.fresh = true;
+      this.tokens.push(key.label);
+      return;
+    }
+    const v = f.op ? compute(f.op, f.acc, s.x) : s.x;
+    s.x = v;
+    s.entering = false;
+    s.liftEnabled = false; // o próximo número substitui o visor, sem elevar a pilha
+    f.acc = v;
+    f.op = key.id;
+    a.fresh = true;
+    this._record(key.label);
+  }
+
+  // ENTER: com conta pendente age como "=" e fecha os parênteses; sem conta, é o ENTER da pilha (Y recebe X).
+  _algEquals() {
+    const s = this.stack;
+    const a = this.alg;
+    s.commit();
+    if (!a.pending) {
+      s.enter();
+      this.tokens.push('ENTER');
+      return;
+    }
+    let v = s.x;
+    for (let i = a.frames.length - 1; i >= 0; i--) if (a.frames[i].op) v = compute(a.frames[i].op, a.frames[i].acc, v);
+    a.clearPending();
+    this._algComplete(v);
+    this._record('=');
+  }
+
+  // Resultado concluído: entra em X e o anterior sobe na pilha de histórico (4 resultados, manual p. 239).
+  _algComplete(v) {
+    const s = this.stack;
+    const a = this.alg;
+    s.t = s.z;
+    s.z = s.y;
+    s.y = a.lastResult;
+    s.x = v;
+    a.lastResult = v;
+    s.entering = false;
+    s.liftEnabled = false; // o próximo número começa outra conta sem elevar a pilha
+  }
+
+  // %: com + ou − pendente calcula o percentual do primeiro número e já dá o valor líquido (200 − 25 % = 150);
+  // com × ou ÷ usa o número dividido por 100; sem operação pendente só divide por 100.
+  _algPercent() {
+    const s = this.stack;
+    const f = this.alg.top;
+    s.commit();
+    const b = s.x;
+    let r;
+    if (!f.op) r = divide100(b);
+    else if (f.op === 'plus' || f.op === 'minus') r = compute(f.op, f.acc, percentOf(f.acc, b));
+    else r = compute(f.op, f.acc, divide100(b));
+    s.lastX = b;
+    s.x = r;
+    s.entering = false;
+    s.liftEnabled = true;
+    f.acc = null;
+    f.op = null;
+    this._record('%');
+  }
+
+  // Δ% e %T: o número antes do operador pendente vira Y e o operador é ignorado (35,5 − 31,25 Δ% = 35,5 ENTER 31,25 Δ%).
+  _algRelative(key) {
+    const s = this.stack;
+    const f = this.alg.top;
+    s.commit();
+    if (f.op) {
+      s.y = f.acc;
+      f.acc = null;
+      f.op = null;
+    }
+    applyOp(s, key.id);
+    this._record(key.label);
+  }
+
+  // CLx apaga o número do visor; CLx duas vezes seguidas cancela também as operações pendentes.
+  _algClx() {
+    const a = this.alg;
+    this.stack.clx();
+    if (a.wasClx) a.clearPending();
+    a.clxPrev = true;
+    this.tokens.push('CLx');
+  }
+
+  // g LSTx no ALG: troca X com LAST X, nunca eleva a pilha.
+  _algLastX() {
+    const s = this.stack;
+    s.commit();
+    const x = s.x;
+    s.x = s.lastX;
+    s.lastX = x;
+    s.entering = false;
+    s.liftEnabled = true;
+    this.tokens.push('LSTx');
+  }
+
+  // g (: abre um nível. g ): fecha o nível e calcula o que havia dentro. Até 13 abertos.
+  _algOpen() {
+    const a = this.alg;
+    this.stack.commit();
+    if (a.depth >= MAX_PARENS) throw new CalcError(4);
+    a.frames.push({ acc: null, op: null });
+    this.stack.liftEnabled = false;
+    a.fresh = true;
+    this.tokens.push('(');
+  }
+
+  _algClose() {
+    const s = this.stack;
+    const a = this.alg;
+    s.commit();
+    if (a.depth === 0) return; // sem parêntese aberto: a tecla não faz nada
+    const f = a.top;
+    const v = f.op ? compute(f.op, f.acc, s.x) : s.x;
+    a.frames.pop();
+    s.x = v;
+    s.entering = false;
+    s.liftEnabled = false;
+    this.tokens.push(')');
+  }
+
   // ---------- programação ----------
   _togglePrgm() {
     this.stack.commit();
@@ -1903,7 +2315,7 @@ class Engine {
   }
 
   _gotoLine(nn) {
-    if (nn > MAX_LINES) throw new CalcError(4);
+    if (nn > this.maxLines) throw new CalcError(4);
     this.pc = nn;
   }
 
@@ -1913,12 +2325,12 @@ class Engine {
     const v = { plus: cur + x, minus: cur - x, times: cur * x, divide: cur / x }[opId];
     if (!Number.isFinite(v)) throw new CalcError(opId === 'divide' ? 0 : 1);
     this.regs.store(n, round10(v));
-    this._record(`STO ${{ plus: '+', minus: '−', times: '×', divide: '÷' }[opId]} ${n}`);
+    this._record(`STO ${{ plus: '+', minus: '−', times: '×', divide: '÷' }[opId]} ${regName(n)}`);
   }
 
   // Grava uma instrução na linha seguinte à atual (sobrescreve a linha: a memória é de tamanho fixo, como na HP).
   _storeLine(line) {
-    if (this.pc >= MAX_LINES) throw new CalcError(4);
+    if (this.pc >= this.maxLines) throw new CalcError(4);
     while (this.prog.length < this.pc) this.prog.push(null);
     this.prog[this.pc] = line;
     this.pc += 1;
@@ -1929,36 +2341,42 @@ class Engine {
     const id = key.id;
     const isD = isDigit(id);
     if (this.pending) {
-      const mode = this.pending;
+      const full = this.pending;
       this.pending = null;
-      if (mode === 'sto' && OPKEYS.includes(id)) {
+      const dotted = full.endsWith('.'); // registrador .d (Platinum)
+      const mode = dotted ? full.slice(0, -1) : full;
+      const arg = (dotted ? '.' : '') + id;
+      if (id === 'dot' && !dotted && this.regs.size > 10 && ['sto', 'rcl', 'stoop'].includes(mode)) {
+        this.pending = mode + '.';
+      } else if (mode === 'sto' && !dotted && OPKEYS.includes(id)) {
         this.pending = 'stoop';
         this.stoOp = id;
-      } else if (mode === 'stoop' && isD) this._storeLine({ s: null, id: 'sto', op: this.stoOp, arg: id });
-      else if (mode === 'sto' && (isD || id === 'eex')) this._storeLine({ s: null, id: 'sto', arg: id });
-      else if (mode === 'rcl' && (isD || FIN.includes(id))) this._storeLine({ s: null, id: 'rcl', arg: id });
+      } else if (mode === 'stoop' && isD) this._storeLine({ s: null, id: 'sto', op: this.stoOp, arg });
+      else if (mode === 'sto' && (isD || (!dotted && id === 'eex'))) this._storeLine({ s: null, id: 'sto', arg });
+      else if (mode === 'rcl' && (isD || (!dotted && FIN.includes(id)))) this._storeLine({ s: null, id: 'rcl', arg });
       else if (mode === 'gto' && id === 'dot' && this.gtoDigits === '') {
         this.pending = 'gotoline'; // GTO . nn: só vai até a linha, sem gravar
       } else if (mode === 'gotoline' && isD) {
         this.gtoDigits += id;
-        if (this.gtoDigits.length < 2) this.pending = 'gotoline';
+        if (this.gtoDigits.length < this.lineWidth) this.pending = 'gotoline';
         else this._gotoLine(Number(this.gtoDigits));
       } else if (mode === 'gto' && isD) {
         this.gtoDigits += id;
-        if (this.gtoDigits.length < 2) this.pending = 'gto';
+        if (this.gtoDigits.length < this.lineWidth) this.pending = 'gto';
         else this._storeLine({ s: 'g', id: 'rdown', arg: this.gtoDigits });
       }
       this.dateText = null;
       return;
     }
     if (id === 'on') return;
+    if (shift === 'g' && (id === 'minus' || id === 'divide') && getProfile(this.profile).undo) return; // g ← e g Undo não se gravam
     if (shift === 'f' && id === 'rdown') {
       this.prog = []; // CLEAR PRGM
       this.pc = 0;
       return;
     }
     if (shift === null && id === 'sst') {
-      this.pc = Math.min(MAX_LINES, this.pc + 1);
+      this.pc = Math.min(this.maxLines, this.pc + 1);
       return;
     }
     if (shift === 'g' && id === 'sst') {
@@ -1987,7 +2405,7 @@ class Engine {
     }
     if (s === 'g' && id === 'rdown') {
       const nn = Number(line.arg);
-      if (nn > MAX_LINES) throw new CalcError(4);
+      if (nn > this.maxLines) throw new CalcError(4);
       return { goto: nn };
     }
     if (s === 'g' && id === 'xy') {
@@ -2002,15 +2420,14 @@ class Engine {
       this.stack.commit();
       this.pending = id;
       this.shift = null;
-      if (line.op) {
-        this._finishPending(KEY_BY_ID.get(line.op));
-        this._finishPending(KEY_BY_ID.get(line.arg));
-      } else this._finishPending(KEY_BY_ID.get(line.arg));
+      if (line.op) this._finishPending(this.keyById.get(line.op));
+      if (line.arg.startsWith('.')) this._finishPending(this.keyById.get('dot'));
+      this._finishPending(this.keyById.get(line.arg.slice(-1)));
       return null;
     }
     if (id === 'sst' || id === 'on' || id === 'f' || id === 'g') return null;
     this.shift = s;
-    this._dispatch(KEY_BY_ID.get(id));
+    this._dispatch(this.keyById.get(id));
     return null;
   }
 
@@ -2018,7 +2435,7 @@ class Engine {
   _step() {
     this.pc += 1;
     const line = this.pc <= this.prog.length ? this.prog[this.pc - 1] : null;
-    if (!line || this.pc > MAX_LINES) {
+    if (!line || this.pc > this.maxLines) {
       this.pc = 0; // linha vazia = GTO 00: volta ao início e para
       return 'halt';
     }
@@ -2145,27 +2562,33 @@ class Engine {
   }
 
   _finishPending(key) {
-    const mode = this.pending;
+    const full = this.pending;
     this.pending = null;
+    const dotted = full.endsWith('.'); // registrador .d (Platinum): índices 10 a 19
+    const mode = dotted ? full.slice(0, -1) : full;
     const s = this.stack;
     const id = key.id;
-    if (mode === 'stoop' && isDigit(id)) {
-      this._stoArith(this.stoOp, Number(id));
+    if (id === 'dot' && !dotted && this.regs.size > 10 && ['sto', 'rcl', 'stoop'].includes(mode)) {
+      this.pending = mode + '.'; // STO . / RCL . / STO + . : o próximo dígito escolhe .0 a .9
+    } else if (mode === 'stoop' && isDigit(id)) {
+      this._stoArith(this.stoOp, Number(id) + (dotted ? 10 : 0));
     } else if (mode === 'gto' && isDigit(id)) {
       this.gtoDigits += id;
-      if (this.gtoDigits.length < 2) this.pending = 'gto';
+      if (this.gtoDigits.length < this.lineWidth) this.pending = 'gto';
       else this._gotoLine(Number(this.gtoDigits));
     } else if (isDigit(id)) {
-      const n = Number(id);
+      const n = Number(id) + (dotted ? 10 : 0);
       if (mode === 'sto') {
         s.commit();
         this.regs.store(n, s.x);
         s.liftEnabled = true;
-        this._record(`STO ${n}`);
+        this._record(`STO ${regName(n)}`);
       } else {
         s.recall(this.regs.recall(n));
-        this._record(`RCL ${n}`);
+        this._record(`RCL ${regName(n)}`);
       }
+    } else if (dotted) {
+      // depois de "." só vale um dígito; qualquer outra tecla cancela
     } else if (mode === 'sto' && OPKEYS.includes(id)) {
       this.pending = 'stoop'; // STO + − × ÷ n
       this.stoOp = id;
@@ -2214,7 +2637,7 @@ class Engine {
 
   _display() {
     if (this.error) return 'Error ' + this.error.code;
-    if (this.prgm) return this.dateText ?? lineText(this.pc, this.prog[this.pc - 1]);
+    if (this.prgm) return this.dateText ?? lineText(this.pc, this.prog[this.pc - 1], this.lineWidth);
     if (this.dateText && !this.stack.entering) return this.dateText;
     return this.stack.entering ? this._fmtEntry() : this._fmt(this.stack.x);
   }
@@ -2223,6 +2646,9 @@ class Engine {
   serialize() {
     return JSON.stringify({
       v: VERSION,
+      profile: this.profile,
+      mode: this.mode,
+      alg: this.alg.toJSON(),
       stack: this.stack.toJSON(),
       regs: this.regs.values(),
       fin: this.fin,
@@ -2251,29 +2677,35 @@ class Engine {
     const num = (v) => typeof v === 'number' && Number.isFinite(v);
     const str = (v) => typeof v === 'string';
     if (!o || typeof o !== 'object' || o.v !== VERSION) throw bad();
-    if (!Array.isArray(o.regs) || o.regs.length !== 10 || !o.regs.every(num)) throw bad();
+    if (!Array.isArray(o.regs) || (o.regs.length !== 10 && o.regs.length !== 20) || !o.regs.every(num)) throw bad();
     if (!o.fin || !FIN.every((k) => num(o.fin[k]))) throw bad();
     if (typeof o.begin !== 'boolean' || typeof o.justStored !== 'boolean') throw bad();
-    if (![null, 'f', 'g'].includes(o.shift) || ![null, 'sto', 'rcl', 'stoop', 'gto', 'gotoline'].includes(o.pending)) throw bad();
+    if (![null, 'f', 'g'].includes(o.shift) || ![null, 'sto', 'rcl', 'stoop', 'sto.', 'rcl.', 'stoop.', 'gto', 'gotoline'].includes(o.pending)) throw bad();
     if (!Number.isInteger(o.decimals) || o.decimals < 0 || o.decimals > 9) throw bad();
     if (o.locale !== 'br' && o.locale !== 'us') throw bad();
     if (o.error !== null && !(o.error && Number.isInteger(o.error.code) && o.error.code >= 0 && o.error.code <= 9 && str(o.error.message))) throw bad();
     if (!Array.isArray(o.tape) || !o.tape.every((l) => l && str(l.keys) && str(l.label) && num(l.value) && str(l.text))) throw bad();
     if (!Array.isArray(o.tokens) || !o.tokens.every(str)) throw bad();
-    if (o.prog !== undefined && !(Array.isArray(o.prog) && o.prog.length <= MAX_LINES && o.prog.every(validLine))) throw bad();
-    if (o.cf !== undefined && !CashFlows.valid(o.cf)) throw bad();
-    const e = new Engine({ locale: o.locale });
+    const profile = o.profile ?? DEFAULT_PROFILE; // estados antigos não tinham perfil: eram da 12C
+    if (typeof profile !== 'string' || !hasProfile(profile)) throw bad();
+    const def = getProfile(profile);
+    if (o.prog !== undefined && !(Array.isArray(o.prog) && o.prog.length <= def.maxLines && o.prog.every(validLine))) throw bad();
+    if (o.cf !== undefined && !CashFlows.valid(o.cf, def.maxFlows)) throw bad();
+    if (o.mode !== undefined && !['rpn', 'alg'].includes(o.mode)) throw bad(); // modo sem suporte no perfil (ex.: ALG na clássica) volta ao padrão
+    if (o.alg !== undefined && !AlgState.valid(o.alg)) throw bad();
+    const e = new Engine({ locale: o.locale, profile, mode: o.mode });
+    if (o.alg) e.alg = AlgState.fromJSON(o.alg);
     try {
       e.stack = Stack.fromJSON(o.stack);
     } catch {
       throw bad();
     }
-    o.regs.forEach((v, n) => e.regs.store(n, v));
-    if (o.cf) e.cf = CashFlows.fromJSON(o.cf);
+    o.regs.forEach((v, n) => n < e.regs.size && e.regs.store(n, v)); // estados de 10 registradores abrem na Platinum com 20
+    if (o.cf) e.cf = CashFlows.fromJSON(o.cf, def.maxFlows);
     e.amortFresh = o.amortFresh !== false;
     e.fin = { n: o.fin.n, i: o.fin.i, pv: o.fin.pv, pmt: o.fin.pmt, fv: o.fin.fv };
     Object.assign(e, {
-      begin: o.begin, compound: o.compound === true, dmy: o.dmy === true, prgm: o.prgm === true, prog: Array.isArray(o.prog) ? o.prog : [], pc: Number.isInteger(o.pc) && o.pc >= 0 && o.pc <= MAX_LINES ? o.pc : 0, shift: o.shift, pending: o.pending, justStored: o.justStored, decimals: o.decimals,
+      begin: o.begin, compound: o.compound === true, dmy: o.dmy === true, prgm: o.prgm === true, prog: Array.isArray(o.prog) ? o.prog : [], pc: Number.isInteger(o.pc) && o.pc >= 0 && o.pc <= def.maxLines ? o.pc : 0, shift: o.shift, pending: o.pending, justStored: o.justStored, decimals: o.decimals,
       error: o.error ? { code: o.error.code, message: o.error.message } : null,
       tape: o.tape.map((l) => ({ keys: l.keys, label: l.label, value: l.value, text: l.text })),
       tokens: [...o.tokens],
@@ -2286,13 +2718,17 @@ return { Engine };
 })();
 
 const __m_display = (() => {
-// Visor: indicadores, dígitos com ajuste de fonte, mensagem de erro e teclado do PC.
-const INDICATORS = ['f', 'g', 'BEGIN', 'D.MY', 'C', 'USER', 'PRGM'];
+// Visor: indicadores (conforme o perfil), dígitos com ajuste de fonte, mensagem de erro e teclado do PC.
+const { getProfile } = __m_profiles;
 
-function ensureStructure(el) {
-  if (el.querySelector('.digits')) return;
+const INDICATORS = getProfile('12c').indicators;
+
+function ensureStructure(el, indicators) {
+  const sig = indicators.join('|');
+  if (el.querySelector('.digits') && el.dataset.inds === sig) return;
+  el.dataset.inds = sig;
   el.innerHTML =
-    '<div class="indicators">' + INDICATORS.map((i) => `<span data-ind="${i}">${i}</span>`).join('') +
+    '<div class="indicators">' + indicators.map((i) => `<span data-ind="${i}">${i}</span>`).join('') +
     '<button type="button" class="fmt-toggle" aria-label="Alternar formato dos números (pt-BR / en-US)"></button></div>' +
     '<div class="digits" role="status"></div><div class="msg"></div>';
 }
@@ -2308,8 +2744,11 @@ function fit(digits) {
 }
 
 function renderDisplay(el, s) {
-  ensureStructure(el);
-  const lit = { f: s.shift === 'f', g: s.shift === 'g', BEGIN: s.begin, C: s.compound, 'D.MY': s.dmy, PRGM: s.prgm };
+  ensureStructure(el, getProfile(s.profile ?? '12c').indicators);
+  const lit = {
+    RPN: s.mode === 'rpn', ALG: s.mode === 'alg', '( )': s.parens > 0,
+    f: s.shift === 'f', g: s.shift === 'g', BEGIN: s.begin, C: s.compound, 'D.MY': s.dmy, PRGM: s.prgm, UNDO: s.undo === true,
+  };
   for (const span of el.querySelectorAll('[data-ind]')) {
     span.classList.toggle('on', !!lit[span.dataset.ind]);
   }
@@ -2348,8 +2787,13 @@ return { INDICATORS, renderDisplay, bindKeyboard };
 const __m_storage = (() => {
 // Salvamento automático no aparelho (localStorage). Nada sai do dispositivo.
 const { Engine } = __m_engine;
+const { DEFAULT_PROFILE, hasProfile } = __m_profiles;
 
-const STORAGE_KEY = 'calc12c.state';
+const STORAGE_KEY = 'calc12c.state'; // estado do perfil 12C (chave mantida para não perder o que já estava salvo)
+const PROFILE_KEY = 'calc12c.profile'; // perfil em uso
+
+// Cada perfil tem o seu estado salvo à parte.
+const stateKey = (id) => (id === DEFAULT_PROFILE ? STORAGE_KEY : `${STORAGE_KEY}.${id}`);
 
 function store() {
   try {
@@ -2361,32 +2805,54 @@ function store() {
 
 function saveState(engine) {
   try {
-    store()?.setItem(STORAGE_KEY, engine.serialize());
+    store()?.setItem(stateKey(engine.profile), engine.serialize());
   } catch {
     /* sem armazenamento: o app segue funcionando */
   }
 }
 
-// Estado salvo ausente, corrompido ou de versão antiga → motor novo (sem erro).
-function loadState() {
+// Perfil em uso: ausente ou desconhecido → 12C.
+function loadActiveProfile() {
   try {
-    const raw = store()?.getItem(STORAGE_KEY);
-    if (raw) return Engine.restore(raw);
+    const id = store()?.getItem(PROFILE_KEY);
+    if (id && hasProfile(id)) return id;
+  } catch {
+    /* usa o padrão */
+  }
+  return DEFAULT_PROFILE;
+}
+
+function saveActiveProfile(id) {
+  try {
+    store()?.setItem(PROFILE_KEY, id);
+  } catch {
+    /* sem armazenamento: o app segue funcionando */
+  }
+}
+
+// Estado salvo do perfil (o ativo, se não for dito) ausente, corrompido ou de versão antiga → motor novo (sem erro).
+function loadState(profile = loadActiveProfile()) {
+  try {
+    const raw = store()?.getItem(stateKey(profile));
+    if (raw) {
+      const e = Engine.restore(raw);
+      if (e.profile === profile) return e;
+    }
   } catch {
     /* cai no estado inicial */
   }
-  return new Engine();
+  return new Engine({ profile });
 }
 
-function clearAll() {
+function clearAll(profile = DEFAULT_PROFILE) {
   try {
-    store()?.removeItem(STORAGE_KEY);
+    store()?.removeItem(stateKey(profile));
   } catch {
     /* ignora */
   }
 }
 
-return { STORAGE_KEY, saveState, loadState, clearAll };
+return { STORAGE_KEY, PROFILE_KEY, stateKey, saveState, loadActiveProfile, saveActiveProfile, loadState, clearAll };
 })();
 
 const __m_tape = (() => {
@@ -2450,7 +2916,7 @@ function mountDrawer(ctx) {
   ctx.listeners.push((_c, s) => {
     mem.innerHTML =
       '<div class="cards">' + FIN_CARDS.map(([id, l]) => cell('card', `data-fin="${id}"`, l, fmt(s.fin[id], s))).join('') + '</div>' +
-      '<div class="regs">' + s.regs.map((v, n) => cell('reg', `data-reg="${n}"`, 'R' + n, fmt(v, s))).join('') + '</div>' +
+      '<div class="regs">' + s.regs.map((v, n) => cell('reg', `data-reg="${n}"`, n >= 10 ? 'R.' + (n - 10) : 'R' + n, fmt(v, s))).join('') + '</div>' +
       '<div class="stack">' + STACK_REGS.map(([id, l]) => cell('stk', `data-stk="${id}"`, l, fmt(s.stack[id], s))).join('') + '</div>';
     tapeEl.innerHTML = '';
     s.tape.forEach((line, i) => {
@@ -2483,13 +2949,55 @@ function mountDrawer(ctx) {
   confirm.querySelector('.ok').addEventListener('click', () => {
     confirm.hidden = true;
     engine.reset();
-    clearAll();
+    clearAll(engine.profile);
     ctx.render();
   });
   return { open: () => set(true), close: () => set(false) };
 }
 
 return { mountDrawer };
+})();
+
+const __m_memories = (() => {
+// Memórias em arquivo: salvar, abrir e compartilhar o estado da calculadora (registradores, financeiros,
+// fluxos de caixa, programa, pilha e fita). A versão 2 leva também o perfil e o modo (RPN/ALG); arquivos da versão 1 abrem como 12C. O arquivo só sai do aparelho se a pessoa o compartilhar.
+const { Engine } = __m_engine;
+
+const MEM_KIND = 'calc12c-memorias';
+const MAX_CHARS = 2000000;
+
+function buildMemoryFile(engine, now = new Date()) {
+  const estado = JSON.parse(engine.serialize());
+  estado.shift = null; // nada pendente: o arquivo guarda só o que a pessoa calculou
+  estado.pending = null;
+  estado.error = null;
+  const text = JSON.stringify({ app: 'Calc 12c', tipo: MEM_KIND, versao: 2, perfil: engine.profile, criado: now.toISOString(), estado }, null, 2);
+  return { name: `calc12c-memorias-${now.toISOString().slice(0, 10)}.json`, text };
+}
+
+// Texto do arquivo → motor novo; lança Error com mensagem em português se o arquivo não servir.
+function parseMemoryFile(text) {
+  if (typeof text !== 'string' || text.length > MAX_CHARS) throw new Error('Arquivo ilegível ou grande demais.');
+  let o;
+  try {
+    o = JSON.parse(text);
+  } catch {
+    throw new Error('O arquivo não é um JSON válido.');
+  }
+  if (!o || o.tipo !== MEM_KIND || !o.estado || typeof o.estado !== 'object') throw new Error('Este arquivo não é de memórias da Calc 12c.');
+  try {
+    return Engine.restore(JSON.stringify(o.estado));
+  } catch {
+    throw new Error('O conteúdo do arquivo está inválido ou é de uma versão não suportada.');
+  }
+}
+
+// Troca o estado do motor em uso pelo do motor lido (as referências ao motor continuam valendo).
+function loadInto(engine, loaded) {
+  Object.assign(engine, loaded);
+}
+
+return { MEM_KIND, buildMemoryFile, parseMemoryFile, loadInto };
 })();
 
 const __m_extras = (() => {
@@ -2669,56 +3177,18 @@ function customVars(colors = {}) {
 return { COLOR_KEYS, validHex, mix, lighten, darken, luminance, inkOn, customVars };
 })();
 
-const __m_memories = (() => {
-// Memórias em arquivo: salvar, abrir e compartilhar o estado da calculadora (registradores, financeiros,
-// fluxos de caixa, programa, pilha e fita). O arquivo só sai do aparelho se a pessoa o compartilhar.
-const { Engine } = __m_engine;
-
-const MEM_KIND = 'calc12c-memorias';
-const MAX_CHARS = 2000000;
-
-function buildMemoryFile(engine, now = new Date()) {
-  const estado = JSON.parse(engine.serialize());
-  estado.shift = null; // nada pendente: o arquivo guarda só o que a pessoa calculou
-  estado.pending = null;
-  estado.error = null;
-  const text = JSON.stringify({ app: 'Calc 12c', tipo: MEM_KIND, versao: 1, criado: now.toISOString(), estado }, null, 2);
-  return { name: `calc12c-memorias-${now.toISOString().slice(0, 10)}.json`, text };
-}
-
-// Texto do arquivo → motor novo; lança Error com mensagem em português se o arquivo não servir.
-function parseMemoryFile(text) {
-  if (typeof text !== 'string' || text.length > MAX_CHARS) throw new Error('Arquivo ilegível ou grande demais.');
-  let o;
-  try {
-    o = JSON.parse(text);
-  } catch {
-    throw new Error('O arquivo não é um JSON válido.');
-  }
-  if (!o || o.tipo !== MEM_KIND || !o.estado || typeof o.estado !== 'object') throw new Error('Este arquivo não é de memórias da Calc 12c.');
-  try {
-    return Engine.restore(JSON.stringify(o.estado));
-  } catch {
-    throw new Error('O conteúdo do arquivo está inválido ou é de uma versão não suportada.');
-  }
-}
-
-// Troca o estado do motor em uso pelo do motor lido (as referências ao motor continuam valendo).
-function loadInto(engine, loaded) {
-  Object.assign(engine, loaded);
-}
-
-return { MEM_KIND, buildMemoryFile, parseMemoryFile, loadInto };
-})();
-
 const __m_settings = (() => {
 // Temas e configurações. Só variáveis de cor mudam; o teclado e o motor nunca.
 const { makeWake, wakeSupported } = __m_extras;
 const { COLOR_KEYS, validHex, customVars } = __m_colors;
 const { buildMemoryFile, parseMemoryFile, loadInto } = __m_memories;
+const { listProfiles, allowedThemes, themeFor } = __m_profiles;
 const KEY = 'calc12c.settings';
 const THEMES = ['retro', 'platinum', 'moderno']; // 'retro' = Gold (padrão), 'platinum' = prata, 'moderno' = Retro (vidro)
-const VERSION = 4; // v2: a vibração ao tocar passou a vir ligada; v3: som, não dormir, estilo da tecla ON e banda superior; v4: cores e orientação
+const VERSION = 5; // v2: a vibração ao tocar passou a vir ligada; v3: som, não dormir, estilo da tecla ON e banda superior; v4: cores e orientação; v5: modo desenvolvedor
+const APP_VERSION = 'V3.0';
+const DEV_TAPS = 7; // toques na versão para ligar o modo desenvolvedor
+const DEV_GAP_MS = 2000; // intervalo máximo entre dois toques
 const MODES = ['auto', 'escuro', 'claro'];
 const ON_STYLES = ['menu', 'on'];
 const ORIENTS = ['auto', 'portrait', 'landscape'];
@@ -2729,7 +3199,7 @@ const lowEnd = () => (navigator.hardwareConcurrency ?? 8) <= 2 || (navigator.dev
 
 function defaultSettings() {
   // reduce: null = automático (liga sozinho em aparelhos simples); true/false = escolha do usuário
-  return { v: VERSION, theme: 'retro', mode: 'auto', reduce: null, vibrate: true, sound: 'off', wake: false, onStyle: 'on', topPad: 0, colors: noColors(), orient: 'auto' };
+  return { v: VERSION, theme: null, mode: 'auto', reduce: null, vibrate: true, sound: 'off', wake: false, onStyle: 'on', topPad: 0, colors: noColors(), orient: 'auto', dev: false };
 }
 
 function loadSettings() {
@@ -2739,7 +3209,7 @@ function loadSettings() {
     if (!o || typeof o !== 'object') return d;
     return {
       v: VERSION,
-      theme: THEMES.includes(o.theme) ? o.theme : d.theme,
+      theme: THEMES.includes(o.theme) ? o.theme : null, // null = o tema padrão do perfil, até a pessoa escolher outro
       mode: MODES.includes(o.mode) ? o.mode : d.mode,
       reduce: typeof o.reduce === 'boolean' ? o.reduce : null,
       // quem salvou antes da versão 2 passa a ter a vibração ligada (dá para desligar nas configurações)
@@ -2751,6 +3221,7 @@ function loadSettings() {
       topPad: Number.isFinite(o.topPad) ? Math.min(32, Math.max(0, Math.round(o.topPad))) : 0,
       colors: Object.fromEntries(COLOR_KEYS.map((k) => [k, validHex(o.colors?.[k]) ? o.colors[k].toLowerCase() : null])),
       orient: ORIENTS.includes(o.orient) ? o.orient : 'auto',
+      dev: o.dev === true,
     };
   } catch {
     return d; // ausente, corrompido ou armazenamento bloqueado
@@ -2832,14 +3303,16 @@ async function lockOrientation(mode) {
 function mountSettings(ctx) {
   let s = loadSettings();
   const wake = makeWake();
+  // tema que vale: a escolha, se o perfil em uso a oferece (ou o modo desenvolvedor); senão o padrão do perfil
+  const effTheme = () => themeFor(ctx.profile.id, s.theme, s.dev);
   const apply = () => {
-    applyTheme(s.theme, s.mode, effectiveReduce(s));
+    applyTheme(effTheme(), s.mode, effectiveReduce(s));
     ctx.vibrate = s.vibrate;
     ctx.sounder.set(s.sound);
     ctx.setOnStyle?.(s.onStyle);
     ctx.calc.style.setProperty('--top-extra', s.topPad + 'px');
     wake(s.wake && wakeSupported());
-    applyColors(s.colors);
+    applyColors(s.dev ? s.colors : noColors()); // as cores só valem no modo desenvolvedor
   };
   const fsOk = !!document.fullscreenEnabled && !window.matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches;
   const panel = document.createElement('section');
@@ -2848,16 +3321,19 @@ function mountSettings(ctx) {
   panel.innerHTML =
     '<header class="settings-head"><span class="settings-title">Configurações</span>' +
     '<button type="button" class="settings-close" aria-label="Fechar configurações">✕</button></header>' +
+    '<section class="group"><h3 class="group-title">Calculadora</h3>' +
+    '<label class="row"><span class="txt">Modelo<small>Cada modelo guarda a sua própria memória; o RPN/ALG da 12C troca em f CHS e f EEX</small></span>' +
+    '<select name="profile"></select></label></section>' +
     '<section class="group"><h3 class="group-title">Aparência</h3>' +
     '<label class="row"><span class="txt">Tema<small>Gold e Platinum são metálicos e sempre escuros; Retro é de vidro</small></span>' +
-    '<select name="theme"><option value="retro">Gold</option><option value="platinum">Platinum</option><option value="moderno">Retro</option></select></label>' +
+    '<select name="theme"></select></label>' +
     '<label class="row"><span class="txt">Modo<small>Automático segue o sistema; só vale no Retro</small></span>' +
     '<select name="mode"><option value="auto">Automático</option><option value="escuro">Escuro</option><option value="claro">Claro</option></select></label>' +
     '<label class="row"><span class="txt">Tecla ON<small>Um toque abre estas configurações; segurar abre o verso</small></span>' +
     '<select name="onStyle"><option value="on">ON</option><option value="menu">Menu (≡)</option></select></label>' +
     '<label class="row"><span class="txt">Altura da banda superior<small>Desce a placa metálica (notch ou barra de status)</small></span>' +
     '<input type="range" name="topPad" min="0" max="32" step="2"></label></section>' +
-    '<section class="group"><h3 class="group-title">Cores</h3>' +
+    '<section class="group dev-only" hidden><h3 class="group-title">Cores</h3>' +
     '<label class="row"><span class="txt">Placa e destaque<small>Faixa metálica, título e bordas</small></span><input type="color" name="color-plate"></label>' +
     '<label class="row"><span class="txt">Tecla f<small>Teclas e rótulos dourados</small></span><input type="color" name="color-f"></label>' +
     '<label class="row"><span class="txt">Tecla g<small>Teclas e rótulos azuis</small></span><input type="color" name="color-g"></label>' +
@@ -2893,7 +3369,11 @@ function mountSettings(ctx) {
     '<div class="row"><span class="txt">Verso da calculadora<small>Guia de fórmulas com exemplos (ou segure a tecla ON)</small></span>' +
     '<button type="button" class="mini open-verso">Abrir</button></div>' +
     '<div class="row"><span class="txt">Redefinir configurações<small>Volta ao padrão; não apaga a memória da calculadora</small></span>' +
-    '<button type="button" class="mini reset-settings">Redefinir</button></div></section>';
+    '<button type="button" class="mini reset-settings">Redefinir</button></div>' +
+    `<div class="row ver-row" role="button" tabindex="0"><span class="txt">Versão<small class="ver-note">Calc 12c ${APP_VERSION}</small></span></div></section>` +
+    '<section class="group dev-only" hidden><h3 class="group-title">Desenvolvedor</h3>' +
+    '<div class="row"><span class="txt">Modo desenvolvedor ativo<small>Libera as cores e os temas Gold e Platinum em qualquer modelo</small></span>' +
+    '<button type="button" class="mini dev-off">Desativar</button></div></section>';
   // altura da placa metálica: o brilho de ênfase fica restrito a ela
   const plate = ctx.top.querySelector('.brand');
   if (plate) {
@@ -2904,7 +3384,7 @@ function mountSettings(ctx) {
   ctx.calc.append(panel);
   // os temas Gold e Platinum são sempre escuros: a escolha de modo fica inativa
   const lockMode = () => {
-    const off = s.theme !== 'moderno';
+    const off = effTheme() !== 'moderno';
     const sel = panel.querySelector('[name=mode]');
     sel.disabled = off;
     sel.closest('.row').classList.toggle('off', off);
@@ -2918,7 +3398,14 @@ function mountSettings(ctx) {
   };
   const wakeOk = wakeSupported();
   const sync = () => {
-    panel.querySelector('[name=theme]').value = s.theme;
+    const sel = panel.querySelector('[name=profile]');
+    sel.innerHTML = listProfiles().map((p) => `<option value="${p.id}">${p.label}</option>`).join('');
+    sel.value = ctx.engine.profile;
+    const THEME_NAMES = { retro: 'Gold', platinum: 'Platinum', moderno: 'Retro' };
+    const themeSel = panel.querySelector('[name=theme]');
+    themeSel.innerHTML = allowedThemes(ctx.profile.id, s.dev).map((t) => `<option value="${t}">${THEME_NAMES[t]}</option>`).join('');
+    themeSel.value = effTheme();
+    for (const g of panel.querySelectorAll('.dev-only')) g.hidden = !s.dev;
     panel.querySelector('[name=mode]').value = s.mode;
     panel.querySelector('[name=onStyle]').value = s.onStyle;
     panel.querySelector('[name=topPad]').value = s.topPad;
@@ -3055,12 +3542,42 @@ function mountSettings(ctx) {
     if (!f) return;
     try {
       loadInto(ctx.engine, parseMemoryFile(await f.text()));
-      ctx.render();
+      if (!ctx.adoptProfile?.()) ctx.render(); // o arquivo pode ser de outro modelo
+
       sync();
       ctx.showNotice(`Memórias carregadas: ${f.name}`);
     } catch (err) {
       ctx.showNotice(err.message);
     }
+  });
+
+  // ---- modo desenvolvedor: 7 toques seguidos na versão ----
+  let taps = 0;
+  let lastTap = 0;
+  const verNote = panel.querySelector('.ver-note');
+  const setDev = (on) => {
+    s.dev = on;
+    saveSettings(s);
+    taps = 0;
+    apply();
+    sync();
+  };
+  const tapVersion = () => {
+    const now = Date.now();
+    taps = now - lastTap > DEV_GAP_MS ? 1 : taps + 1;
+    lastTap = now;
+    if (s.dev) verNote.textContent = 'O modo desenvolvedor já está ativo';
+    else if (taps >= DEV_TAPS) {
+      setDev(true);
+      verNote.textContent = 'Modo desenvolvedor ativado';
+    } else if (taps >= 3) verNote.textContent = `Faltam ${DEV_TAPS - taps} toques para o modo desenvolvedor`;
+  };
+  const verRow = panel.querySelector('.ver-row');
+  verRow.addEventListener('click', tapVersion);
+  verRow.addEventListener('keydown', (e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), tapVersion()));
+  panel.querySelector('.dev-off').addEventListener('click', () => {
+    setDev(false);
+    verNote.textContent = `Calc 12c ${APP_VERSION}`;
   });
 
   const themeless = new Set(['vibrate', 'sound', 'wake', 'onStyle', 'topPad', 'orient']);
@@ -3071,6 +3588,11 @@ function mountSettings(ctx) {
       s.orient = e.target.value;
       saveSettings(s);
       setOrient(s.orient, true);
+      return;
+    }
+    if (n === 'profile') {
+      ctx.setProfile(e.target.value);
+      sync();
       return;
     }
     if (n === 'locale') {
@@ -3096,7 +3618,7 @@ function mountSettings(ctx) {
   panel.addEventListener('input', (e) => (e.target.name?.startsWith('color-') ? onColor(e) : e.target.name === 'topPad' && onInput(e))); // a banda sobe e desce enquanto arrasta
   apply();
   if (s.orient !== 'auto') setOrient(s.orient, false); // reaplica a trava guardada
-  return { get: () => ({ ...s }), open, close, toggle: () => (panel.hidden ? open() : close()), isOpen: () => !panel.hidden };
+  return { get: () => ({ ...s }), setDev, refresh: () => { sync(); apply(); }, open, close, toggle: () => (panel.hidden ? open() : close()), isOpen: () => !panel.hidden };
 }
 
 return { defaultSettings, loadSettings, saveSettings, applyTheme, applyColors, lockOrientation, mountSettings };
@@ -3315,6 +3837,41 @@ const VERSO = [
     ],
   },
   {
+    id: 'alg', tag: 'ALG', title: 'Modo algébrico (ALG)',
+    note: 'Só na 12C Platinum. f ALG liga e f RPN desliga (teclas EEX e CHS). No ALG o ENTER faz o papel de "=", as contas são feitas na ordem em que são digitadas (1 + 2 × 3 = 9, sem hierarquia) e g ( / g ) abrem e fecham parênteses. As teclas financeiras funcionam igual nos dois modos. Os exemplos ligam o ALG sozinhos; para voltar, f RPN.',
+    items: [
+      {
+        id: 'alg-soma', title: '21,1 + 23,8', text: 'Digite o primeiro número, o operador, o segundo e ENTER (o "=").', ready: true,
+        variants: [{ label: 'Soma', keys: 'f eex 21.1 plus 23.8 enter' }],
+      },
+      {
+        id: 'alg-cadeia', title: '456 − 75 ÷ 18,5 × 68 ÷ 1,9', text: 'Cada operador faz a conta pendente: 381, 20,59, 1.400,43 e, no fim, o resultado.', ready: true,
+        variants: [
+          { label: 'Cadeia', keys: 'f eex 456 minus 75 divide 18.5 times 68 divide 1.9 enter' },
+          { label: 'Sem hierarquia · 1 + 2 × 3', keys: 'f eex 1 plus 2 times 3 enter' },
+        ],
+      },
+      {
+        id: 'alg-paren', title: '8 ÷ 5 − 1 e 8 ÷ (5 − 1)', text: 'Sem parênteses a divisão vem primeiro; com g ( e g ) a subtração é feita antes. O indicador ( ) acende enquanto houver parêntese aberto.', ready: true,
+        variants: [
+          { label: 'Sem parênteses', keys: 'f eex 8 divide 5 minus 1 enter' },
+          { label: 'Com parênteses', keys: 'f eex 8 divide g sto 5 minus 1 g rcl enter' },
+        ],
+      },
+      {
+        id: 'alg-pct', title: 'Porcentagem em 200', text: 'Depois de × ou ÷ o % usa o número dividido por 100; depois de + ou − dá o valor líquido na hora.', ready: true,
+        variants: [
+          { label: '25% de 200', keys: 'f eex 200 times 25 pct' },
+          { label: '200 reduzido em 25%', keys: 'f eex 200 minus 25 pct' },
+        ],
+      },
+      {
+        id: 'alg-delta', title: 'Variação de 35,5 para 31,25', text: 'Δ% também usa ENTER entre os dois números: o valor base primeiro.', ready: true,
+        variants: [{ label: 'Δ%', keys: 'f eex 35.5 enter 31.25 dpct' }],
+      },
+    ],
+  },
+  {
     id: 'prog', tag: 'PRGM', title: 'Programação',
     note: 'Gravar: f P/R liga o modo de programação (PRGM), f CLEAR PRGM limpa, depois aperte as teclas do cálculo; cada tecla vira uma linha (número de dois dígitos = duas linhas). f P/R sai. Rodar: digite os números e aperte R/S. SST executa uma linha de cada vez. Os exemplos gravam o programa sozinhos e apagam o que estava na memória de programa.',
     items: [
@@ -3366,6 +3923,25 @@ const VERSO = [
   },
 ];
 
+// Guia do verso de cada perfil.
+// O grupo ALG só existe na Platinum.
+// Na Platinum o GTO tem 3 dígitos (400 linhas): os exemplos de programa ganham um zero (GTO 04 → GTO 004).
+const widenGto = (str) => str.replace(/(g rdown) (\d) (\d)(?!\d)/g, '$1 0 $2 $3').replace(/GTO (\d\d)(?!\d)/g, 'GTO 0$1');
+const forPlatinum = (groups) => groups.map((g) => (g.id !== 'prog' ? g : {
+  ...g,
+  items: g.items.map((it) => ({
+    ...it,
+    text: widenGto(it.text),
+    listing: it.listing?.map(widenGto),
+    variants: it.variants.map((v) => ({ ...v, keys: widenGto(v.keys) })),
+  })),
+}));
+
+const VERSO_BY_PROFILE = {
+  '12c': { sections: VERSO.filter((g) => g.id !== 'alg'), sigma: SIGMA_MAP },
+  '12cp': { sections: forPlatinum(VERSO), sigma: SIGMA_MAP },
+};
+
 // Uma variante pode depender da gravação do programa: `pre` é o rótulo de outra variante do mesmo exemplo,
 // cujas teclas são apertadas antes (rápido, sem animação). Devolve só essas teclas prévias.
 function preKeys(item, variant) {
@@ -3378,27 +3954,27 @@ function preKeys(item, variant) {
 // Sequência completa de teclas de uma variante (prévia + própria).
 const fullKeys = (item, variant) => [preKeys(item, variant), variant.keys].filter(Boolean).join(' ');
 
-return { SIGMA_MAP, VERSO, preKeys, fullKeys };
+return { SIGMA_MAP, VERSO, VERSO_BY_PROFILE, preKeys, fullKeys };
 })();
 
 const __m_verso = (() => {
 // Verso: guia de fórmulas com exemplos que podem ser executados na própria calculadora.
 const { KEY_BY_ID } = __m_keymap;
-const { VERSO, SIGMA_MAP, preKeys } = __m_verso_data;
+const { VERSO_BY_PROFILE, preKeys } = __m_verso_data;
 
 const STEP_MS = 140; // intervalo entre as teclas quando um exemplo é executado
 
 // "31.052003" → "31,052003"; ids do motor → rótulo impresso na tecla; f/g + tecla viram um chip só (ex.: "g ΔDYS")
-function chipsOf(keys) {
+function chipsOf(keys, keyById = KEY_BY_ID) {
   const out = [];
   const t = keys.split(/\s+/).filter(Boolean);
   for (let i = 0; i < t.length; i++) {
     const id = t[i];
     if (/^\d+(\.\d+)?$/.test(id)) out.push({ text: id.replace('.', ','), kind: 'num' });
     else if ((id === 'f' || id === 'g') && t[i + 1] && !/^\d.+/.test(t[i + 1])) { // f/g + tecla (um dígito sozinho é tecla, ex.: g 4)
-      const next = KEY_BY_ID.get(t[++i]);
+      const next = keyById.get(t[++i]);
       out.push({ text: `${id} ${next[id] ?? next.label}`, kind: id });
-    } else out.push({ text: KEY_BY_ID.get(id)?.label ?? id, kind: 'fn' });
+    } else out.push({ text: keyById.get(id)?.label ?? id, kind: 'fn' });
   }
   return out;
 }
@@ -3415,8 +3991,8 @@ function expandKeys(keys) {
 
 const esc = (x) => String(x).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
-function variantHtml(v, ready, key) {
-  const chips = chipsOf(v.keys).map((c) => `<span class="chip ${c.kind}">${esc(c.text)}</span>`).join('');
+function variantHtml(v, ready, key, keyById) {
+  const chips = chipsOf(v.keys, keyById).map((c) => `<span class="chip ${c.kind}">${esc(c.text)}</span>`).join('');
   const btn = ready
     ? `<button type="button" class="run" data-run="${key}">Executar</button>`
     : '<button type="button" class="run" disabled>Em breve</button>';
@@ -3428,15 +4004,17 @@ function mountVerso(ctx) {
   el.className = 'verso';
   el.hidden = true;
   el.setAttribute('aria-label', 'Verso da calculadora: guia de fórmulas');
-  const sigma = SIGMA_MAP.map(([a, b]) => `<span class="sg">${esc(a)}</span><span class="ar">→</span><span class="sr">${esc(b)}</span>`).join('');
+  const data = VERSO_BY_PROFILE[ctx.profile.id] ?? { sections: [], sigma: [] }; // cada perfil tem o seu guia
+  const keyById = ctx.profile.keyById;
+  const sigma = data.sigma.map(([a, b]) => `<span class="sg">${esc(a)}</span><span class="ar">→</span><span class="sr">${esc(b)}</span>`).join('');
   const runs = new Map();
   let n = 0;
-  const secs = VERSO.map((g) => {
+  const secs = data.sections.map((g) => {
     const items = g.items.map((it) => {
       const vs = it.variants.map((v) => {
         const key = 'r' + n++;
         runs.set(key, { it, v });
-        return variantHtml(v, it.ready, key);
+        return variantHtml(v, it.ready, key, keyById);
       }).join('');
       const lst = it.listing ? `<ol class="listing">${it.listing.map((l) => `<li>${esc(l)}</li>`).join('')}</ol>` : '';
       return `<article class="v-item"><h4>${esc(it.title)}</h4><p>${esc(it.text)}</p>${lst}${vs}</article>`;
@@ -3446,8 +4024,8 @@ function mountVerso(ctx) {
   el.innerHTML =
     '<header class="verso-head"><span class="verso-title">Verso · guia rápido</span>' +
     '<button type="button" class="verso-close" aria-label="Voltar à frente da calculadora">✕</button></header>' +
-    '<p class="verso-hint">Todos os exemplos usam a pilha RPN: digite o número, ENTER, e depois a função. Toque em Executar para ver as teclas sendo apertadas.</p>' +
-    `<section class="v-sec sigma"><span class="v-tag sigma-tag" aria-hidden="true">Σ</span><div class="v-body"><h3>Estatística: onde ficam os totais</h3><div class="sigma-map">${sigma}</div></div></section>` +
+    '<p class="verso-hint">Os exemplos usam a pilha RPN: digite o número, ENTER, e depois a função (se a calculadora estiver em ALG, ela passa para RPN ao executar; os exemplos do grupo ALG ligam o ALG sozinhos). Toque em Executar para ver as teclas sendo apertadas.</p>' +
+    (data.sigma.length ? `<section class="v-sec sigma"><span class="v-tag sigma-tag" aria-hidden="true">Σ</span><div class="v-body"><h3>Estatística: onde ficam os totais</h3><div class="sigma-map">${sigma}</div></div></section>` : '') +
     secs;
   ctx.calc.append(el);
 
@@ -3474,6 +4052,10 @@ function mountVerso(ctx) {
       ctx.pressKey('f');
       ctx.pressKey('rs');
     }
+    if (e.mode !== 'rpn') { // os exemplos supõem a pilha RPN
+      ctx.pressKey('f');
+      ctx.pressKey('chs');
+    }
     for (const id of expandKeys(pre)) ctx.pressKey(id); // gravação do programa: rápida, sem animação
     for (const id of expandKeys(keys)) {
       if (my !== busy) return;
@@ -3497,11 +4079,12 @@ return { chipsOf, expandKeys, mountVerso };
 })();
 
 const __m_app = (() => {
-const { KEYS } = __m_keymap;
 const { Engine } = __m_engine;
+const { getProfile } = __m_profiles;
 const { renderDisplay, bindKeyboard } = __m_display;
 const { mountDrawer } = __m_tape;
-const { loadState, saveState } = __m_storage;
+const { loadState, saveState, saveActiveProfile } = __m_storage;
+const { loadInto } = __m_memories;
 const { mountSettings } = __m_settings;
 const { startReflex } = __m_reflex;
 const { mountVerso } = __m_verso;
@@ -3512,14 +4095,7 @@ const NOTICE_MS = 2200;
 // Posição no layout horizontal (4 × 10): metade de baixo do vertical vai para as colunas 6 a 10.
 const hpos = (k) => (k.row < 4 ? { r: k.row, c: k.col } : { r: k.row - 4, c: k.col + 5 });
 
-// Linhas de ligação das funções agrupadas (como impressas na HP 12C): posição no retrato (r, c0..c1) e na paisagem (hr, hc0..hc1)
-const BRACKETS = [
-  { label: 'BOND', r: 1, c0: 0, c1: 1, hr: 1, hc0: 0, hc1: 1 },
-  { label: 'DEPRECIATION', r: 1, c0: 2, c1: 4, hr: 1, hc0: 2, hc1: 4 },
-  { label: 'CLEAR', r: 2, c0: 1, c1: 4, hr: 2, hc0: 1, hc1: 5 },
-  { label: '', r: 6, c0: 0, c1: 0, hr: 2, hc0: 5, hc1: 5, cls: 'pfx' }, // PREFIX: no retrato tem a linha própria; na paisagem a linha do CLEAR já a cobre
-];
-
+// As linhas de ligação das funções agrupadas (BOND, DEPRECIATION, CLEAR, PREFIX) vêm do perfil (profiles.js).
 function makeBracket(b) {
   const el = document.createElement('span');
   el.className = 'bracket' + (b.cls ? ' ' + b.cls : '');
@@ -3572,14 +4148,11 @@ function mountApp(root, engine = new Engine()) {
   notice.className = 'notice';
   notice.hidden = true;
   notice.setAttribute('role', 'status');
-  for (const k of KEYS) keys.append(makeKey(k));
-  for (const b of BRACKETS) keys.append(makeBracket(b));
   const top = document.createElement('div');
   top.className = 'top';
   const brand = document.createElement('div');
   brand.className = 'brand';
-  brand.setAttribute('aria-label', 'Calc 12c, calculadora financeira RPN');
-  brand.innerHTML = '<span class="name"><b class="title">Calc 12c</b></span><span class="rule" aria-hidden="true"></span>' +
+  brand.innerHTML = '<span class="name"><b class="title"></b></span><span class="rule" aria-hidden="true"></span>' +
     '<span class="badge" aria-hidden="true"><span class="mw"><svg viewBox="0 0 44 28" preserveAspectRatio="xMidYMid meet" focusable="false"><circle cx="22" cy="14" r="11" class="disc"/><g transform="translate(2.6 0) skewX(-11)" fill="none" stroke-width="2.3" stroke-linejoin="miter" stroke-miterlimit="4" class="lit"><polyline points="14,19.4 14,8.6 17.6,15.4 21.2,8.6 21.2,19.4"/><polyline points="22.7,8.6 24.6,19.4 26.7,12.6 28.8,19.4 30.6,8.6"/></g></svg></span><span class="model">RPN</span></span>';
   top.append(brand, display);
   calc.append(top, keys, notice);
@@ -3593,9 +4166,31 @@ function mountApp(root, engine = new Engine()) {
     timer = setTimeout(() => (notice.hidden = true), NOTICE_MS);
   };
 
-  const ctx = { root, calc, top, display, keys, notice, engine, showNotice, listeners: [], vibrate: false, sounder: makeSound() };
+  const ctx = { root, calc, top, display, keys, notice, engine, showNotice, listeners: [], vibrate: false, sounder: makeSound(), profile: getProfile(engine.profile) };
+  // teclado do perfil: teclas e linhas de ligação
+  const buildKeys = () => {
+    keys.replaceChildren();
+    for (const k of ctx.profile.keys) keys.append(makeKey(k));
+    for (const b of ctx.profile.brackets) keys.append(makeBracket(b));
+    bindOnKey();
+  };
+  // título e selo do topo seguem o perfil e o modo (RPN/ALG só nos perfis que têm os dois)
+  const paintBrand = (s) => {
+    const p = ctx.profile;
+    const modeLabel = p.modes.length > 1 ? s.mode.toUpperCase() : 'RPN';
+    const title = brand.querySelector('.title');
+    if (title.dataset.profile !== p.id) { // o título muda só quando o perfil muda
+      title.dataset.profile = p.id;
+      title.classList.toggle('two', !!p.title);
+      if (p.title) title.innerHTML = `<span class="l1">${p.title[0]}</span><small class="l2">${p.title[1]}</small>`; // ex.: Platinum com 12c embaixo
+      else title.textContent = p.name;
+    }
+    brand.querySelector('.model').textContent = modeLabel;
+    brand.setAttribute('aria-label', `${p.name}, calculadora financeira ${modeLabel}`);
+  };
   ctx.render = () => {
     const s = engine.state;
+    paintBrand(s);
     renderDisplay(display, s);
     calc.dataset.shift = s.shift ?? '';
     ctx.listeners.forEach((fn) => fn(ctx, s));
@@ -3630,7 +4225,7 @@ function mountApp(root, engine = new Engine()) {
   };
   keys.addEventListener('pointerdown', (ev) => {
     const b = ev.target.closest('button.key');
-    const k = b && KEYS.find((x) => x.id === b.dataset.id);
+    const k = b && ctx.profile.keys.find((x) => x.id === b.dataset.id);
     if (!k?.enabled) return;
     const r = b.getBoundingClientRect();
     tapFx(b, ((ev.clientX - r.left) / r.width) * 100, ((ev.clientY - r.top) / r.height) * 100);
@@ -3685,26 +4280,31 @@ function mountApp(root, engine = new Engine()) {
   const HOLD_MS = 500;
   let holdTimer;
   let held = false;
-  const onKey = keys.querySelector('button.key[data-id="on"]');
-  onKey.addEventListener('pointerdown', () => {
-    held = false;
-    clearTimeout(holdTimer);
-    holdTimer = setTimeout(() => {
-      held = true;
-      haptic(20);
-      ctx.verso.toggle();
-    }, HOLD_MS);
-  });
-  for (const t of ['pointerup', 'pointercancel', 'pointerleave']) onKey.addEventListener(t, () => clearTimeout(holdTimer));
-  onKey.addEventListener('contextmenu', (ev) => ev.preventDefault()); // o menu de "segurar" do celular não deve abrir
+  const getOnKey = () => keys.querySelector('button.key[data-id="on"]');
+  function bindOnKey() { // a tecla é refeita quando o perfil muda: os ouvintes dela são ligados a cada montagem
+    const onKey = getOnKey();
+    onKey.addEventListener('pointerdown', () => {
+      held = false;
+      clearTimeout(holdTimer);
+      holdTimer = setTimeout(() => {
+        held = true;
+        haptic(20);
+        ctx.verso.toggle();
+      }, HOLD_MS);
+    });
+    for (const t of ['pointerup', 'pointercancel', 'pointerleave']) onKey.addEventListener(t, () => clearTimeout(holdTimer));
+    onKey.addEventListener('contextmenu', (ev) => ev.preventDefault()); // o menu de "segurar" do celular não deve abrir
+  }
   // rótulo da tecla ON: "≡" (menu) ou "ON"; sem o "OFF" impresso, já que a tecla agora abre as configurações
   ctx.setOnStyle = (style) => {
+    const onKey = getOnKey();
     const menu = style !== 'on';
     onKey.querySelector('.lm').textContent = menu ? '≡' : 'ON';
     onKey.querySelector('.lf').textContent = menu ? '' : 'OFF'; // no estilo ON mantém o rótulo impresso da HP
     onKey.classList.toggle('menu-key', menu);
     onKey.setAttribute('aria-label', (menu ? 'Menu' : 'ON') + ': toque para as configurações, segure para o verso');
   };
+  buildKeys();
   ctx.setOnStyle('on');
   ctx.onTap = () => {
     if (ctx.verso.isOpen()) ctx.verso.close();
@@ -3713,7 +4313,7 @@ function mountApp(root, engine = new Engine()) {
   keys.addEventListener('click', (ev) => {
     const b = ev.target.closest('button.key');
     if (!b) return;
-    const k = KEYS.find((x) => x.id === b.dataset.id);
+    const k = ctx.profile.keys.find((x) => x.id === b.dataset.id);
     if (k.id === 'on') {
       if (held) held = false; // o segurar já abriu o verso; o clique que vem ao soltar não faz mais nada
       else {
@@ -3754,6 +4354,26 @@ function mountApp(root, engine = new Engine()) {
     return motion;
   };
   ctx.verso = mountVerso(ctx);
+  // Troca de perfil: guarda o estado do atual, carrega o do novo (cada perfil tem o seu) e refaz teclado, selo e verso.
+  // `adoptProfile` também serve quando um arquivo de memórias de outro perfil é aberto.
+  ctx.adoptProfile = () => {
+    if (engine.profile === ctx.profile.id) return false;
+    ctx.profile = getProfile(engine.profile);
+    saveActiveProfile(engine.profile);
+    buildKeys();
+    ctx.setOnStyle(ctx.settings?.get().onStyle ?? 'on');
+    ctx.verso.el.remove();
+    ctx.verso = mountVerso(ctx);
+    ctx.settings?.refresh(); // o tema depende do perfil
+    ctx.render();
+    return true;
+  };
+  ctx.setProfile = (id) => {
+    if (id === engine.profile) return;
+    saveState(engine);
+    loadInto(engine, loadState(id));
+    ctx.adoptProfile();
+  };
   ctx.settings = mountSettings(ctx);
   ctx.listeners.push(() => saveState(engine)); // salvamento automático
   ctx.render();

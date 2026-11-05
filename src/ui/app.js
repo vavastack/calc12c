@@ -1,8 +1,9 @@
-import { KEYS } from '../engine/keymap.js';
 import { Engine } from '../engine/engine.js';
+import { getProfile } from '../engine/profiles.js';
 import { renderDisplay, bindKeyboard } from './display.js';
 import { mountDrawer } from './tape.js';
-import { loadState, saveState } from './storage.js';
+import { loadState, saveState, saveActiveProfile } from './storage.js';
+import { loadInto } from './memories.js';
 import { mountSettings } from './settings.js';
 import { startReflex } from './reflex.js';
 import { mountVerso } from './verso.js';
@@ -13,14 +14,7 @@ const NOTICE_MS = 2200;
 // Posição no layout horizontal (4 × 10): metade de baixo do vertical vai para as colunas 6 a 10.
 const hpos = (k) => (k.row < 4 ? { r: k.row, c: k.col } : { r: k.row - 4, c: k.col + 5 });
 
-// Linhas de ligação das funções agrupadas (como impressas na HP 12C): posição no retrato (r, c0..c1) e na paisagem (hr, hc0..hc1)
-const BRACKETS = [
-  { label: 'BOND', r: 1, c0: 0, c1: 1, hr: 1, hc0: 0, hc1: 1 },
-  { label: 'DEPRECIATION', r: 1, c0: 2, c1: 4, hr: 1, hc0: 2, hc1: 4 },
-  { label: 'CLEAR', r: 2, c0: 1, c1: 4, hr: 2, hc0: 1, hc1: 5 },
-  { label: '', r: 6, c0: 0, c1: 0, hr: 2, hc0: 5, hc1: 5, cls: 'pfx' }, // PREFIX: no retrato tem a linha própria; na paisagem a linha do CLEAR já a cobre
-];
-
+// As linhas de ligação das funções agrupadas (BOND, DEPRECIATION, CLEAR, PREFIX) vêm do perfil (profiles.js).
 function makeBracket(b) {
   const el = document.createElement('span');
   el.className = 'bracket' + (b.cls ? ' ' + b.cls : '');
@@ -73,14 +67,11 @@ export function mountApp(root, engine = new Engine()) {
   notice.className = 'notice';
   notice.hidden = true;
   notice.setAttribute('role', 'status');
-  for (const k of KEYS) keys.append(makeKey(k));
-  for (const b of BRACKETS) keys.append(makeBracket(b));
   const top = document.createElement('div');
   top.className = 'top';
   const brand = document.createElement('div');
   brand.className = 'brand';
-  brand.setAttribute('aria-label', 'Calc 12c, calculadora financeira RPN');
-  brand.innerHTML = '<span class="name"><b class="title">Calc 12c</b></span><span class="rule" aria-hidden="true"></span>' +
+  brand.innerHTML = '<span class="name"><b class="title"></b></span><span class="rule" aria-hidden="true"></span>' +
     '<span class="badge" aria-hidden="true"><span class="mw"><svg viewBox="0 0 44 28" preserveAspectRatio="xMidYMid meet" focusable="false"><circle cx="22" cy="14" r="11" class="disc"/><g transform="translate(2.6 0) skewX(-11)" fill="none" stroke-width="2.3" stroke-linejoin="miter" stroke-miterlimit="4" class="lit"><polyline points="14,19.4 14,8.6 17.6,15.4 21.2,8.6 21.2,19.4"/><polyline points="22.7,8.6 24.6,19.4 26.7,12.6 28.8,19.4 30.6,8.6"/></g></svg></span><span class="model">RPN</span></span>';
   top.append(brand, display);
   calc.append(top, keys, notice);
@@ -94,9 +85,31 @@ export function mountApp(root, engine = new Engine()) {
     timer = setTimeout(() => (notice.hidden = true), NOTICE_MS);
   };
 
-  const ctx = { root, calc, top, display, keys, notice, engine, showNotice, listeners: [], vibrate: false, sounder: makeSound() };
+  const ctx = { root, calc, top, display, keys, notice, engine, showNotice, listeners: [], vibrate: false, sounder: makeSound(), profile: getProfile(engine.profile) };
+  // teclado do perfil: teclas e linhas de ligação
+  const buildKeys = () => {
+    keys.replaceChildren();
+    for (const k of ctx.profile.keys) keys.append(makeKey(k));
+    for (const b of ctx.profile.brackets) keys.append(makeBracket(b));
+    bindOnKey();
+  };
+  // título e selo do topo seguem o perfil e o modo (RPN/ALG só nos perfis que têm os dois)
+  const paintBrand = (s) => {
+    const p = ctx.profile;
+    const modeLabel = p.modes.length > 1 ? s.mode.toUpperCase() : 'RPN';
+    const title = brand.querySelector('.title');
+    if (title.dataset.profile !== p.id) { // o título muda só quando o perfil muda
+      title.dataset.profile = p.id;
+      title.classList.toggle('two', !!p.title);
+      if (p.title) title.innerHTML = `<span class="l1">${p.title[0]}</span><small class="l2">${p.title[1]}</small>`; // ex.: Platinum com 12c embaixo
+      else title.textContent = p.name;
+    }
+    brand.querySelector('.model').textContent = modeLabel;
+    brand.setAttribute('aria-label', `${p.name}, calculadora financeira ${modeLabel}`);
+  };
   ctx.render = () => {
     const s = engine.state;
+    paintBrand(s);
     renderDisplay(display, s);
     calc.dataset.shift = s.shift ?? '';
     ctx.listeners.forEach((fn) => fn(ctx, s));
@@ -131,7 +144,7 @@ export function mountApp(root, engine = new Engine()) {
   };
   keys.addEventListener('pointerdown', (ev) => {
     const b = ev.target.closest('button.key');
-    const k = b && KEYS.find((x) => x.id === b.dataset.id);
+    const k = b && ctx.profile.keys.find((x) => x.id === b.dataset.id);
     if (!k?.enabled) return;
     const r = b.getBoundingClientRect();
     tapFx(b, ((ev.clientX - r.left) / r.width) * 100, ((ev.clientY - r.top) / r.height) * 100);
@@ -186,26 +199,31 @@ export function mountApp(root, engine = new Engine()) {
   const HOLD_MS = 500;
   let holdTimer;
   let held = false;
-  const onKey = keys.querySelector('button.key[data-id="on"]');
-  onKey.addEventListener('pointerdown', () => {
-    held = false;
-    clearTimeout(holdTimer);
-    holdTimer = setTimeout(() => {
-      held = true;
-      haptic(20);
-      ctx.verso.toggle();
-    }, HOLD_MS);
-  });
-  for (const t of ['pointerup', 'pointercancel', 'pointerleave']) onKey.addEventListener(t, () => clearTimeout(holdTimer));
-  onKey.addEventListener('contextmenu', (ev) => ev.preventDefault()); // o menu de "segurar" do celular não deve abrir
+  const getOnKey = () => keys.querySelector('button.key[data-id="on"]');
+  function bindOnKey() { // a tecla é refeita quando o perfil muda: os ouvintes dela são ligados a cada montagem
+    const onKey = getOnKey();
+    onKey.addEventListener('pointerdown', () => {
+      held = false;
+      clearTimeout(holdTimer);
+      holdTimer = setTimeout(() => {
+        held = true;
+        haptic(20);
+        ctx.verso.toggle();
+      }, HOLD_MS);
+    });
+    for (const t of ['pointerup', 'pointercancel', 'pointerleave']) onKey.addEventListener(t, () => clearTimeout(holdTimer));
+    onKey.addEventListener('contextmenu', (ev) => ev.preventDefault()); // o menu de "segurar" do celular não deve abrir
+  }
   // rótulo da tecla ON: "≡" (menu) ou "ON"; sem o "OFF" impresso, já que a tecla agora abre as configurações
   ctx.setOnStyle = (style) => {
+    const onKey = getOnKey();
     const menu = style !== 'on';
     onKey.querySelector('.lm').textContent = menu ? '≡' : 'ON';
     onKey.querySelector('.lf').textContent = menu ? '' : 'OFF'; // no estilo ON mantém o rótulo impresso da HP
     onKey.classList.toggle('menu-key', menu);
     onKey.setAttribute('aria-label', (menu ? 'Menu' : 'ON') + ': toque para as configurações, segure para o verso');
   };
+  buildKeys();
   ctx.setOnStyle('on');
   ctx.onTap = () => {
     if (ctx.verso.isOpen()) ctx.verso.close();
@@ -214,7 +232,7 @@ export function mountApp(root, engine = new Engine()) {
   keys.addEventListener('click', (ev) => {
     const b = ev.target.closest('button.key');
     if (!b) return;
-    const k = KEYS.find((x) => x.id === b.dataset.id);
+    const k = ctx.profile.keys.find((x) => x.id === b.dataset.id);
     if (k.id === 'on') {
       if (held) held = false; // o segurar já abriu o verso; o clique que vem ao soltar não faz mais nada
       else {
@@ -255,6 +273,26 @@ export function mountApp(root, engine = new Engine()) {
     return motion;
   };
   ctx.verso = mountVerso(ctx);
+  // Troca de perfil: guarda o estado do atual, carrega o do novo (cada perfil tem o seu) e refaz teclado, selo e verso.
+  // `adoptProfile` também serve quando um arquivo de memórias de outro perfil é aberto.
+  ctx.adoptProfile = () => {
+    if (engine.profile === ctx.profile.id) return false;
+    ctx.profile = getProfile(engine.profile);
+    saveActiveProfile(engine.profile);
+    buildKeys();
+    ctx.setOnStyle(ctx.settings?.get().onStyle ?? 'on');
+    ctx.verso.el.remove();
+    ctx.verso = mountVerso(ctx);
+    ctx.settings?.refresh(); // o tema depende do perfil
+    ctx.render();
+    return true;
+  };
+  ctx.setProfile = (id) => {
+    if (id === engine.profile) return;
+    saveState(engine);
+    loadInto(engine, loadState(id));
+    ctx.adoptProfile();
+  };
   ctx.settings = mountSettings(ctx);
   ctx.listeners.push(() => saveState(engine)); // salvamento automático
   ctx.render();

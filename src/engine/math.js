@@ -66,3 +66,18 @@ export function applyOp(stack, op) {
   if (KEEP_Y[op]) return stack.applyKeepY((y, x) => fin(KEEP_Y[op](y, x)));
   throw new Error('operação desconhecida: ' + op);
 }
+
+// Operação de dois números (y op x) sem tocar na pilha: usada pelo modo ALG. op: plus, minus, times, divide, yx.
+export function compute(op, y, x) {
+  if (!BINARY[op]) throw new Error('operação desconhecida: ' + op);
+  return fin(BINARY[op](y, x));
+}
+
+// y% de x quando há uma operação pendente (ALG): a base é o primeiro operando.
+export function percentOf(base, pct) {
+  return fin((base * pct) / 100);
+}
+
+export function divide100(x) {
+  return fin(x / 100);
+}

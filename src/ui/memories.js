@@ -1,5 +1,5 @@
 // Memórias em arquivo: salvar, abrir e compartilhar o estado da calculadora (registradores, financeiros,
-// fluxos de caixa, programa, pilha e fita). O arquivo só sai do aparelho se a pessoa o compartilhar.
+// fluxos de caixa, programa, pilha e fita). A versão 2 leva também o perfil e o modo (RPN/ALG); arquivos da versão 1 abrem como 12C. O arquivo só sai do aparelho se a pessoa o compartilhar.
 import { Engine } from '../engine/engine.js';
 
 export const MEM_KIND = 'calc12c-memorias';
@@ -10,7 +10,7 @@ export function buildMemoryFile(engine, now = new Date()) {
   estado.shift = null; // nada pendente: o arquivo guarda só o que a pessoa calculou
   estado.pending = null;
   estado.error = null;
-  const text = JSON.stringify({ app: 'Calc 12c', tipo: MEM_KIND, versao: 1, criado: now.toISOString(), estado }, null, 2);
+  const text = JSON.stringify({ app: 'Calc 12c', tipo: MEM_KIND, versao: 2, perfil: engine.profile, criado: now.toISOString(), estado }, null, 2);
   return { name: `calc12c-memorias-${now.toISOString().slice(0, 10)}.json`, text };
 }
 

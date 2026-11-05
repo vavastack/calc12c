@@ -1,14 +1,15 @@
-import { KEY_BY_ID } from './keymap.js';
+import { getProfile, hasProfile, DEFAULT_PROFILE } from './profiles.js';
+import { AlgState, MAX_PARENS } from './alg.js';
 import { Stack } from './stack.js';
 import { Registers } from './registers.js';
 import { CashFlows } from './cashflow.js';
 import { amortize, roundDec } from './amort.js';
 import { sl, soyd, db } from './depreciation.js';
 import { bondPrice, bondYield } from './bonds.js';
-import { applyOp } from './math.js';
+import { applyOp, compute, percentOf, divide100 } from './math.js';
 import { solve, simpleInterest } from './tvm.js';
 import { CalcError } from './errors.js';
-import { MAX_LINES, lineText, memoryText, validLine } from './program.js';
+import { lineText, memoryText, validLine } from './program.js';
 import { addDays, daysBetween, formatDate } from './dates.js';
 import { accumulate, means, deviations, weightedMean, estimateX, estimateY } from './stats.js';
 import { round10, formatNumber } from './number.js';
@@ -19,17 +20,26 @@ const FIN = ['n', 'i', 'pv', 'pmt', 'fv'];
 const FIN_LABEL = { n: 'n', i: 'i', pv: 'PV', pmt: 'PMT', fv: 'FV' };
 const PRIMARY_OPS = ['plus', 'minus', 'times', 'divide', 'yx', 'recip', 'pctT', 'dpct', 'pct'];
 const OPKEYS = ['plus', 'minus', 'times', 'divide'];
+const ALG_OPS = ['plus', 'minus', 'times', 'divide', 'yx']; // operações de dois números do modo ALG
 const STAT_G = { '0': 'mean', dot: 'sd', '6': 'wmean', '1': 'estx', '2': 'esty', sigma: 'sigmaminus' };
 const G_OPS = { yx: 'sqrt', recip: 'expx', pctT: 'ln', dpct: 'frac', pct: 'intg', 3: 'fact' };
+const regName = (n) => (n >= 10 ? '.' + (n - 10) : String(n));
 const isDigit = (id) => /^[0-9]$/.test(id);
 const zeroFin = () => ({ n: 0, i: 0, pv: 0, pmt: 0, fv: 0 });
 
 export class Engine {
   constructor(opts = {}) {
+    this.profile = opts.profile ?? DEFAULT_PROFILE; // perfil de calculadora (mapa de teclas, modos); ver profiles.js
+    const def = getProfile(this.profile);
+    this.mode = opts.mode && def.modes.includes(opts.mode) ? opts.mode : def.defaultMode; // 'rpn' | 'alg'
+    this.alg = new AlgState(); // operações pendentes do modo ALG
     this.stack = new Stack();
-    this.regs = new Registers();
+    this.regs = new Registers(def.regCount);
+    this.maxLines = def.maxLines; // linhas de programa do modelo (99 ou 400)
+    this.lineWidth = String(def.maxLines).length; // dígitos do número da linha e do GTO (2 ou 3)
+    this.undoSnap = null; // Platinum: estado antes da última limpeza, para g Undo
     this.fin = zeroFin();
-    this.cf = new CashFlows(); // CFo, CFj, Nj (V2)
+    this.cf = new CashFlows(def.maxFlows); // CFo, CFj, Nj (V2)
     this.amortFresh = true; // nenhuma prestação amortizada desde a última mudança em n, i, PV, PMT ou FV
     this.begin = false;
     this.prgm = false; // modo de programação (indicador PRGM)
@@ -52,11 +62,18 @@ export class Engine {
     this.tokens = []; // teclas desde a última linha da fita
   }
 
+  get keyById() {
+    return getProfile(this.profile).keyById;
+  }
+
   // ---------- estado ----------
   get state() {
     const s = this.stack;
     return {
       display: this._display(),
+      profile: this.profile,
+      mode: this.mode,
+      parens: this.alg.depth,
       stack: { x: s.x, y: s.y, z: s.z, t: s.t, lastX: s.lastX },
       regs: this.regs.values(),
       fin: { ...this.fin },
@@ -71,6 +88,7 @@ export class Engine {
       error: this.error ? { ...this.error } : null,
       tape: this.tape.map((l) => ({ ...l })),
       pending: this.pending,
+      undo: this.undoSnap !== null,
     };
   }
 
@@ -81,7 +99,7 @@ export class Engine {
 
   // ---------- teclas ----------
   press(id) {
-    const key = KEY_BY_ID.get(id);
+    const key = this.keyById.get(id);
     if (!key) throw new Error('tecla desconhecida: ' + id);
     if (id !== 'f' && id !== 'g') this.dateText = null;
     if (this.error) {
@@ -101,21 +119,48 @@ export class Engine {
       this.shift = id;
       return;
     }
+    const prof = getProfile(this.profile);
+    if (prof.undo && this.shift === 'g' && id === 'divide' && !this.prgm && !this.pending) return this._undo(); // g Undo
+    const snap = prof.undo && this._clears(key) ? this.serialize() : null;
     try {
       this._dispatch(key);
+      if (prof.undo) this.undoSnap = snap;
     } catch (e) {
       if (!(e instanceof CalcError)) throw e;
+      this.undoSnap = null;
       this.error = { code: e.code, message: e.message };
+      this.alg.clearPending(); // um erro cancela as operações pendentes do ALG
       this.shift = null;
       this.pending = null;
       this.tokens = [];
     }
   }
 
+  // A tecla (com o prefixo atual) apaga dados? São as limpezas que a Platinum deixa desfazer com g Undo.
+  _clears(key) {
+    if (this.prgm || this.pending) return false;
+    const id = key.id;
+    if (this.shift === null) return id === 'clx';
+    if (this.shift === 'g') return id === 'minus'; // g ←
+    return id === 'clx' || id === 'sst' || id === 'xy'; // f CLEAR REG, Σ, FIN
+  }
+
+  // g Undo: devolve o estado de antes da última limpeza. Sem limpeza recente, não faz nada.
+  _undo() {
+    this.shift = null;
+    const snap = this.undoSnap;
+    this.undoSnap = null;
+    if (!snap) return;
+    const r = Engine.restore(snap);
+    r.shift = null;
+    r.pending = null;
+    Object.assign(this, r);
+  }
+
   // Limpar tudo: pilha, registradores, financeiros, fita; mantém o formato (pt-BR / en-US).
   reset() {
     const locale = this.locale;
-    Object.assign(this, new Engine({ locale }));
+    Object.assign(this, new Engine({ locale, profile: this.profile, mode: this.mode }));
   }
 
   // Linha da fita tocada: o valor entra em X, respeitando a regra de elevação da pilha.
@@ -148,7 +193,13 @@ export class Engine {
     if (this.pending) return this._finishPending(key);
     if (key.id === 'on') return;
     const s = this.stack;
-    const entryKey = shift === null && (isDigit(key.id) || key.id === 'dot' || key.id === 'eex' || key.id === 'chs');
+    const a = this.alg;
+    a.wasFresh = a.fresh; // ALG: a tecla anterior foi um operador? e foi CLx?
+    a.fresh = false;
+    a.wasClx = a.clxPrev;
+    a.clxPrev = false;
+    const backspace = shift === 'g' && key.id === 'minus' && getProfile(this.profile).undo;
+    const entryKey = backspace || (shift === null && (isDigit(key.id) || key.id === 'dot' || key.id === 'eex' || key.id === 'chs'));
     if (!entryKey && s.entering) this.tokens.push(s.entryText());
     const wasStored = this.justStored;
     this.justStored = false;
@@ -160,6 +211,7 @@ export class Engine {
   _primary(key, wasStored) {
     const id = key.id;
     const s = this.stack;
+    if (this.mode === 'alg' && this._algPrimary(key)) return;
     if (isDigit(id)) return s.digit(id);
     if (PRIMARY_OPS.includes(id)) {
       applyOp(s, id);
@@ -243,8 +295,13 @@ export class Engine {
       return;
     }
     if (id === 'enter') {
+      if (this.mode === 'alg') return this._algLastX(); // no ALG, LSTx troca X com LAST X
       s.recall(s.lastX);
       this.tokens.push('LSTx');
+      return;
+    }
+    if (id === 'sto' || id === 'rcl') { // g ( e g ): só existem no ALG
+      if (this.mode === 'alg') return id === 'sto' ? this._algOpen() : this._algClose();
       return;
     }
     if (id === '4' || id === '5') {
@@ -252,9 +309,13 @@ export class Engine {
       this.justStored = wasStored;
       return;
     }
+    if (id === 'minus' && getProfile(this.profile).undo) {
+      s.backspace(); // g ←: apaga o último dígito; fora da digitação, zera X
+      return;
+    }
     if (id === 'sst') {
       this.pc = Math.max(0, this.pc - 1); // g BST
-      this.dateText = lineText(this.pc, this.prog[this.pc - 1]);
+      this.dateText = lineText(this.pc, this.prog[this.pc - 1], this.lineWidth);
       return;
     }
     if (id === 'rdown') {
@@ -300,6 +361,9 @@ export class Engine {
       return;
     }
     switch (id) {
+      case 'chs': // f RPN
+      case 'eex': // f ALG
+        return this._setMode(id === 'chs' ? 'rpn' : 'alg');
       case 'i': {
         s.commit();
         const r = simpleInterest(this.fin.n, this.fin.i, this.fin.pv);
@@ -358,15 +422,17 @@ export class Engine {
         this.fin = zeroFin();
         this.amortFresh = true;
         return;
-      case 'rdown': // CLEAR PRGM (no modo de execução só volta à linha 00)
-        this.pc = 0;
+      case 'rdown': // CLEAR PRGM (no modo de execução a clássica volta à linha 00; a Platinum mantém a linha atual)
+        if (!getProfile(this.profile).clearPrgmKeepsPc) this.pc = 0;
         return;
       case 'sst': // CLEAR Σ: zera R1..R6, a pilha e o visor
+        this.alg.clearPending();
         for (let n = 1; n <= 6; n++) this.regs.store(n, 0);
         s.clearAll();
         this.tokens = [];
         return;
       case 'clx': // CLEAR REG
+        this.alg.clearPending();
         this.regs.clear();
         this.cf.clear();
         this.amortFresh = true;
@@ -378,6 +444,160 @@ export class Engine {
     }
   }
 
+  // ---------- modo ALG (HP 12C Platinum, Apêndice B) ----------
+  _setMode(mode) {
+    this.stack.commit();
+    if (!getProfile(this.profile).modes.includes(mode)) return;
+    this.mode = mode;
+    this.alg.clearPending(); // trocar de modo cancela o que estava pendente
+  }
+
+  // Teclas que mudam de significado no ALG. Devolve true se tratou a tecla.
+  _algPrimary(key) {
+    const id = key.id;
+    const s = this.stack;
+    if (ALG_OPS.includes(id)) return this._algOp(key), true;
+    if (id === 'enter') return this._algEquals(), true;
+    if (id === 'pct') return this._algPercent(), true;
+    if (id === 'pctT' || id === 'dpct') return this._algRelative(key), true;
+    if (id === 'clx') return this._algClx(), true;
+    // começar um número novo guarda o que estava no visor em LAST X (manual, p. 239)
+    if ((isDigit(id) || id === 'dot' || id === 'eex') && !s.entering) s.lastX = s.x;
+    return false;
+  }
+
+  // + − × ÷ yˣ: faz a conta pendente com o que está no visor e deixa o novo operador esperando o próximo número.
+  _algOp(key) {
+    const s = this.stack;
+    const a = this.alg;
+    const f = a.top;
+    s.commit();
+    if (a.wasFresh && f.op) { // dois operadores seguidos: vale o último
+      f.op = key.id;
+      a.fresh = true;
+      this.tokens.push(key.label);
+      return;
+    }
+    const v = f.op ? compute(f.op, f.acc, s.x) : s.x;
+    s.x = v;
+    s.entering = false;
+    s.liftEnabled = false; // o próximo número substitui o visor, sem elevar a pilha
+    f.acc = v;
+    f.op = key.id;
+    a.fresh = true;
+    this._record(key.label);
+  }
+
+  // ENTER: com conta pendente age como "=" e fecha os parênteses; sem conta, é o ENTER da pilha (Y recebe X).
+  _algEquals() {
+    const s = this.stack;
+    const a = this.alg;
+    s.commit();
+    if (!a.pending) {
+      s.enter();
+      this.tokens.push('ENTER');
+      return;
+    }
+    let v = s.x;
+    for (let i = a.frames.length - 1; i >= 0; i--) if (a.frames[i].op) v = compute(a.frames[i].op, a.frames[i].acc, v);
+    a.clearPending();
+    this._algComplete(v);
+    this._record('=');
+  }
+
+  // Resultado concluído: entra em X e o anterior sobe na pilha de histórico (4 resultados, manual p. 239).
+  _algComplete(v) {
+    const s = this.stack;
+    const a = this.alg;
+    s.t = s.z;
+    s.z = s.y;
+    s.y = a.lastResult;
+    s.x = v;
+    a.lastResult = v;
+    s.entering = false;
+    s.liftEnabled = false; // o próximo número começa outra conta sem elevar a pilha
+  }
+
+  // %: com + ou − pendente calcula o percentual do primeiro número e já dá o valor líquido (200 − 25 % = 150);
+  // com × ou ÷ usa o número dividido por 100; sem operação pendente só divide por 100.
+  _algPercent() {
+    const s = this.stack;
+    const f = this.alg.top;
+    s.commit();
+    const b = s.x;
+    let r;
+    if (!f.op) r = divide100(b);
+    else if (f.op === 'plus' || f.op === 'minus') r = compute(f.op, f.acc, percentOf(f.acc, b));
+    else r = compute(f.op, f.acc, divide100(b));
+    s.lastX = b;
+    s.x = r;
+    s.entering = false;
+    s.liftEnabled = true;
+    f.acc = null;
+    f.op = null;
+    this._record('%');
+  }
+
+  // Δ% e %T: o número antes do operador pendente vira Y e o operador é ignorado (35,5 − 31,25 Δ% = 35,5 ENTER 31,25 Δ%).
+  _algRelative(key) {
+    const s = this.stack;
+    const f = this.alg.top;
+    s.commit();
+    if (f.op) {
+      s.y = f.acc;
+      f.acc = null;
+      f.op = null;
+    }
+    applyOp(s, key.id);
+    this._record(key.label);
+  }
+
+  // CLx apaga o número do visor; CLx duas vezes seguidas cancela também as operações pendentes.
+  _algClx() {
+    const a = this.alg;
+    this.stack.clx();
+    if (a.wasClx) a.clearPending();
+    a.clxPrev = true;
+    this.tokens.push('CLx');
+  }
+
+  // g LSTx no ALG: troca X com LAST X, nunca eleva a pilha.
+  _algLastX() {
+    const s = this.stack;
+    s.commit();
+    const x = s.x;
+    s.x = s.lastX;
+    s.lastX = x;
+    s.entering = false;
+    s.liftEnabled = true;
+    this.tokens.push('LSTx');
+  }
+
+  // g (: abre um nível. g ): fecha o nível e calcula o que havia dentro. Até 13 abertos.
+  _algOpen() {
+    const a = this.alg;
+    this.stack.commit();
+    if (a.depth >= MAX_PARENS) throw new CalcError(4);
+    a.frames.push({ acc: null, op: null });
+    this.stack.liftEnabled = false;
+    a.fresh = true;
+    this.tokens.push('(');
+  }
+
+  _algClose() {
+    const s = this.stack;
+    const a = this.alg;
+    s.commit();
+    if (a.depth === 0) return; // sem parêntese aberto: a tecla não faz nada
+    const f = a.top;
+    const v = f.op ? compute(f.op, f.acc, s.x) : s.x;
+    a.frames.pop();
+    s.x = v;
+    s.entering = false;
+    s.liftEnabled = false;
+    this.tokens.push(')');
+  }
+
   // ---------- programação ----------
   _togglePrgm() {
     this.stack.commit();
@@ -387,7 +607,7 @@ export class Engine {
   }
 
   _gotoLine(nn) {
-    if (nn > MAX_LINES) throw new CalcError(4);
+    if (nn > this.maxLines) throw new CalcError(4);
     this.pc = nn;
   }
 
@@ -397,12 +617,12 @@ export class Engine {
     const v = { plus: cur + x, minus: cur - x, times: cur * x, divide: cur / x }[opId];
     if (!Number.isFinite(v)) throw new CalcError(opId === 'divide' ? 0 : 1);
     this.regs.store(n, round10(v));
-    this._record(`STO ${{ plus: '+', minus: '−', times: '×', divide: '÷' }[opId]} ${n}`);
+    this._record(`STO ${{ plus: '+', minus: '−', times: '×', divide: '÷' }[opId]} ${regName(n)}`);
   }
 
   // Grava uma instrução na linha seguinte à atual (sobrescreve a linha: a memória é de tamanho fixo, como na HP).
   _storeLine(line) {
-    if (this.pc >= MAX_LINES) throw new CalcError(4);
+    if (this.pc >= this.maxLines) throw new CalcError(4);
     while (this.prog.length < this.pc) this.prog.push(null);
     this.prog[this.pc] = line;
     this.pc += 1;
@@ -413,36 +633,42 @@ export class Engine {
     const id = key.id;
     const isD = isDigit(id);
     if (this.pending) {
-      const mode = this.pending;
+      const full = this.pending;
       this.pending = null;
-      if (mode === 'sto' && OPKEYS.includes(id)) {
+      const dotted = full.endsWith('.'); // registrador .d (Platinum)
+      const mode = dotted ? full.slice(0, -1) : full;
+      const arg = (dotted ? '.' : '') + id;
+      if (id === 'dot' && !dotted && this.regs.size > 10 && ['sto', 'rcl', 'stoop'].includes(mode)) {
+        this.pending = mode + '.';
+      } else if (mode === 'sto' && !dotted && OPKEYS.includes(id)) {
         this.pending = 'stoop';
         this.stoOp = id;
-      } else if (mode === 'stoop' && isD) this._storeLine({ s: null, id: 'sto', op: this.stoOp, arg: id });
-      else if (mode === 'sto' && (isD || id === 'eex')) this._storeLine({ s: null, id: 'sto', arg: id });
-      else if (mode === 'rcl' && (isD || FIN.includes(id))) this._storeLine({ s: null, id: 'rcl', arg: id });
+      } else if (mode === 'stoop' && isD) this._storeLine({ s: null, id: 'sto', op: this.stoOp, arg });
+      else if (mode === 'sto' && (isD || (!dotted && id === 'eex'))) this._storeLine({ s: null, id: 'sto', arg });
+      else if (mode === 'rcl' && (isD || (!dotted && FIN.includes(id)))) this._storeLine({ s: null, id: 'rcl', arg });
       else if (mode === 'gto' && id === 'dot' && this.gtoDigits === '') {
         this.pending = 'gotoline'; // GTO . nn: só vai até a linha, sem gravar
       } else if (mode === 'gotoline' && isD) {
         this.gtoDigits += id;
-        if (this.gtoDigits.length < 2) this.pending = 'gotoline';
+        if (this.gtoDigits.length < this.lineWidth) this.pending = 'gotoline';
         else this._gotoLine(Number(this.gtoDigits));
       } else if (mode === 'gto' && isD) {
         this.gtoDigits += id;
-        if (this.gtoDigits.length < 2) this.pending = 'gto';
+        if (this.gtoDigits.length < this.lineWidth) this.pending = 'gto';
         else this._storeLine({ s: 'g', id: 'rdown', arg: this.gtoDigits });
       }
       this.dateText = null;
       return;
     }
     if (id === 'on') return;
+    if (shift === 'g' && (id === 'minus' || id === 'divide') && getProfile(this.profile).undo) return; // g ← e g Undo não se gravam
     if (shift === 'f' && id === 'rdown') {
       this.prog = []; // CLEAR PRGM
       this.pc = 0;
       return;
     }
     if (shift === null && id === 'sst') {
-      this.pc = Math.min(MAX_LINES, this.pc + 1);
+      this.pc = Math.min(this.maxLines, this.pc + 1);
       return;
     }
     if (shift === 'g' && id === 'sst') {
@@ -471,7 +697,7 @@ export class Engine {
     }
     if (s === 'g' && id === 'rdown') {
       const nn = Number(line.arg);
-      if (nn > MAX_LINES) throw new CalcError(4);
+      if (nn > this.maxLines) throw new CalcError(4);
       return { goto: nn };
     }
     if (s === 'g' && id === 'xy') {
@@ -486,15 +712,14 @@ export class Engine {
       this.stack.commit();
       this.pending = id;
       this.shift = null;
-      if (line.op) {
-        this._finishPending(KEY_BY_ID.get(line.op));
-        this._finishPending(KEY_BY_ID.get(line.arg));
-      } else this._finishPending(KEY_BY_ID.get(line.arg));
+      if (line.op) this._finishPending(this.keyById.get(line.op));
+      if (line.arg.startsWith('.')) this._finishPending(this.keyById.get('dot'));
+      this._finishPending(this.keyById.get(line.arg.slice(-1)));
       return null;
     }
     if (id === 'sst' || id === 'on' || id === 'f' || id === 'g') return null;
     this.shift = s;
-    this._dispatch(KEY_BY_ID.get(id));
+    this._dispatch(this.keyById.get(id));
     return null;
   }
 
@@ -502,7 +727,7 @@ export class Engine {
   _step() {
     this.pc += 1;
     const line = this.pc <= this.prog.length ? this.prog[this.pc - 1] : null;
-    if (!line || this.pc > MAX_LINES) {
+    if (!line || this.pc > this.maxLines) {
       this.pc = 0; // linha vazia = GTO 00: volta ao início e para
       return 'halt';
     }
@@ -629,27 +854,33 @@ export class Engine {
   }
 
   _finishPending(key) {
-    const mode = this.pending;
+    const full = this.pending;
     this.pending = null;
+    const dotted = full.endsWith('.'); // registrador .d (Platinum): índices 10 a 19
+    const mode = dotted ? full.slice(0, -1) : full;
     const s = this.stack;
     const id = key.id;
-    if (mode === 'stoop' && isDigit(id)) {
-      this._stoArith(this.stoOp, Number(id));
+    if (id === 'dot' && !dotted && this.regs.size > 10 && ['sto', 'rcl', 'stoop'].includes(mode)) {
+      this.pending = mode + '.'; // STO . / RCL . / STO + . : o próximo dígito escolhe .0 a .9
+    } else if (mode === 'stoop' && isDigit(id)) {
+      this._stoArith(this.stoOp, Number(id) + (dotted ? 10 : 0));
     } else if (mode === 'gto' && isDigit(id)) {
       this.gtoDigits += id;
-      if (this.gtoDigits.length < 2) this.pending = 'gto';
+      if (this.gtoDigits.length < this.lineWidth) this.pending = 'gto';
       else this._gotoLine(Number(this.gtoDigits));
     } else if (isDigit(id)) {
-      const n = Number(id);
+      const n = Number(id) + (dotted ? 10 : 0);
       if (mode === 'sto') {
         s.commit();
         this.regs.store(n, s.x);
         s.liftEnabled = true;
-        this._record(`STO ${n}`);
+        this._record(`STO ${regName(n)}`);
       } else {
         s.recall(this.regs.recall(n));
-        this._record(`RCL ${n}`);
+        this._record(`RCL ${regName(n)}`);
       }
+    } else if (dotted) {
+      // depois de "." só vale um dígito; qualquer outra tecla cancela
     } else if (mode === 'sto' && OPKEYS.includes(id)) {
       this.pending = 'stoop'; // STO + − × ÷ n
       this.stoOp = id;
@@ -698,7 +929,7 @@ export class Engine {
 
   _display() {
     if (this.error) return 'Error ' + this.error.code;
-    if (this.prgm) return this.dateText ?? lineText(this.pc, this.prog[this.pc - 1]);
+    if (this.prgm) return this.dateText ?? lineText(this.pc, this.prog[this.pc - 1], this.lineWidth);
     if (this.dateText && !this.stack.entering) return this.dateText;
     return this.stack.entering ? this._fmtEntry() : this._fmt(this.stack.x);
   }
@@ -707,6 +938,9 @@ export class Engine {
   serialize() {
     return JSON.stringify({
       v: VERSION,
+      profile: this.profile,
+      mode: this.mode,
+      alg: this.alg.toJSON(),
       stack: this.stack.toJSON(),
       regs: this.regs.values(),
       fin: this.fin,
@@ -735,29 +969,35 @@ export class Engine {
     const num = (v) => typeof v === 'number' && Number.isFinite(v);
     const str = (v) => typeof v === 'string';
     if (!o || typeof o !== 'object' || o.v !== VERSION) throw bad();
-    if (!Array.isArray(o.regs) || o.regs.length !== 10 || !o.regs.every(num)) throw bad();
+    if (!Array.isArray(o.regs) || (o.regs.length !== 10 && o.regs.length !== 20) || !o.regs.every(num)) throw bad();
     if (!o.fin || !FIN.every((k) => num(o.fin[k]))) throw bad();
     if (typeof o.begin !== 'boolean' || typeof o.justStored !== 'boolean') throw bad();
-    if (![null, 'f', 'g'].includes(o.shift) || ![null, 'sto', 'rcl', 'stoop', 'gto', 'gotoline'].includes(o.pending)) throw bad();
+    if (![null, 'f', 'g'].includes(o.shift) || ![null, 'sto', 'rcl', 'stoop', 'sto.', 'rcl.', 'stoop.', 'gto', 'gotoline'].includes(o.pending)) throw bad();
     if (!Number.isInteger(o.decimals) || o.decimals < 0 || o.decimals > 9) throw bad();
     if (o.locale !== 'br' && o.locale !== 'us') throw bad();
     if (o.error !== null && !(o.error && Number.isInteger(o.error.code) && o.error.code >= 0 && o.error.code <= 9 && str(o.error.message))) throw bad();
     if (!Array.isArray(o.tape) || !o.tape.every((l) => l && str(l.keys) && str(l.label) && num(l.value) && str(l.text))) throw bad();
     if (!Array.isArray(o.tokens) || !o.tokens.every(str)) throw bad();
-    if (o.prog !== undefined && !(Array.isArray(o.prog) && o.prog.length <= MAX_LINES && o.prog.every(validLine))) throw bad();
-    if (o.cf !== undefined && !CashFlows.valid(o.cf)) throw bad();
-    const e = new Engine({ locale: o.locale });
+    const profile = o.profile ?? DEFAULT_PROFILE; // estados antigos não tinham perfil: eram da 12C
+    if (typeof profile !== 'string' || !hasProfile(profile)) throw bad();
+    const def = getProfile(profile);
+    if (o.prog !== undefined && !(Array.isArray(o.prog) && o.prog.length <= def.maxLines && o.prog.every(validLine))) throw bad();
+    if (o.cf !== undefined && !CashFlows.valid(o.cf, def.maxFlows)) throw bad();
+    if (o.mode !== undefined && !['rpn', 'alg'].includes(o.mode)) throw bad(); // modo sem suporte no perfil (ex.: ALG na clássica) volta ao padrão
+    if (o.alg !== undefined && !AlgState.valid(o.alg)) throw bad();
+    const e = new Engine({ locale: o.locale, profile, mode: o.mode });
+    if (o.alg) e.alg = AlgState.fromJSON(o.alg);
     try {
       e.stack = Stack.fromJSON(o.stack);
     } catch {
       throw bad();
     }
-    o.regs.forEach((v, n) => e.regs.store(n, v));
-    if (o.cf) e.cf = CashFlows.fromJSON(o.cf);
+    o.regs.forEach((v, n) => n < e.regs.size && e.regs.store(n, v)); // estados de 10 registradores abrem na Platinum com 20
+    if (o.cf) e.cf = CashFlows.fromJSON(o.cf, def.maxFlows);
     e.amortFresh = o.amortFresh !== false;
     e.fin = { n: o.fin.n, i: o.fin.i, pv: o.fin.pv, pmt: o.fin.pmt, fv: o.fin.fv };
     Object.assign(e, {
-      begin: o.begin, compound: o.compound === true, dmy: o.dmy === true, prgm: o.prgm === true, prog: Array.isArray(o.prog) ? o.prog : [], pc: Number.isInteger(o.pc) && o.pc >= 0 && o.pc <= MAX_LINES ? o.pc : 0, shift: o.shift, pending: o.pending, justStored: o.justStored, decimals: o.decimals,
+      begin: o.begin, compound: o.compound === true, dmy: o.dmy === true, prgm: o.prgm === true, prog: Array.isArray(o.prog) ? o.prog : [], pc: Number.isInteger(o.pc) && o.pc >= 0 && o.pc <= def.maxLines ? o.pc : 0, shift: o.shift, pending: o.pending, justStored: o.justStored, decimals: o.decimals,
       error: o.error ? { code: o.error.code, message: o.error.message } : null,
       tape: o.tape.map((l) => ({ keys: l.keys, label: l.label, value: l.value, text: l.text })),
       tokens: [...o.tokens],
