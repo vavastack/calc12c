@@ -55,7 +55,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
   display: flex; flex-direction: column; justify-content: space-between; align-items: center;
   background: var(--key-bg); box-shadow: var(--key-shadow); color: var(--key-text); border: 1px solid var(--key-border); border-radius: 13px;
   position: relative; padding: 5px 0 4px; font: inherit; overflow: hidden; min-width: 0; min-height: 0; }
-.key:active { filter: brightness(1.25); }
+.key:active { filter: brightness(1.25); transform: scale(.97); }
 .key .lf { color: var(--gold); font-size: clamp(8.5px, 1.15dvh, 9.5px); font-weight: 600; white-space: nowrap; line-height: 1; min-height: 10px; }
 .key .lg { color: var(--blue); font-size: clamp(8.5px, 1.15dvh, 9.5px); font-weight: 600; white-space: nowrap; line-height: 1; min-height: 10px; }
 .key .lm { font-size: clamp(14px, 2.1dvh, 18px); font-weight: 500; flex: 1; display: flex; align-items: center; line-height: 1; padding: 1px 0; }
@@ -73,7 +73,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
 
 /* brilho de f e g: realce curto, só com opacidade, na tecla e nos rótulos que acendem */
 .key::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0;
-  background: radial-gradient(circle at 50% 38%, var(--flash, #ffffffcc), transparent 72%); }
+  background: radial-gradient(circle at var(--tx, 50%) var(--ty, 38%), var(--flash, #ffffffcc), transparent 72%); }
 .key::before { content: ""; position: absolute; inset: -2px; border-radius: 15px; pointer-events: none; opacity: 0;
   box-shadow: 0 0 14px 3px var(--flash, #ffffffcc); }
 .key.flash::before, .key.flash::after { animation: glow-key .6s ease-out; }
@@ -81,10 +81,13 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--key-te
 .calc[data-shift="f"] .key.prefix-f::before, .calc[data-shift="g"] .key.prefix-g::before { opacity: .75; }
 .calc[data-shift="f"] .key .lf { animation: glow-label .55s ease-out; }
 .calc[data-shift="g"] .key .lg { animation: glow-label .55s ease-out; }
+/* toque: realce local, só na tecla tocada, a partir do ponto do dedo (nada acontece fora dela) */
+.key.touch:not(.flash)::after { animation: glow-touch .45s ease-out; }
+@keyframes glow-touch { 0% { opacity: .75; } 100% { opacity: 0; } }
 @keyframes glow-key { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes glow-label { 0% { opacity: .2; } 35% { opacity: 1; } 55% { opacity: .55; } 100% { opacity: 1; } }
 /* o brilho de f e g é só opacidade (barato): continua no modo "reduzir efeitos"; só o sistema com movimento reduzido o desliga */
-@media (prefers-reduced-motion: reduce) { .key.flash::after, .key.flash::before, .calc .key .lf, .calc .key .lg { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .key.touch::after, .key.flash::after, .key.flash::before, .calc .key .lf, .calc .key .lg { animation: none !important; } }
 
 /* recorte do reflexo: as bordas esmaecem, sem corte seco onde o teclado termina */
 .reflex-clip { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 2;

@@ -82,3 +82,18 @@ test('o visor usa a fonte Share Tech Mono embutida (carrega sem rede)', async ()
   assert.match(await p.locator('.digits').evaluate((e) => getComputedStyle(e).fontFamily), /Share Tech Mono/);
   await app.close();
 });
+
+test('toque: realce só na tecla tocada, a partir do ponto do dedo, sem mexer no reflexo', async () => {
+  const app = await openApp(browser, server.url, undefined, { hasTouch: true });
+  const p = app.page;
+  await full(p);
+  const antes = await p.locator('.reflex').evaluate((e) => e.style.transform);
+  await p.locator('button.key[data-id="7"]').dispatchEvent('pointerdown', { clientX: 60, clientY: 500, pointerType: 'touch' });
+  assert.equal(await anim(key(p, '7'), '::after'), 'glow-touch');
+  assert.equal(await p.locator('button.key.touch').count(), 1); // só uma tecla acende
+  assert.equal(await anim(key(p, '8'), '::after'), 'none');
+  await p.waitForTimeout(700);
+  assert.equal(await p.locator('.reflex').evaluate((e) => e.style.transform), antes);
+  assert.equal(await p.locator('button.key.touch').count(), 0);
+  await app.close();
+});

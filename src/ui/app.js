@@ -84,6 +84,18 @@ export function mountApp(root, engine = new Engine()) {
     engine.setLocale(engine.locale === 'br' ? 'us' : 'br');
     ctx.render();
   });
+  // efeito do toque: realce só dentro da tecla, a partir de onde o dedo encostou
+  keys.addEventListener('pointerdown', (ev) => {
+    const b = ev.target.closest('button.key');
+    if (!b || !KEYS.find((x) => x.id === b.dataset.id)?.enabled) return;
+    const r = b.getBoundingClientRect();
+    b.style.setProperty('--tx', (((ev.clientX - r.left) / r.width) * 100).toFixed(1) + '%');
+    b.style.setProperty('--ty', (((ev.clientY - r.top) / r.height) * 100).toFixed(1) + '%');
+    b.classList.remove('touch');
+    void b.offsetWidth;
+    b.classList.add('touch');
+    b.addEventListener('animationend', () => b.classList.remove('touch'), { once: true });
+  });
   keys.addEventListener('click', (ev) => {
     const b = ev.target.closest('button.key');
     if (!b) return;
