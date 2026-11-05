@@ -121,7 +121,7 @@ test('Configurações traz o seletor de modelo com a 12C selecionada', async () 
   await p.locator('.key[data-id="on"]').click();
   const sel = p.locator('.settings select[name="profile"]');
   assert.equal(await sel.inputValue(), '12c');
-  assert.deepEqual(await sel.locator('option').allTextContents(), ['Calc 12c Gold', 'Calc 12c Platinum', 'Calc 16c (programador)']);
+  assert.deepEqual(await sel.locator('option').allTextContents(), ['Calc 12c Gold', 'Calc 12c Platinum', 'Calc 16c Dev']);
   assert.equal(await p.locator('.brand .title .l1').innerText(), 'Gold');
   await app.close();
 });
@@ -424,7 +424,8 @@ test('16C: selo, indicadores C e G, teclas A-F e rótulos f/g próprios', async 
   const app = await openApp(browser, server.url);
   const p = app.page;
   await hp16(p);
-  assert.equal(await p.locator('.brand .title').innerText(), 'Calc 16c');
+  assert.equal(await p.locator('.brand .title .l1').innerText(), 'Dev');
+  assert.equal(await p.locator('.brand .title .l2').innerText(), 'Calc 16c');
   assert.equal((await p.locator('.brand .badge .model').innerText()).trim(), '16C');
   assert.deepEqual(await p.locator('.display [data-ind]').evaluateAll((els) => els.map((e) => e.dataset.ind)), ['f', 'g', 'C', 'G', 'PRGM']);
   assert.equal(await p.locator('button.key[data-id="da"] .lf').innerText(), 'SL');
