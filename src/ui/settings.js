@@ -145,7 +145,7 @@ export function mountSettings(ctx) {
     '<label class="row"><span class="txt">Modelo<small>Cada modelo guarda a sua própria memória; o RPN/ALG da 12C troca em f CHS e f EEX</small></span>' +
     '<select name="profile"></select></label></section>' +
     '<section class="group"><h3 class="group-title">Aparência</h3>' +
-    '<label class="row"><span class="txt">Tema<small>Gold e Platinum são metálicos e sempre escuros; Retro é de vidro</small></span>' +
+    '<label class="row"><span class="txt">Tema<small>Padrão (a placa do modelo) é metálico e sempre escuro; Retro é de vidro</small></span>' +
     '<select name="theme"></select></label>' +
     '<label class="row"><span class="txt">Modo<small>Automático segue o sistema; só vale no Retro</small></span>' +
     '<select name="mode"><option value="auto">Automático</option><option value="escuro">Escuro</option><option value="claro">Claro</option></select></label>' +
@@ -222,8 +222,9 @@ export function mountSettings(ctx) {
     sel.innerHTML = listProfiles().map((p) => `<option value="${p.id}">${p.label}</option>`).join('');
     sel.value = ctx.engine.profile;
     const THEME_NAMES = { retro: 'Gold', platinum: 'Platinum', moderno: 'Retro' };
+    const own = ctx.profile.defaultTheme; // a placa do próprio modelo se chama "Padrão"
     const themeSel = panel.querySelector('[name=theme]');
-    themeSel.innerHTML = allowedThemes(ctx.profile.id, s.dev).map((t) => `<option value="${t}">${THEME_NAMES[t]}</option>`).join('');
+    themeSel.innerHTML = allowedThemes(ctx.profile.id, s.dev).map((t) => `<option value="${t}">${t === own ? 'Padrão' : THEME_NAMES[t]}</option>`).join('');
     themeSel.value = effTheme();
     for (const g of panel.querySelectorAll('.dev-only')) g.hidden = !s.dev;
     panel.querySelector('[name=mode]').value = s.mode;

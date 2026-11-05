@@ -186,8 +186,8 @@ test('temas Gold, Platinum e Retro; modo claro/escuro só vale no Retro', async 
   const p = app.page;
   await p.locator('.key[data-id="on"]').click();
   await enableDev(p); // sem o modo desenvolvedor a clássica só oferece Gold e Retro
-  assert.deepEqual(await p.locator('select[name="theme"] option').allTextContents(), ['Gold', 'Platinum', 'Retro']);
-  assert.equal(await p.locator('select[name="theme"]').inputValue(), 'retro'); // padrão: Gold
+  assert.deepEqual(await p.locator('select[name="theme"] option').allTextContents(), ['Padrão', 'Platinum', 'Retro']);
+  assert.equal(await p.locator('select[name="theme"]').inputValue(), 'retro'); // padrão da clássica: placa Gold
   assert.equal(await p.locator('select[name="mode"]').isDisabled(), true);
   await p.locator('select[name="theme"]').selectOption('platinum');
   await p.waitForFunction((v) => document.documentElement.getAttribute('data-theme') === v, 'platinum'); // a troca é suave: termina logo depois

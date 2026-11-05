@@ -25,7 +25,7 @@ test('o perfil 12c (clássica) é o padrão: RPN só, 7 indicadores, teclas sem 
   assert.deepEqual(p.indicators, ['f', 'g', 'BEGIN', 'D.MY', 'C', 'USER', 'PRGM']);
   assert.equal(p.keyById.get('chs').f, null);
   assert.equal(p.keyById.get('sto').g, null);
-  assert.equal(p.title, undefined);
+  assert.deepEqual(p.title, ['Gold', 'Calc 12c']);
 });
 
 test('o perfil 12cp (Platinum): RPN e ALG, 11 indicadores, rótulos f RPN/ALG e g ( ), título em duas linhas', () => {
@@ -38,7 +38,7 @@ test('o perfil 12cp (Platinum): RPN e ALG, 11 indicadores, rótulos f RPN/ALG e 
   assert.equal(p.keyById.get('eex').f, 'ALG');
   assert.equal(p.keyById.get('sto').g, '(');
   assert.equal(p.keyById.get('rcl').g, ')');
-  assert.deepEqual(p.title, ['Platinum', '12c']);
+  assert.deepEqual(p.title, ['Platinum', 'Calc 12c']);
   assert.deepEqual(KEYS.map((k) => k.id), KEYS_PLATINUM.map((k) => k.id)); // mesmas teclas, só os rótulos mudam
 });
 

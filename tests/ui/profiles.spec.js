@@ -121,8 +121,8 @@ test('Configurações traz o seletor de modelo com a 12C selecionada', async () 
   await p.locator('.key[data-id="on"]').click();
   const sel = p.locator('.settings select[name="profile"]');
   assert.equal(await sel.inputValue(), '12c');
-  assert.deepEqual(await sel.locator('option').allTextContents(), ['Calc 12c (clássica)', 'Calc 12c Platinum', 'Calc 16c (programador)']);
-  assert.equal(await p.locator('.brand .title').innerText(), 'Calc 12c');
+  assert.deepEqual(await sel.locator('option').allTextContents(), ['Calc 12c Gold', 'Calc 12c Platinum', 'Calc 16c (programador)']);
+  assert.equal(await p.locator('.brand .title .l1').innerText(), 'Gold');
   await app.close();
 });
 
@@ -131,7 +131,7 @@ const registrarTeste = (p) =>
   p.evaluate(async () => {
     const { getProfile, registerProfile } = await import('/src/engine/profiles.js');
     const base = getProfile('12c');
-    registerProfile({ ...base, id: 'teste', name: 'Calc teste', model: 'TESTE', modes: ['rpn'], indicators: ['f', 'g', 'PRGM'], brackets: [] });
+    registerProfile({ ...base, id: 'teste', title: undefined, name: 'Calc teste', model: 'TESTE', modes: ['rpn'], indicators: ['f', 'g', 'PRGM'], brackets: [] });
   });
 
 test('trocar de modelo refaz título, teclado e indicadores e guarda a memória de cada um', async () => {
@@ -153,7 +153,7 @@ test('trocar de modelo refaz título, teclado e indicadores e guarda a memória 
   // volta à 12C: o 42 continua lá
   await p.evaluate(() => window.calc12c.settings.open());
   await p.locator('.settings select[name="profile"]').selectOption('12c');
-  assert.equal(await p.locator('.brand .title').innerText(), 'Calc 12c');
+  assert.equal(await p.locator('.brand .title .l1').innerText(), 'Gold');
   assert.equal(await digits(p), '42,00');
   assert.equal(await p.locator('.bracket').count() > 0, true);
   assert.deepEqual(app.errors, []);
@@ -199,12 +199,12 @@ test('abrir um arquivo de memórias de outro modelo troca para esse modelo', asy
 });
 
 // ---------- 12C clássica x Platinum ----------
-test('a clássica é o padrão: 7 indicadores, título numa linha, sem os rótulos RPN/ALG e g ( )', async () => {
+test('a clássica é o padrão: 7 indicadores, título Gold com 12c embaixo, sem os rótulos RPN/ALG e g ( )', async () => {
   const app = await openApp(browser, server.url);
   const p = app.page;
   assert.deepEqual(await p.locator('.display [data-ind]').evaluateAll((els) => els.map((e) => e.dataset.ind)), ['f', 'g', 'BEGIN', 'D.MY', 'C', 'USER', 'PRGM']);
-  assert.equal(await p.locator('.brand .title').innerText(), 'Calc 12c');
-  assert.equal(await p.locator('.brand .title .l2').count(), 0);
+  assert.equal(await p.locator('.brand .title .l1').innerText(), 'Gold');
+  assert.equal(await p.locator('.brand .title .l2').innerText(), 'Calc 12c');
   assert.equal(await p.locator('button.key[data-id="chs"] .lf').innerText(), '');
   assert.equal(await p.locator('button.key[data-id="sto"] .lg').innerText(), '');
   await tap(p, 'f eex 2 plus 3 enter'); // sem ALG: f EEX não faz nada e a conta é RPN
@@ -218,13 +218,13 @@ test('a Platinum mostra "Platinum" com "12c" menor embaixo, à esquerda, e o sel
   const p = app.page;
   await platinum(p);
   assert.equal(await p.locator('.brand .title .l1').innerText(), 'Platinum');
-  assert.equal(await p.locator('.brand .title .l2').innerText(), '12c');
+  assert.equal(await p.locator('.brand .title .l2').innerText(), 'Calc 12c');
   const r = await p.evaluate(() => {
     const a = document.querySelector('.title .l1').getBoundingClientRect();
     const b = document.querySelector('.title .l2').getBoundingClientRect();
     return { l1: a, l2: b, f1: parseFloat(getComputedStyle(document.querySelector('.title .l1')).fontSize), f2: parseFloat(getComputedStyle(document.querySelector('.title .l2')).fontSize) };
   });
-  assert.ok(r.l2.top >= r.l1.bottom - 1, '12c fica embaixo de Platinum');
+  assert.ok(r.l2.top >= r.l1.bottom - 1, 'Calc 12c fica embaixo de Platinum');
   assert.ok(r.f2 < r.f1 * 0.7, '12c é menor');
   assert.ok(Math.abs(r.l2.left - r.l1.left) < 4, 'alinhados à esquerda');
   assert.equal(await p.locator('.brand .badge .model').innerText().then((t) => t.trim()), 'RPN');
@@ -242,10 +242,10 @@ test('temas fiéis por padrão: Gold na clássica, Platinum na Platinum, Retro n
     return p.locator('.settings select[name="theme"] option').allTextContents();
   };
   assert.equal(await tema(), 'retro'); // Gold
-  assert.deepEqual(await opcoes(), ['Gold', 'Retro']);
+  assert.deepEqual(await opcoes(), ['Padrão', 'Retro']);
   await platinum(p);
   assert.equal(await tema(), 'platinum');
-  assert.deepEqual(await opcoes(), ['Platinum', 'Retro']);
+  assert.deepEqual(await opcoes(), ['Padrão', 'Retro']);
   // o Retro (vidro) escolhido numa vale na outra
   await p.locator('.settings select[name="theme"]').selectOption('moderno');
   await p.waitForFunction(() => document.documentElement.getAttribute('data-theme').startsWith('moderno'));
@@ -318,8 +318,8 @@ test('no modo desenvolvedor: todos os temas em qualquer modelo, cores valem, e D
   const p = app.page;
   await enableDev(p);
   await abrirConfig(p);
-  assert.deepEqual(await p.locator('.settings select[name="theme"] option').allTextContents(), ['Gold', 'Platinum', 'Retro']);
-  await p.locator('.settings select[name="theme"]').selectOption('platinum'); // Platinum na clássica
+  assert.deepEqual(await p.locator('.settings select[name="theme"] option').allTextContents(), ['Padrão', 'Platinum', 'Retro']); // na clássica o Padrão é a placa Gold
+  await p.locator('.settings select[name="theme"]').selectOption('platinum'); // marca Platinum na clássica
   await p.waitForFunction(() => document.documentElement.getAttribute('data-theme') === 'platinum');
   await platinum(p);
   await p.locator('.settings select[name="theme"]').selectOption('retro'); // Gold na Platinum
@@ -329,7 +329,7 @@ test('no modo desenvolvedor: todos os temas em qualquer modelo, cores valem, e D
   await p.locator('.settings .dev-off').click();
   await p.waitForFunction(() => document.documentElement.getAttribute('data-theme') === 'platinum'); // padrão da Platinum
   assert.equal(await p.evaluate(() => document.documentElement.style.getPropertyValue('--gold')), '');
-  assert.deepEqual(await p.locator('.settings select[name="theme"] option').allTextContents(), ['Platinum', 'Retro']);
+  assert.deepEqual(await p.locator('.settings select[name="theme"] option').allTextContents(), ['Padrão', 'Retro']);
   assert.equal(await p.locator('.settings input[name="color-f"]').isVisible(), false);
   assert.deepEqual(app.errors, []);
   await app.close();

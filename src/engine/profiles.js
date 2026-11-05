@@ -21,8 +21,8 @@ const LIMITS_12C = { kind: 'dec', maxLines: 99, maxFlows: 20, regCount: 10, undo
 
 const PROFILES = new Map();
 
-// Temas: 'retro' = Gold, 'platinum' = prata, 'moderno' = Retro (vidro). Cada perfil só mostra os seus (Gold na clássica,
-// Platinum na Platinum) e o Retro vale para todos; o modo desenvolvedor libera todos em qualquer perfil.
+// Temas: 'retro' = placa dourada (marca Gold), 'platinum' = prata (marca Platinum), 'moderno' = Retro (vidro). Na lista aparece
+// "Padrão" para a placa do próprio modelo; Gold e Platinum são as marcas dos modelos e só aparecem como opção no modo desenvolvedor. O Retro vale para todos; o modo desenvolvedor libera todos em qualquer perfil.
 export const ALL_THEMES = ['retro', 'platinum', 'moderno'];
 
 // Perfil: { id, name (título no topo), title (opcional: duas linhas), label (nome na lista), model (selo), keys, keyById,
@@ -64,7 +64,8 @@ const INDICATORS_CLASSIC = ['f', 'g', 'BEGIN', 'D.MY', 'C', 'USER', 'PRGM'];
 registerProfile({
   id: '12c',
   name: 'Calc 12c',
-  label: 'Calc 12c (clássica)',
+  label: 'Calc 12c Gold',
+  title: ['Gold', 'Calc 12c'],
   model: '12C',
   keys: KEYS,
   keyById: KEY_BY_ID,
@@ -80,7 +81,7 @@ registerProfile({
   id: '12cp',
   name: 'Calc 12c Platinum',
   label: 'Calc 12c Platinum',
-  title: ['Platinum', '12c'],
+  title: ['Platinum', 'Calc 12c'],
   model: '12C',
   keys: KEYS_PLATINUM,
   keyById: KEY_BY_ID_PLATINUM,
