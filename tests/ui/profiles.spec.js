@@ -528,3 +528,12 @@ test('horizontal 851×393: Platinum mantém o teclado do tamanho do clássico', 
   assert.ok(pl.keys >= 190, `teclado com ${pl.keys}px`);
   assert.ok(Math.abs(pl.keys - c.keys) < 6);
 });
+
+test('Ajustes mostram os créditos do desenvolvimento', async () => {
+  const app = await openApp(browser, server.url);
+  await app.page.evaluate(() => window.calc12c.settings.open());
+  const t = await app.page.locator('.settings .credits').innerText();
+  assert.match(t, /Wanderson Martins/);
+  assert.match(t, /MW Solutions/);
+  await app.close();
+});
