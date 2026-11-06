@@ -67,7 +67,7 @@ test('build: gera dist/calc12c-v0.1.0.html único, sem módulos externos nem red
   assert.match(html, /viewport-fit=cover/);
   assert.match(html, /name="theme-color"/);
   assert.match(html, /rel="manifest"/);
-  assert.ok(statSync(DIST).size < 560_000, 'arquivo grande demais');
+  assert.ok(statSync(DIST).size < 700_000, 'arquivo grande demais');
 });
 
 test('arquivo gerado abre por file:// e passa o cenário do financiamento, sem usar a rede', async () => {

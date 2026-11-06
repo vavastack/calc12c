@@ -1,5 +1,6 @@
 // Temas e configurações. Só variáveis de cor mudam; o teclado e o motor nunca.
 import { makeWake, wakeSupported } from './extras.js';
+import { splashEnabled, setSplashEnabled } from './splash.js';
 import { COLOR_KEYS, validHex, customVars } from './colors.js';
 import { buildMemoryFile, parseMemoryFile, loadInto } from './memories.js';
 import { listProfiles, allowedThemes, themeFor } from '../engine/profiles.js';
@@ -174,7 +175,9 @@ export function mountSettings(ctx) {
     '<label class="row"><span class="txt">Manter a tela acesa<small class="wake-note">Evita que a tela apague enquanto você usa</small></span>' +
     '<input type="checkbox" name="wake" role="switch"></label>' +
     '<label class="row"><span class="txt">Reduzir efeitos<small>Vidro sólido e sem reflexo: poupa bateria</small></span>' +
-    '<input type="checkbox" name="reduce" role="switch"></label></section>' +
+    '<input type="checkbox" name="reduce" role="switch"></label>' +
+    '<label class="row"><span class="txt">Abertura animada<small>Vídeo de 1 segundo ao abrir o app; toque na tela para pular</small></span>' +
+    '<input type="checkbox" name="splash" role="switch"></label></section>' +
     '<section class="group"><h3 class="group-title">Memórias</h3>' +
     '<div class="row"><span class="txt">Salvar em arquivo<small>Registradores, financeiros, fluxos de caixa, programa e fita</small></span>' +
     '<button type="button" class="mini mem-save">Salvar</button></div>' +
@@ -402,10 +405,15 @@ export function mountSettings(ctx) {
     verNote.textContent = `Calc RPN ${APP_VERSION}`;
   });
 
+  const splashSw = panel.querySelector('[name=splash]');
+  splashSw.checked = splashEnabled();
+  splashSw.addEventListener('change', () => setSplashEnabled(splashSw.checked));
+
   const themeless = new Set(['vibrate', 'sound', 'wake', 'onStyle', 'topPad', 'orient']);
   const onInput = (e) => {
     const n = e.target.name;
     if (n?.startsWith('color-')) return; // tratado por onColor
+    if (n === 'splash') return; // tem o próprio armazenamento
     if (n === 'orient') {
       s.orient = e.target.value;
       saveSettings(s);

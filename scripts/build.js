@@ -54,7 +54,7 @@ manifest.icons = [
 const manifestUrl = 'data:application/manifest+json;base64,' + Buffer.from(JSON.stringify(manifest)).toString('base64');
 
 // ---- HTML ----
-let html = read(UI + 'index.html');
+let html = read(UI + 'index.html').replace('./splash.mp4', 'data:video/mp4;base64,' + b64('splash.mp4'));
 const font64 = readFileSync(UI + 'fonts/share-tech-mono.woff2').toString('base64'); // fonte embutida: funciona offline
 const css = (read(UI + 'themes.css') + '\n' + read(UI + 'layout.css')).replace('url("./fonts/share-tech-mono.woff2")', `url(data:font/woff2;base64,${font64})`);
 html = html
