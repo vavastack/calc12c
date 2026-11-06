@@ -1,5 +1,5 @@
 // Service worker: guarda os arquivos locais para o app abrir offline. Nenhum dado sai do aparelho.
-const CACHE = 'calc12c-v0.1.0-b140dd07'; /*CACHE*/
+const CACHE = 'calc12c-v0.1.0-8d09f580'; /*CACHE*/
 const FILES = [/*FILES*/ ['./', './calc12c-v0.1.0.html', './manifest.webmanifest', './icon-192.png', './icon-512.png']; /*FILES-END*/
 
 self.addEventListener('install', (e) =>

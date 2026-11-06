@@ -25,11 +25,11 @@ test('f ALG acende ALG, apaga RPN e troca o selo; f RPN volta', async () => {
   const p = app.page;
   await platinum(p);
   assert.equal(await on(p, 'RPN'), true);
-  assert.equal((await p.locator('.brand .badge .model').innerText()).trim(), 'RPN');
+  assert.equal((await p.locator('.brand .badge .model').innerText()).trim(), '12C');
   await tap(p, 'f eex');
   assert.equal(await on(p, 'ALG'), true);
   assert.equal(await on(p, 'RPN'), false);
-  assert.equal((await p.locator('.brand .badge .model').innerText()).trim(), 'ALG');
+  assert.equal((await p.locator('.brand .badge .model').innerText()).trim(), '12C');
   await tap(p, 'f chs');
   assert.equal(await on(p, 'RPN'), true);
   assert.deepEqual(app.errors, []);
@@ -143,7 +143,7 @@ test('trocar de modelo refaz título, teclado e indicadores e guarda a memória 
   await p.locator('.settings select[name="profile"]').selectOption('teste');
   assert.equal(await p.locator('.brand .title').innerText(), 'Calc teste');
   assert.deepEqual(await p.locator('.display [data-ind]').evaluateAll((els) => els.map((e) => e.dataset.ind)), ['f', 'g', 'PRGM']);
-  assert.equal((await p.locator('.brand .badge .model').innerText()).trim(), 'RPN'); // perfil de um modo só
+  assert.equal((await p.locator('.brand .badge .model').innerText()).trim(), 'TESTE'); // perfil de um modo só
   assert.equal(await p.locator('button.key').count(), 39);
   assert.equal(await p.locator('.bracket').count(), 0);
   assert.equal(await digits(p), '0,00'); // memória própria do novo modelo
@@ -204,12 +204,12 @@ test('a clássica é o padrão: 7 indicadores, título Gold com 12c embaixo, sem
   const p = app.page;
   assert.deepEqual(await p.locator('.display [data-ind]').evaluateAll((els) => els.map((e) => e.dataset.ind)), ['f', 'g', 'BEGIN', 'D.MY', 'C', 'USER', 'PRGM']);
   assert.equal(await p.locator('.brand .title .l1').innerText(), 'Gold');
-  assert.equal(await p.locator('.brand .title .l2').innerText(), 'Calc 12c');
+  assert.equal(await p.locator('.brand .title .l2').innerText(), 'Calc RPN');
   assert.equal(await p.locator('button.key[data-id="chs"] .lf').innerText(), '');
   assert.equal(await p.locator('button.key[data-id="sto"] .lg').innerText(), '');
   await tap(p, 'f eex 2 plus 3 enter'); // sem ALG: f EEX não faz nada e a conta é RPN
   assert.equal(await digits(p), '3,00');
-  assert.equal((await p.locator('.brand .badge .model').innerText()).trim(), 'RPN');
+  assert.equal((await p.locator('.brand .badge .model').innerText()).trim(), '12C');
   await app.close();
 });
 
@@ -218,18 +218,18 @@ test('a Platinum mostra "Platinum" com "12c" menor embaixo, à esquerda, e o sel
   const p = app.page;
   await platinum(p);
   assert.equal(await p.locator('.brand .title .l1').innerText(), 'Platinum');
-  assert.equal(await p.locator('.brand .title .l2').innerText(), 'Calc 12c');
+  assert.equal(await p.locator('.brand .title .l2').innerText(), 'Calc RPN');
   const r = await p.evaluate(() => {
     const a = document.querySelector('.title .l1').getBoundingClientRect();
     const b = document.querySelector('.title .l2').getBoundingClientRect();
     return { l1: a, l2: b, f1: parseFloat(getComputedStyle(document.querySelector('.title .l1')).fontSize), f2: parseFloat(getComputedStyle(document.querySelector('.title .l2')).fontSize) };
   });
-  assert.ok(r.l2.top >= r.l1.bottom - 1, 'Calc 12c fica embaixo de Platinum');
+  assert.ok(r.l2.top >= r.l1.bottom - 1, 'Calc RPN fica embaixo de Platinum');
   assert.ok(r.f2 < r.f1 * 0.7, '12c é menor');
   assert.ok(Math.abs(r.l2.left - r.l1.left) < 4, 'alinhados à esquerda');
-  assert.equal(await p.locator('.brand .badge .model').innerText().then((t) => t.trim()), 'RPN');
+  assert.equal(await p.locator('.brand .badge .model').innerText().then((t) => t.trim()), '12C');
   await tap(p, 'f eex');
-  assert.equal(await p.locator('.brand .badge .model').innerText().then((t) => t.trim()), 'ALG');
+  assert.equal(await p.locator('.brand .badge .model').innerText().then((t) => t.trim()), '12C');
   await app.close();
 });
 
@@ -425,8 +425,8 @@ test('16C: selo, indicadores C e G, teclas A-F e rótulos f/g próprios', async 
   const p = app.page;
   await hp16(p);
   assert.equal(await p.locator('.brand .title .l1').innerText(), 'Dev');
-  assert.equal(await p.locator('.brand .title .l2').innerText(), 'Calc 16c');
-  assert.equal((await p.locator('.brand .badge .model').innerText()).trim(), 'RPN');
+  assert.equal(await p.locator('.brand .title .l2').innerText(), 'Calc RPN');
+  assert.equal((await p.locator('.brand .badge .model').innerText()).trim(), '16C');
   assert.deepEqual(await p.locator('.display [data-ind]').evaluateAll((els) => els.map((e) => e.dataset.ind)), ['f', 'g', 'C', 'G', 'PRGM']);
   assert.equal(await p.locator('button.key[data-id="da"] .lf').innerText(), 'SL');
   assert.equal(await p.locator('button.key[data-id="da"] .lg').innerText(), 'LJ');

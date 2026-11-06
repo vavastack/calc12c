@@ -96,7 +96,7 @@ export function mountApp(root, engine = createEngine()) {
   // título e selo do topo seguem o perfil e o modo (RPN/ALG só nos perfis que têm os dois)
   const paintBrand = (s) => {
     const p = ctx.profile;
-    const modeLabel = p.kind === 'int' ? 'RPN' : p.modes.length > 1 ? s.mode.toUpperCase() : 'RPN'; // 16C: o selo mostra o modelo
+    const modeLabel = p.model; // o selo mostra o modelo (12C ou 16C); RPN e ALG ficam nos indicadores do visor
     const title = brand.querySelector('.title');
     if (title.dataset.profile !== p.id) { // o título muda só quando o perfil muda
       title.dataset.profile = p.id;
