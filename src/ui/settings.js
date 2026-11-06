@@ -191,7 +191,7 @@ export function mountSettings(ctx) {
     '<div class="row"><span class="txt">Redefinir configurações<small>Volta ao padrão; não apaga a memória da calculadora</small></span>' +
     '<button type="button" class="mini reset-settings">Redefinir</button></div>' +
     `<div class="row ver-row" role="button" tabindex="0"><span class="txt">Versão<small class="ver-note">Calc 12c ${APP_VERSION}</small></span></div>` +
-    `<div class="row credits"><span class="txt">Créditos<small>Criado por Wanderson Martins · MW Solutions</small></span></div></section>` +
+    `<div class="row credits"><span class="txt">Créditos<small>Calc RPN by MW · criado por Wanderson Martins, MW Solutions</small></span></div></section>` +
     '<section class="group dev-only" hidden><h3 class="group-title">Desenvolvedor</h3>' +
     '<div class="row"><span class="txt">Modo desenvolvedor ativo<small>Libera as cores e os temas Gold e Platinum em qualquer modelo</small></span>' +
     '<button type="button" class="mini dev-off">Desativar</button></div></section>';
