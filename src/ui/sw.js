@@ -2,7 +2,7 @@
 const CACHE = 'calc12c-dev'; /*CACHE*/
 const FILES = [/*FILES*/
   './', './index.html', './app.js', './display.js', './tape.js', './storage.js', './settings.js', './reflex.js',
-  './layout.css', './themes.css', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png',
+  './layout.css', './themes.css', './manifest.webmanifest', './icon-192.png', './icon-512.png',
   '../engine/engine.js', '../engine/keymap.js', '../engine/stack.js', '../engine/registers.js', '../engine/math.js',
   '../engine/tvm.js', '../engine/errors.js', '../engine/number.js',
 ]; /*FILES-END*/

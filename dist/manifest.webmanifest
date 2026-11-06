@@ -1,6 +1,6 @@
 {
-  "name": "Calc 12C",
-  "short_name": "Calc 12C",
+  "name": "Calc RPN",
+  "short_name": "Calc RPN",
   "description": "Calculadora financeira RPN de 39 teclas. Funciona offline; nada sai do aparelho.",
   "lang": "pt-BR",
   "start_url": "./calc12c-v0.1.0.html",

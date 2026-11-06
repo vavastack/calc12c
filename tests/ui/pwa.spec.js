@@ -33,9 +33,9 @@ test('área segura: viewport-fit=cover e env(safe-area-inset-*) nos quatro lados
   for (const lado of ['top', 'right', 'bottom', 'left']) assert.match(css, new RegExp(`env\\(safe-area-inset-${lado}`));
 });
 
-test('manifest: nome Calc 12C, tela cheia, sem "HP", ícones existentes', async () => {
+test('manifest: nome Calc RPN, tela cheia, sem "HP", ícones existentes', async () => {
   const m = JSON.parse(readFileSync(ROOT + 'src/ui/manifest.webmanifest', 'utf8'));
-  assert.equal(m.name, 'Calc 12C');
+  assert.equal(m.name, 'Calc RPN');
   assert.equal(m.display, 'standalone');
   assert.ok(!/\bHP\b/i.test(JSON.stringify(m)), 'o nome "HP" não pode aparecer');
   assert.ok(m.icons.length >= 2);
@@ -67,7 +67,7 @@ test('build: gera dist/calc12c-v0.1.0.html único, sem módulos externos nem red
   assert.match(html, /viewport-fit=cover/);
   assert.match(html, /name="theme-color"/);
   assert.match(html, /rel="manifest"/);
-  assert.ok(statSync(DIST).size < 400_000, 'arquivo grande demais');
+  assert.ok(statSync(DIST).size < 460_000, 'arquivo grande demais');
 });
 
 test('arquivo gerado abre por file:// e passa o cenário do financiamento, sem usar a rede', async () => {

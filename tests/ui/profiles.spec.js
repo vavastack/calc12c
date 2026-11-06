@@ -426,7 +426,7 @@ test('16C: selo, indicadores C e G, teclas A-F e rótulos f/g próprios', async 
   await hp16(p);
   assert.equal(await p.locator('.brand .title .l1').innerText(), 'Dev');
   assert.equal(await p.locator('.brand .title .l2').innerText(), 'Calc 16c');
-  assert.equal((await p.locator('.brand .badge .model').innerText()).trim(), '16C');
+  assert.equal((await p.locator('.brand .badge .model').innerText()).trim(), 'RPN');
   assert.deepEqual(await p.locator('.display [data-ind]').evaluateAll((els) => els.map((e) => e.dataset.ind)), ['f', 'g', 'C', 'G', 'PRGM']);
   assert.equal(await p.locator('button.key[data-id="da"] .lf').innerText(), 'SL');
   assert.equal(await p.locator('button.key[data-id="da"] .lg').innerText(), 'LJ');
