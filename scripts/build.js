@@ -3,6 +3,7 @@
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync } from 'node:fs';
 import { dirname, basename, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const UI = ROOT + 'src/ui/';
@@ -70,7 +71,7 @@ writeFileSync(DIST + name, html);
 
 // ---- arquivos para hospedagem (opcional): service worker, manifest e ícones ----
 const sw = read(UI + 'sw.js')
-  .replace(/const CACHE = '[^']*';/, `const CACHE = 'calc12c-v${version}';`)
+  .replace(/const CACHE = '[^']*';/, `const CACHE = 'calc12c-v${version}-${createHash('sha1').update(html).digest('hex').slice(0, 8)}';`)
   .replace(/\/\*FILES\*\/[\s\S]*?\]; \/\*FILES-END\*\//, `/*FILES*/ ['./', './${name}', './manifest.webmanifest', './icon-192.png', './icon-512.png']; /*FILES-END*/`);
 writeFileSync(DIST + 'sw.js', sw);
 const hosted = JSON.parse(read(UI + 'manifest.webmanifest'));
