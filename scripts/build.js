@@ -54,7 +54,7 @@ manifest.icons = [
 const manifestUrl = 'data:application/manifest+json;base64,' + Buffer.from(JSON.stringify(manifest)).toString('base64');
 
 // ---- HTML ----
-let html = read(UI + 'index.html').replace('./splash.mp4', 'data:video/mp4;base64,' + b64('splash.mp4'));
+let html = read(UI + 'index.html');
 const font64 = readFileSync(UI + 'fonts/share-tech-mono.woff2').toString('base64'); // fonte embutida: funciona offline
 const css = (read(UI + 'themes.css') + '\n' + read(UI + 'layout.css')).replace('url("./fonts/share-tech-mono.woff2")', `url(data:font/woff2;base64,${font64})`);
 html = html
@@ -72,12 +72,12 @@ writeFileSync(DIST + name, html);
 // ---- arquivos para hospedagem (opcional): service worker, manifest e ícones ----
 const sw = read(UI + 'sw.js')
   .replace(/const CACHE = '[^']*';/, `const CACHE = 'calc12c-v${version}-${createHash('sha1').update(html).digest('hex').slice(0, 8)}';`)
-  .replace(/\/\*FILES\*\/[\s\S]*?\]; \/\*FILES-END\*\//, `/*FILES*/ ['./', './${name}', './manifest.webmanifest', './icon-192.png', './icon-512.png']; /*FILES-END*/`);
+  .replace(/\/\*FILES\*\/[\s\S]*?\]; \/\*FILES-END\*\//, `/*FILES*/ ['./', './${name}', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png']; /*FILES-END*/`);
 writeFileSync(DIST + 'sw.js', sw);
 const hosted = JSON.parse(read(UI + 'manifest.webmanifest'));
 hosted.icons = hosted.icons.filter((i) => i.type === 'image/png');
 hosted.start_url = './' + name;
 writeFileSync(DIST + 'manifest.webmanifest', JSON.stringify(hosted, null, 2));
-for (const f of ['icon-192.png', 'icon-512.png']) copyFileSync(UI + f, DIST + f);
+for (const f of ['icon-192.png', 'icon-512.png', 'icon-maskable-512.png']) copyFileSync(UI + f, DIST + f);
 
 console.log(`ok: dist/${name} (${(Buffer.byteLength(html) / 1024).toFixed(1)} KB)`);

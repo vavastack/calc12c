@@ -538,22 +538,3 @@ test('Ajustes mostram os créditos do desenvolvimento', async () => {
   await app.close();
 });
 
-// ---------- Abertura animada ----------
-test('abertura: não aparece em testes, toque pula, e dá para desligar em Ajustes', async () => {
-  const app = await openApp(browser, server.url);
-  assert.equal(await app.page.locator('#splash').count(), 0, 'desligada sob automação');
-  await app.page.evaluate(() => window.calc12c.settings.open());
-  const sw = app.page.locator('.settings [name=splash]');
-  assert.equal(await sw.isChecked(), true);
-  await sw.uncheck();
-  assert.equal(await app.page.evaluate(() => localStorage.getItem('calc12c-splash')), 'off');
-  assert.equal(await app.page.evaluate(() => JSON.stringify(window.calc12c.settings.get()).includes('splash')), false);
-  await app.close();
-
-  const a2 = await openApp(browser, server.url);
-  await a2.page.goto(server.url + '/src/ui/index.html?splash=1');
-  await a2.page.waitForSelector('#splash.on');
-  await a2.page.locator('#splash').click({ force: true });
-  await a2.page.waitForSelector('#splash', { state: 'detached', timeout: 2000 });
-  await a2.close();
-});

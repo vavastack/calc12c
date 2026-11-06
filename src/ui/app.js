@@ -8,7 +8,6 @@ import { mountSettings } from './settings.js';
 import { startReflex } from './reflex.js';
 import { mountVerso } from './verso.js';
 import { makeSound } from './extras.js';
-import { initSplash } from './splash.js';
 
 const NOTICE_MS = 2200;
 
@@ -296,7 +295,6 @@ export function mountApp(root, engine = createEngine()) {
     ctx.adoptProfile();
   };
   ctx.settings = mountSettings(ctx);
-  initSplash();
   ctx.listeners.push(() => saveState(engine)); // salvamento automático
   ctx.render();
   return ctx;
