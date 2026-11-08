@@ -3,7 +3,7 @@
 // o padrão de bits de cada registrador. Etapa atual: teclado sem programação nem ponto flutuante.
 import { CalcError } from './errors.js';
 import { getProfile } from './profiles.js';
-import { MAX_LINES, MAX_RETURNS, MESSAGES_16C, isPrefix, lineDone, lineText, keyCode, runTest } from './program16.js';
+import { labelKey, memInfo, MAX_LINES, MAX_RETURNS, MESSAGES_16C, isPrefix, lineDone, lineText, keyCode, runTest } from './program16.js';
 import { add, asr, digitsOf, div, inRange, isqrt, leftJustify, maskOf, mul, negate, popcount, range, rmd, rotLeft, rotRight, shiftLeft, shiftRight, sub, toRaw, toSigned } from './intmath.js';
 
 const VERSION = 1;
@@ -95,10 +95,6 @@ export class Engine16 {
     this.locale = locale;
   }
 
-  takePauses() {
-    return [];
-  }
-
   reset() {
     const locale = this.locale;
     Object.assign(this, new Engine16({ locale, profile: this.profile }));
@@ -157,7 +153,7 @@ export class Engine16 {
 
   _pressRaw(id) {
     if (id === 'f' || id === 'g') {
-      if (this.pending !== 'sto' && this.pending !== 'rcl') this.pending = null; // STO f I: o prefixo só prepara o argumento
+      if (!['sto', 'rcl', 'gsb', 'gto'].includes(this.pending)) this.pending = null; // STO f I, GTO f I: o prefixo só prepara o argumento
       this.shift = id;
       return;
     }
@@ -168,7 +164,7 @@ export class Engine16 {
   // Modo PRGM: as teclas viram linhas de programa em vez de serem executadas.
   _recordPress(id) {
     const r = this.rec;
-    if (isPrefix(id) && (r.length === 0 || r[0] === 'sto' || r[0] === 'rcl')) {
+    if (isPrefix(id) && (r.length === 0 || ['sto', 'rcl', 'gsb', 'gto'].includes(r[0]))) {
       if (r.length === 0) r.push(id);
       this.shift = id;
       return;
@@ -250,6 +246,23 @@ export class Engine16 {
     }
     if (shift === null && id === 'sst') { this._commit(); if (!this.running) this._step(); return true; }
     if (shift === 'f' && id === 'rdown') { this.pc = 0; this.ret = []; return true; }
+    if (shift === 'f' && id === 'gto') { this._commit(); [this.st.x, this.idx] = [this.idx, this.st.x]; this.lift = true; this._record('x≷I'); return true; }
+    if (shift === 'f' && id === 'gsb') {
+      this._commit();
+      const n = this._indirect();
+      [this.st.x, this.regs[n]] = [this.regs[n], this.st.x];
+      this.lift = true;
+      this._record('x≷(i)');
+      return true;
+    }
+    if (shift === 'f' && id === '6') { this._commit(); this.pending = 'btest'; return true; }
+    if (shift === 'g' && id === '6') { this._commit(); this.pending = 'ftest'; return true; }
+    if (shift === 'f' && id === '0') {
+      this._commit();
+      const { b, r } = memInfo(this.prog.length, this.ws);
+      this.temp = `p-${String(b).padStart(2, '0')} r-${String(r).padStart(2, '0')}`;
+      return true;
+    }
     if (shift !== 'g') return false;
     if (id === 'gsb') { this._commit(); this._rtn(); return true; }
     if (id === 'gto') { this._commit(); this.pending = 'lbl'; return true; }
@@ -268,6 +281,12 @@ export class Engine16 {
       return true;
     }
     return false;
+  }
+
+  // Registrador apontado por I (o valor de I como número sem sinal).
+  _indirect() {
+    if (this.idx >= BigInt(this.regs.length)) throw err16(3);
+    return Number(this.idx);
   }
 
   takePauses() {
@@ -571,7 +590,7 @@ export class Engine16 {
   _maskOp(left) {
     this._commit();
     const s = this.st;
-    if (s.x > BigInt(this.ws)) throw arg('Número de bits inválido');
+    if (s.x > BigInt(this.ws)) throw err16(2);
     const n = Number(s.x);
     const low = (1n << BigInt(n)) - 1n;
     s.l = s.x;
@@ -705,8 +724,13 @@ export class Engine16 {
     const d = digitOf(id);
     const s = this.st;
     if (mode === 'gsb' || mode === 'gto' || mode === 'lbl') {
-      if (d === null || mode === 'lbl') return;
-      const to = this._findLabel(id);
+      if (mode === 'lbl') return;
+      let lab = id;
+      if (id === 'sst') {
+        if (this.idx > 15n) throw err16(4);
+        lab = labelKey(Number(this.idx));
+      } else if (d === null) return;
+      const to = this._findLabel(lab);
       if (mode === 'gsb') {
         if (this.running) {
           if (this.ret.length >= MAX_RETURNS) throw err16(5);
@@ -726,9 +750,14 @@ export class Engine16 {
         if (mode === 'sto') { this.idx = s.x; this.lift = true; } else this._push(this.idx);
         return;
       }
+      if (id === 'rs' && !mode.endsWith('.')) {
+        const n = this._indirect();
+        if (mode === 'sto') { this.regs[n] = s.x; this.lift = true; } else this._push(this.regs[n]);
+        return;
+      }
       if (d === null) return;
       const n = parseInt(d, 16) + (mode.endsWith('.') ? 16 : 0);
-      if (n >= this.regs.length) throw new CalcError(6);
+      if (n >= this.regs.length) throw err16(3);
       const label = `${mode.startsWith('sto') ? 'STO' : 'RCL'} ${mode.endsWith('.') ? '.' : ''}${d}`;
       if (mode.startsWith('sto')) {
         this.regs[n] = s.x;
@@ -739,14 +768,24 @@ export class Engine16 {
     }
     if (d === null) return;
     const n = parseInt(d, 16);
+    if (mode === 'btest') {
+      if (n >= this.ws) throw err16(2);
+      if (!((s.x >> BigInt(n)) & 1n)) this._skip();
+      return;
+    }
+    if (mode === 'ftest') {
+      if (n > 5) throw err16(1);
+      if (!this.flags[n]) this._skip();
+      return;
+    }
     if (mode === 'window') {
-      if (n > 7) throw arg('Janela inválida');
+      if (n > 7) throw err16(1);
       this.window = n;
     } else if (mode === 'sf' || mode === 'cf') {
-      if (n > 5) throw arg('Flag inválido');
+      if (n > 5) throw err16(1);
       this.flags[n] = mode === 'sf';
     } else {
-      if (n >= this.ws) throw arg('Bit inexistente');
+      if (n >= this.ws) throw err16(2);
       s.x = mode === 'sb' ? s.x | (1n << BigInt(n)) : s.x & ~(1n << BigInt(n));
       this.lift = true;
       this._record(mode === 'sb' ? `SB ${d}` : `CB ${d}`);
@@ -836,7 +875,7 @@ export class Engine16 {
     if (!o.st || !Array.isArray(o.flags) || o.flags.length !== 6 || !o.flags.every((f) => typeof f === 'boolean')) throw bad();
     if (!Array.isArray(o.regs) || !Array.isArray(o.tape) || !Array.isArray(o.tokens)) throw bad();
     if (o.locale !== 'br' && o.locale !== 'us') throw bad();
-    if (![null, 'f', 'g'].includes(o.shift) || ![null, 'sto', 'rcl', 'sto.', 'rcl.', 'sb', 'cb', 'sf', 'cf', 'window', 'gsb', 'gto', 'lbl'].includes(o.pending)) throw bad();
+    if (![null, 'f', 'g'].includes(o.shift) || ![null, 'sto', 'rcl', 'sto.', 'rcl.', 'sb', 'cb', 'sf', 'cf', 'window', 'gsb', 'gto', 'lbl', 'btest', 'ftest'].includes(o.pending)) throw bad();
     if (o.entry !== null && !(typeof o.entry === 'string' && /^[0-9A-F]*$/.test(o.entry))) throw bad();
     const e = new Engine16({ locale: o.locale, profile: o.profile });
     Object.assign(e, {

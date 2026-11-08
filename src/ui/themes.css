@@ -124,6 +124,16 @@
   --glow: radial-gradient(260px 220px at 8% 6%, #ffffff80, transparent 70%), radial-gradient(300px 260px at 95% 92%, #8e9aa83d, transparent 70%);
 }
 
+/* HP-16C: corpo escuro, placa grafite, f laranja e g azul (vale para o Retro e o vidro) */
+[data-model="16c"] {
+  --plate-a:#3b3e43; --plate-b:#6a6e75; --plate-c:#4a4d53; --plate-edge:#222427; --plate-ink:#ece8df; --engrave-hi:rgba(255,255,255,.2); --engrave-lo:rgba(0,0,0,.6);
+  --badge-a:#f6b24a; --badge-b:#c9781a; --badge-c:#e89a2e; --badge-d:#9a5a0e; --badge-ink:#ffd9a0; --badge-frame:#0b0b0c;
+  --edge:#5a5d63; --brand:#f0a03a; --gold:#f08a24; --blue:#4a9be0; --ind-on:#ff9a2e;
+  --keyf-bg: linear-gradient(#f7a233, #c4640a); --keyf-border:#f0a050; --keyf-text:#1a0d02; --keyf-shadow: 0 2px 0 #4d2606, inset 0 1px 0 #ffffff55; --flash-f:#ffb866e6;
+  --keyg-bg: linear-gradient(#4a9be0, #21609f); --keyg-border:#6cb2ec; --keyg-text:#041525; --keyg-shadow: 0 2px 0 #0a2a47, inset 0 1px 0 #ffffff55; --flash-g:#8fc4f5e6;
+  --display-border:#3a3d42;
+}
+
 /* Reduzir efeitos: vidro sólido, sem reflexo (liga sozinho em aparelhos simples) */
 [data-reduce="true"] {
   --glass: none;

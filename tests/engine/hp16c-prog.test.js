@@ -122,3 +122,53 @@ test('o programa sobrevive a serialize/restore', () => {
   run(r, '4 enter gsb 1');
   assert.equal(r.state.stack.x, '8');
 });
+
+test('registrador (i): STO/RCL (i) e x≷(i) usam o registrador apontado por I', () => {
+  const e = run(E(), '5 sto f sst 99 sto f rs'); // I=5; R5=99
+  assert.equal(e.state.regs[5], '99');
+  const r = run(e, '0 rcl f rs');
+  assert.equal(r.state.stack.x, '99');
+  run(r, '7 f gsb'); // x≷(i): X=99, R5=7
+  assert.equal(r.state.stack.x, '99');
+  assert.equal(r.state.regs[5], '7');
+});
+
+test('x≷I troca X com I; (i) fora da faixa dá Error 3', () => {
+  const e = run(E(), '5 sto f sst 9 f gto');
+  assert.equal(e.state.stack.x, '5');
+  assert.equal(e.state.texts.idx, '9 d');
+  const f = run(E(), '40 sto f sst 1 sto f rs');
+  assert.equal(disp(f), 'Error 3');
+});
+
+test('GSB I e GTO I usam I como rótulo', () => {
+  const e = E();
+  prog(e, 'g gto 3 8 g gsb');
+  run(e, '3 sto f sst gsb f sst');
+  assert.equal(e.state.stack.x, '8');
+  const f = run(E(), '20 sto f sst gto f sst');
+  assert.equal(disp(f), 'Error 4');
+});
+
+test('B? e F? pulam a linha seguinte quando falsos', () => {
+  const e = E();
+  prog(e, 'g gto 1 f 6 3 9 g gto 2 g 6 0 8');
+  run(e, '8 gto 1 rs'); // bit 3 de 8 está ligado: executa 9
+  assert.equal(e.state.stack.x, '9');
+  const f = E();
+  prog(f, 'g gto 1 f 6 3 9');
+  run(f, '4 gto 1 rs'); // bit 3 de 4 desligado: pula o 9
+  assert.equal(f.state.stack.x, '4');
+  const g = E();
+  prog(g, 'g gto 1 g 6 2 9');
+  run(g, '4 g 4 2 gto 1 rs'); // SF 2 e depois F? 2: executa 9
+  assert.equal(g.state.stack.x, '9');
+});
+
+test('f MEM mostra linhas livres e registradores; códigos de erro do manual', () => {
+  const e = run(E(), 'f 0');
+  assert.match(disp(e), /^p-00 r-101$/);
+  assert.equal(disp(run(E(), 'g 4 9')), 'Error 1'); // flag 9
+  assert.equal(disp(run(E(), '8 f sto f 4 8')), 'Error 2'); // bit 8 em 8 bits
+  assert.equal(disp(run(E(), 'f enter 9')), 'Error 1'); // janela 9
+});

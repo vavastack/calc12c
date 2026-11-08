@@ -538,3 +538,22 @@ test('Ajustes mostram os créditos do desenvolvimento', async () => {
   await app.close();
 });
 
+
+// ---------- HP-16C: programação e tema próprio ----------
+test('16C: P/R acende PRGM, mostra a linha e o tema próprio (grafite) está ativo', async () => {
+  const app = await openApp(browser, server.url);
+  const p = app.page;
+  await enableDev(p);
+  await p.evaluate(() => window.calc12c.setProfile('16c'));
+  assert.equal(await p.evaluate(() => document.documentElement.dataset.model), '16c');
+  assert.equal((await p.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--plate-edge'))).trim(), '#222427');
+  await tap(p, 'g rs');
+  assert.equal(await on(p, 'PRGM'), true);
+  assert.match(await digits(p), /000-/);
+  await tap(p, '5');
+  assert.match(await digits(p), /001-\s+5/);
+  await tap(p, 'g rs');
+  assert.equal(await on(p, 'PRGM'), false);
+  assert.deepEqual(app.errors, []);
+  await app.close();
+});
