@@ -557,3 +557,16 @@ test('16C: P/R acende PRGM, mostra a linha e o tema próprio (grafite) está ati
   assert.deepEqual(app.errors, []);
   await app.close();
 });
+
+test('16C: f FLOAT 2 mostra decimais no visor e DEC volta ao inteiro', async () => {
+  const app = await openApp(browser, server.url);
+  const p = app.page;
+  await enableDev(p);
+  await p.evaluate(() => window.calc12c.setProfile('16c'));
+  await tap(p, 'f rcl 2 1 dot 5 enter 2 plus');
+  assert.match(await digits(p), /3,50/);
+  await tap(p, 'dec');
+  assert.match(await digits(p), /3/);
+  assert.deepEqual(app.errors, []);
+  await app.close();
+});

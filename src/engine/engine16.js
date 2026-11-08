@@ -3,6 +3,7 @@
 // o padrão de bits de cada registrador. Etapa atual: teclado sem programação nem ponto flutuante.
 import { CalcError } from './errors.js';
 import { getProfile } from './profiles.js';
+import { F_MAX, floatToInt, formatFloat, intToFloat, round10 } from './float16.js';
 import { labelKey, memInfo, MAX_LINES, MAX_RETURNS, MESSAGES_16C, isPrefix, lineDone, lineText, keyCode, runTest } from './program16.js';
 import { add, asr, digitsOf, div, inRange, isqrt, leftJustify, maskOf, mul, negate, popcount, range, rmd, rotLeft, rotRight, shiftLeft, shiftRight, sub, toRaw, toSigned } from './intmath.js';
 
@@ -49,6 +50,10 @@ export class Engine16 {
     this.running = false;
     this.halt = false;
     this.pauses = [];
+    this.fmode = null; // null = inteiro; 0..9 casas ou 'sci' = decimal (f FLOAT)
+    this.fst = { x: 0, y: 0, z: 0, t: 0, l: 0 };
+    this.fregs = new Map(); // registradores que guardam decimais
+    this.fent = null; // digitação decimal em curso: { m, e, mneg, eneg }
   }
 
   get keyById() {
@@ -58,15 +63,21 @@ export class Engine16 {
   // ---------- estado ----------
   get state() {
     const { x, y, z, t, l } = this.st;
+    const fl = this.fmode !== null;
     const text = (v) => this._valText(v, 0);
+    const ftext = (v) => formatFloat(v, this.fmode, this.locale);
+    const f = this.fst;
     return {
       display: this._display(),
       profile: this.profile,
       mode: 'rpn',
       parens: 0,
-      stack: { x: String(x), y: String(y), z: String(z), t: String(t), lastX: String(l) },
-      texts: { x: text(x), y: text(y), z: text(z), t: text(t), lastX: text(l), regs: this.regs.map(text), idx: text(this.idx) },
-      regs: this.regs.map(String),
+      stack: fl ? { x: String(f.x), y: String(f.y), z: String(f.z), t: String(f.t), lastX: String(f.l) } : { x: String(x), y: String(y), z: String(z), t: String(t), lastX: String(l) },
+      texts: fl
+        ? { x: ftext(f.x), y: ftext(f.y), z: ftext(f.z), t: ftext(f.t), lastX: ftext(f.l), regs: this.regs.map((r, n) => (this.fregs.has(n) ? ftext(this.fregs.get(n)) : text(r))), idx: text(this.idx) }
+        : { x: text(x), y: text(y), z: text(z), t: text(t), lastX: text(l), regs: this.regs.map(text), idx: text(this.idx) },
+      regs: this.regs.map((r, n) => (this.fregs.has(n) ? String(this.fregs.get(n)) : String(r))),
+      float: this.fmode,
       fin: { n: 0, i: 0, pv: 0, pmt: 0, fv: 0 },
       begin: false,
       compound: false,
@@ -246,6 +257,8 @@ export class Engine16 {
     }
     if (shift === null && id === 'sst') { this._commit(); if (!this.running) this._step(); return true; }
     if (shift === 'f' && id === 'rdown') { this.pc = 0; this.ret = []; return true; }
+    if (this.fmode !== null && shift === 'f' && (id === 'gto' || id === 'gsb' || id === '6')) return true; // sem efeito em decimal
+    if (shift === 'f' && id === 'rcl') { this._commit(); this.pending = 'float'; return true; }
     if (shift === 'f' && id === 'gto') { this._commit(); [this.st.x, this.idx] = [this.idx, this.st.x]; this.lift = true; this._record('x≷I'); return true; }
     if (shift === 'f' && id === 'gsb') {
       this._commit();
@@ -277,10 +290,207 @@ export class Engine16 {
     if (id === 'xy') { this.pauses.push(1000); return true; }
     if (TEST_KEYS.includes(id)) {
       this._commit();
-      if (!runTest(id, this.st.x, this.st.y, this.ws, this.cmp)) this._skip();
+      if (this.fmode !== null) {
+        const { x, y } = this.fst;
+        const ok = { 1: x <= y, 2: x < 0, 3: x > y, minus: x > 0, 0: x !== y, dot: x !== 0, chs: x === y, plus: x === 0 }[id];
+        if (!ok) this._skip();
+      } else if (!runTest(id, this.st.x, this.st.y, this.ws, this.cmp)) this._skip();
       return true;
     }
     return false;
+  }
+
+  // ---------- decimal (f FLOAT) ----------
+  _setFloat(n) {
+    if (this.fmode === null) {
+      const r = intToFloat(this.st.x, this.st.y, this.ws, this.cmp);
+      this.fst = { x: r.v, y: 0, z: 0, t: 0, l: 0 };
+      this.flags[5] = r.g;
+      this.fent = null;
+      this.lift = true;
+    }
+    this.fmode = n;
+  }
+
+  _toInt(base) {
+    this._fcommit();
+    const r = floatToInt(this.fst.x, this.ws, this.cmp);
+    this.st = { x: r.raw, y: 0n, z: 0n, t: 0n, l: 0n };
+    this.flags[5] = r.g;
+    this.fmode = null;
+    this.fent = null;
+    this.base = base;
+    this.lift = true;
+  }
+
+  _fround(v) {
+    const r = round10(v);
+    this.flags[5] = r.g;
+    return r.v;
+  }
+
+  _fentryValue() {
+    const e = this.fent;
+    const m = (e.mneg ? '-' : '') + (e.m === '' || e.m === '.' ? '0' : e.m);
+    return Number(m + (e.e !== null ? 'e' + (e.eneg ? '-' : '') + (e.e === '' ? '0' : e.e) : ''));
+  }
+
+  _fcommit() {
+    if (this.fent === null) return;
+    this.fst.x = this._fround(this._fentryValue());
+    this.fent = null;
+  }
+
+  _fstart() {
+    if (this.fent !== null) return;
+    if (this.lift) this._frise();
+    this.lift = true;
+    this.fent = { m: '', e: null, mneg: false, eneg: false };
+  }
+
+  _frise() {
+    const f = this.fst;
+    f.t = f.z;
+    f.z = f.y;
+    f.y = f.x;
+  }
+
+  _fpush(v) {
+    if (this.lift) this._frise();
+    this.fst.x = v;
+    this.lift = true;
+  }
+
+  _fsync() {
+    this.fst.x = this._fentryValue();
+  }
+
+  _floatKey(shift, id) {
+    const f = this.fst;
+    if (shift === null) {
+      if (/^[0-9]$/.test(id)) {
+        this._fstart();
+        const e = this.fent;
+        if (e.e !== null) e.e = (e.e + id).slice(-2);
+        else if (e.m.replace(/[-.]/g, '').length < 10) e.m += id;
+        return this._fsync();
+      }
+      switch (id) {
+        case 'dot':
+          this._fstart();
+          if (this.fent.e === null && !this.fent.m.includes('.')) this.fent.m = (this.fent.m || '0') + '.';
+          return this._fsync();
+        case 'chs':
+          if (this.fent !== null) {
+            if (this.fent.e !== null) this.fent.eneg = !this.fent.eneg;
+            else this.fent.mneg = !this.fent.mneg;
+            return this._fsync();
+          }
+          f.x = -f.x;
+          this.lift = true;
+          return;
+        case 'bsp':
+          if (this.fent !== null) {
+            const e = this.fent;
+            if (e.e !== null) e.e = e.e.length ? e.e.slice(0, -1) : null;
+            else if (e.m.length) e.m = e.m.slice(0, -1);
+            else e.mneg = false;
+            return this._fsync();
+          }
+          f.x = 0;
+          this.lift = false;
+          return;
+        case 'enter':
+          this._fcommit();
+          f.t = f.z;
+          f.z = f.y;
+          f.y = f.x;
+          this.lift = false;
+          return;
+        case 'xy':
+          this._fcommit();
+          [f.x, f.y] = [f.y, f.x];
+          this.lift = true;
+          return;
+        case 'rdown':
+          this._fcommit();
+          [f.x, f.y, f.z, f.t] = [f.y, f.z, f.t, f.x];
+          this.lift = true;
+          return;
+        case 'sto':
+        case 'rcl':
+          this._fcommit();
+          this.pending = id;
+          return;
+        case 'hex':
+        case 'dec':
+        case 'oct':
+        case 'bin':
+          return this._toInt(id);
+        case 'plus':
+        case 'minus':
+        case 'times':
+        case 'divide': {
+          this._fcommit();
+          if (id === 'divide' && f.x === 0) throw new CalcError(0);
+          const r = { plus: f.y + f.x, minus: f.y - f.x, times: f.y * f.x, divide: f.y / f.x }[id];
+          f.l = f.x;
+          f.x = this._fround(r);
+          f.y = f.z;
+          f.z = f.t;
+          this.lift = true;
+          return;
+        }
+      }
+      return; // as demais teclas não funcionam em decimal
+    }
+    if (shift === 'f' && id === 'chs') { // EEX
+      this._fstart();
+      if (this.fent.e === null) this.fent.e = '';
+      return this._fsync();
+    }
+    if (shift === 'g') {
+      switch (id) {
+        case 'bin': // 1/x
+        case 'oct': { // √x
+          this._fcommit();
+          if (id === 'bin' ? f.x === 0 : f.x < 0) throw new CalcError(0);
+          f.l = f.x;
+          f.x = this._fround(id === 'bin' ? 1 / f.x : Math.sqrt(f.x));
+          this.lift = true;
+          return;
+        }
+        case 'rdown':
+          this._fcommit();
+          [f.x, f.y, f.z, f.t] = [f.t, f.x, f.y, f.z];
+          this.lift = true;
+          return;
+        case 'bsp':
+          f.x = 0;
+          this.fent = null;
+          this.lift = false;
+          return;
+        case 'enter':
+          this._fcommit();
+          this._fpush(f.l);
+          return;
+      }
+    }
+  }
+
+  _floatReg(mode, key) {
+    const d = digitOf(key.id);
+    if (key.id === 'dot' && !mode.endsWith('.')) { this.pending = mode + '.'; return; }
+    if (d === null) return;
+    const n = parseInt(d, 16) + (mode.endsWith('.') ? 16 : 0);
+    if (n >= this.regs.length) throw err16(3);
+    if (mode.startsWith('sto')) {
+      this.fregs.set(n, this.fst.x);
+      this.lift = true;
+    } else {
+      if (!this.fregs.has(n) && this.regs[n] !== 0n) throw new CalcError(6, 'Conteúdo inválido para o modo decimal');
+      this._fpush(this.fregs.get(n) ?? 0);
+    }
   }
 
   // Registrador apontado por I (o valor de I como número sem sinal).
@@ -303,6 +513,7 @@ export class Engine16 {
     if (this.pending) return this._finishPending(key);
     if (id === 'on') return;
     if (!this.pending && this._control(shift, id)) return;
+    if (this.fmode !== null && !this.pending) return this._floatKey(shift, id);
     if (shift === 'f') return this._f(key);
     if (shift === 'g') return this._g(key);
     return this._primary(key);
@@ -310,6 +521,7 @@ export class Engine16 {
 
   // ---------- pilha e entrada ----------
   _commit() {
+    if (this.fmode !== null) return this._fcommit();
     if (this.entry === null) return;
     this.tokens.push(this.entry === '' ? '0' : this.entry);
     this.st.x = this._parse(this.entry);
@@ -723,6 +935,12 @@ export class Engine16 {
     const id = key.id;
     const d = digitOf(id);
     const s = this.st;
+    if (mode === 'float') {
+      if (id !== 'dot' && (d === null || /[A-F]/.test(d))) { if (d !== null) throw err16(1); return; }
+      this._setFloat(id === 'dot' ? 'sci' : Number(d));
+      return;
+    }
+    if (this.fmode !== null && (mode === 'sto' || mode === 'rcl' || mode === 'sto.' || mode === 'rcl.')) return this._floatReg(mode, key);
     if (mode === 'gsb' || mode === 'gto' || mode === 'lbl') {
       if (mode === 'lbl') return;
       let lab = id;
@@ -760,6 +978,7 @@ export class Engine16 {
       if (n >= this.regs.length) throw err16(3);
       const label = `${mode.startsWith('sto') ? 'STO' : 'RCL'} ${mode.endsWith('.') ? '.' : ''}${d}`;
       if (mode.startsWith('sto')) {
+        this.fregs.delete(n);
         this.regs[n] = s.x;
         this.lift = true;
       } else this._push(this.regs[n]);
@@ -820,6 +1039,15 @@ export class Engine16 {
       return this.pc === 0 ? '000-' : lineText(this.pc, this.prog[this.pc - 1]);
     }
     if (this.temp !== null) return this.temp;
+    if (this.fmode !== null) {
+      if (this.fent !== null) {
+        const e = this.fent;
+        const m = (e.mneg ? '-' : '') + (e.m || '0');
+        const t = e.e === null ? m : `${m} ${e.eneg ? '-' : ''}${e.e.padStart(2, '0')}`;
+        return this.locale === 'br' ? t.replace('.', ',') : t;
+      }
+      return formatFloat(this.fst.x, this.fmode, this.locale);
+    }
     if (this.entry !== null) return this._slice(this.entry === '' ? '0' : this.entry, 0, this.base);
     return this._valText(this.st.x);
   }
@@ -857,6 +1085,9 @@ export class Engine16 {
       prgm: this.prgm,
       ret: this.ret,
       idx: String(this.idx),
+      fmode: this.fmode,
+      fst: Object.fromEntries(Object.entries(this.fst).map(([k, v]) => [k, v])),
+      fregs: [...this.fregs.entries()],
     });
   }
 
@@ -875,7 +1106,7 @@ export class Engine16 {
     if (!o.st || !Array.isArray(o.flags) || o.flags.length !== 6 || !o.flags.every((f) => typeof f === 'boolean')) throw bad();
     if (!Array.isArray(o.regs) || !Array.isArray(o.tape) || !Array.isArray(o.tokens)) throw bad();
     if (o.locale !== 'br' && o.locale !== 'us') throw bad();
-    if (![null, 'f', 'g'].includes(o.shift) || ![null, 'sto', 'rcl', 'sto.', 'rcl.', 'sb', 'cb', 'sf', 'cf', 'window', 'gsb', 'gto', 'lbl', 'btest', 'ftest'].includes(o.pending)) throw bad();
+    if (![null, 'f', 'g'].includes(o.shift) || ![null, 'sto', 'rcl', 'sto.', 'rcl.', 'sb', 'cb', 'sf', 'cf', 'window', 'gsb', 'gto', 'lbl', 'btest', 'ftest', 'float'].includes(o.pending)) throw bad();
     if (o.entry !== null && !(typeof o.entry === 'string' && /^[0-9A-F]*$/.test(o.entry))) throw bad();
     const e = new Engine16({ locale: o.locale, profile: o.profile });
     Object.assign(e, {
@@ -901,6 +1132,13 @@ export class Engine16 {
       e.ret = Array.isArray(o.ret) ? o.ret.filter((n) => Number.isInteger(n) && n >= 0 && n <= e.prog.length).slice(0, MAX_RETURNS) : [];
       e.idx = typeof o.idx === 'string' && /^[0-9]+$/.test(o.idx) ? big(o.idx, o.ws) : 0n;
     }
+    const okF = (v) => typeof v === 'number' && Number.isFinite(v) && Math.abs(v) <= F_MAX;
+    if (o.fmode === 'sci' || (Number.isInteger(o.fmode) && o.fmode >= 0 && o.fmode <= 9)) {
+      if (!o.fst || !['x', 'y', 'z', 't', 'l'].every((k) => okF(o.fst[k]))) throw bad();
+      e.fmode = o.fmode;
+      e.fst = { x: o.fst.x, y: o.fst.y, z: o.fst.z, t: o.fst.t, l: o.fst.l };
+    }
+    if (Array.isArray(o.fregs)) for (const [n, v] of o.fregs) if (Number.isInteger(n) && n >= 0 && n < e.regs.length && okF(v)) e.fregs.set(n, v);
     for (const k of ['x', 'y', 'z', 't', 'l']) e.st[k] = big(o.st[k], o.ws);
     o.regs.slice(0, e.regs.length).forEach((v, n) => { e.regs[n] = big(v, o.ws); });
     return e;

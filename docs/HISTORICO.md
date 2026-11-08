@@ -58,5 +58,8 @@ Perfil `16c` com motor de inteiros de largura fixa (`engine16.js`, `intmath.js`)
 ## 4d. V3.1 etapa 2 — HP-16C programável
 Programação completa (gravação em PRGM, GSB/GTO/RTN, LBL 0-F, DSZ/ISZ, oito testes, R/S, SST/BST, PSE, 203 linhas, 4 níveis), registrador I e (i), `x≷I`, `x≷(i)`, `GTO/GSB I`, `B?`, `F?`, `f MEM`, códigos de erro 1-5 do manual e tema próprio. Ponto flutuante ficou para a etapa 3. 354 testes do motor e 132 de interface.
 
+## 4e. V3.1 etapa 3 — ponto flutuante da 16C
+`f FLOAT n` / `f FLOAT .`: modo decimal de 10 dígitos com expoente (`float16.js`), aritmética, 1/x, √x, EEX, STO/RCL e testes em decimal, volta ao inteiro por HEX/DEC/OCT/BIN. 362 testes do motor e 133 de interface.
+
 ## 5. Próximos passos
 V3.0 fechada. Ver `docs/HANDOFF.md`: V3.1 (HP-16C), V3.2 (Black-Scholes), V3.3 (10C e 11C), V3.4 (15C), V3.5 (manual próprio).

@@ -172,3 +172,64 @@ test('f MEM mostra linhas livres e registradores; códigos de erro do manual', (
   assert.equal(disp(run(E(), '8 f sto f 4 8')), 'Error 2'); // bit 8 em 8 bits
   assert.equal(disp(run(E(), 'f enter 9')), 'Error 1'); // janela 9
 });
+
+// ---------- ponto flutuante (f FLOAT) ----------
+const FL = (seq) => run(E(), seq);
+
+test('FLOAT n a partir do inteiro: X vira Y×2^X e o resto da pilha zera', () => {
+  const e = FL('4 enter 3 enter 5 f rcl 2'); // Y=3? X=5: Y×2^X = 3×32 = 96
+  assert.equal(disp(e), '96,00');
+  assert.equal(e.state.stack.y, '0');
+  assert.equal(e.state.stack.z, '0');
+});
+
+test('aritmética em decimal: 1,5 + 2 = 3,50 e 7 ÷ 8 = 0,875', () => {
+  const e = FL('f rcl 2 1 dot 5 enter 2 plus');
+  assert.equal(disp(e), '3,50');
+  const f = FL('f rcl 3 7 enter 8 divide');
+  assert.equal(disp(f), '0,875');
+});
+
+test('1/x, √x e divisão por zero (Error 0)', () => {
+  assert.equal(disp(FL('f rcl 2 4 g bin')), '0,25');
+  assert.equal(disp(FL('f rcl 2 9 g oct')), '3,00');
+  assert.equal(disp(FL('f rcl 2 1 enter 0 divide')), 'Error 0');
+  assert.equal(disp(FL('f rcl 2 0 g bin')), 'Error 0');
+});
+
+test('FLOAT . mostra em notação científica e EEX digita expoente', () => {
+  assert.equal(disp(FL('f rcl dot 1 2 3 4 5 enter')), '1,234500 04');
+  assert.equal(disp(FL('f rcl 2 1 f chs 3 enter')), '1000,00');
+  assert.equal(disp(FL('f rcl dot 1 f chs 3 chs enter')), '1,000000 -03');
+});
+
+test('CHS não encerra a digitação em decimal; BSP apaga dígito', () => {
+  const e = FL('f rcl 2 5 chs 2');
+  assert.equal(disp(e).replace(',', '.'), '-52');
+  run(e, 'bsp');
+  assert.equal(disp(e), '-5');
+});
+
+test('HEX/DEC/OCT/BIN voltam ao inteiro truncando o decimal (e o resto da pilha zera)', () => {
+  assert.equal(disp(FL('f rcl 2 3 dot 7 dec')), '3 d');
+  assert.equal(disp(FL('f rcl 2 3 dot 7 chs dec')), '-3 d');
+  assert.equal(disp(FL('f rcl 2 255 hex')), 'FF h');
+});
+
+test('STO/RCL em decimal e teste g x≤y comparam decimais', () => {
+  const e = FL('f rcl 2 2 dot 5 sto 1 0 rcl 1');
+  assert.equal(disp(e), '2,50');
+  const f = E();
+  prog(f, 'g gto 1 g 3 9');
+  run(f, 'f rcl 2 1 enter 2 gto 1 rs'); // x>y: 2>1 executa 9
+  assert.equal(f.state.stack.x, '9');
+});
+
+test('estouro vai ao máximo e liga o flag 5; salvar e restaurar mantêm o modo', () => {
+  const e = FL('f rcl 2 9 dot 9 9 9 9 9 9 9 9 9 f chs 9 9 enter 1 0 times');
+  assert.equal(e.flags[5], true);
+  assert.equal(e.state.stack.x, String(9.999999999e99));
+  const r = restoreEngine(FL('f rcl 3 1 dot 5 enter').serialize());
+  run(r, '2 times');
+  assert.equal(disp(r), '3,000');
+});
