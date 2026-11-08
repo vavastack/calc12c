@@ -3,6 +3,7 @@
 // o padrão de bits de cada registrador. Etapa atual: teclado sem programação nem ponto flutuante.
 import { CalcError } from './errors.js';
 import { getProfile } from './profiles.js';
+import { MAX_LINES, MAX_RETURNS, MESSAGES_16C, isPrefix, lineDone, lineText, keyCode, runTest } from './program16.js';
 import { add, asr, digitsOf, div, inRange, isqrt, leftJustify, maskOf, mul, negate, popcount, range, rmd, rotLeft, rotRight, shiftLeft, shiftRight, sub, toRaw, toSigned } from './intmath.js';
 
 const VERSION = 1;
@@ -13,6 +14,9 @@ const RADIX = { hex: 16, dec: 10, oct: 8, bin: 2 };
 const CMP_CODE = { 2: '2', 1: '1', u: '0' };
 const bad = () => new Error('estado salvo inválido');
 const arg = (m) => new CalcError(3, m);
+const err16 = (code) => new CalcError(code, MESSAGES_16C[code]);
+const MAX_RUN = 200000; // passos por execução: evita travar a tela num laço infinito
+const TEST_KEYS = ['1', '2', '3', 'minus', '0', 'dot', 'chs', 'plus'];
 
 const digitOf = (id) => (/^[0-9]$/.test(id) ? id : /^d[a-f]$/.test(id) ? id[1].toUpperCase() : null);
 
@@ -36,6 +40,15 @@ export class Engine16 {
     this.error = null;
     this.tape = [];
     this.tokens = [];
+    this.prog = []; // linhas do programa: cada uma é a lista de teclas de uma instrução
+    this.pc = 0; // linha atual: a próxima a executar é prog[pc]
+    this.prgm = false;
+    this.rec = []; // instrução em montagem (modo PRGM)
+    this.ret = []; // retornos de GSB pendentes
+    this.idx = 0n; // registrador I
+    this.running = false;
+    this.halt = false;
+    this.pauses = [];
   }
 
   get keyById() {
@@ -52,14 +65,14 @@ export class Engine16 {
       mode: 'rpn',
       parens: 0,
       stack: { x: String(x), y: String(y), z: String(z), t: String(t), lastX: String(l) },
-      texts: { x: text(x), y: text(y), z: text(z), t: text(t), lastX: text(l), regs: this.regs.map(text) },
+      texts: { x: text(x), y: text(y), z: text(z), t: text(t), lastX: text(l), regs: this.regs.map(text), idx: text(this.idx) },
       regs: this.regs.map(String),
       fin: { n: 0, i: 0, pv: 0, pmt: 0, fv: 0 },
       begin: false,
       compound: false,
       dmy: false,
-      prgm: false,
-      pc: 0,
+      prgm: this.prgm,
+      pc: this.pc,
       shift: this.shift,
       decimals: 0,
       locale: this.locale,
@@ -127,13 +140,9 @@ export class Engine16 {
       this.pending = null;
       return;
     }
-    if (id === 'f' || id === 'g') {
-      this.pending = null;
-      this.shift = id;
-      return;
-    }
     try {
-      this._dispatch(key);
+      if (this.prgm) this._recordPress(id);
+      else this._pressRaw(id);
     } catch (e) {
       if (!(e instanceof CalcError)) throw e;
       this.error = { code: e.code, message: e.message };
@@ -141,7 +150,130 @@ export class Engine16 {
       this.pending = null;
       this.entry = null;
       this.tokens = [];
+      this.rec = [];
+      this.running = false;
     }
+  }
+
+  _pressRaw(id) {
+    if (id === 'f' || id === 'g') {
+      if (this.pending !== 'sto' && this.pending !== 'rcl') this.pending = null; // STO f I: o prefixo só prepara o argumento
+      this.shift = id;
+      return;
+    }
+    this._dispatch(this.keyById.get(id));
+  }
+
+  // ---------- programação ----------
+  // Modo PRGM: as teclas viram linhas de programa em vez de serem executadas.
+  _recordPress(id) {
+    const r = this.rec;
+    if (isPrefix(id) && (r.length === 0 || r[0] === 'sto' || r[0] === 'rcl')) {
+      if (r.length === 0) r.push(id);
+      this.shift = id;
+      return;
+    }
+    if (r.length === 0 && id === 'sst') { this.pc = Math.min(this.pc + 1, this.prog.length); return; }
+    if (r.length === 0 && id === 'bsp') {
+      if (this.pc > 0) this.prog.splice(--this.pc, 1);
+      return;
+    }
+    if (r.length === 1 && isPrefix(r[0])) {
+      const pre = r[0];
+      if (pre === 'g' && id === 'rs') { this.rec = []; this.shift = null; this.prgm = false; return; }
+      if (pre === 'g' && id === 'sst') { this.rec = []; this.shift = null; this.pc = Math.max(this.pc - 1, 0); return; }
+      if (pre === 'f' && id === 'rdown') { this.rec = []; this.shift = null; this.prog = []; this.pc = 0; this.ret = []; return; }
+    }
+    r.push(id);
+    this.shift = null;
+    if (!lineDone(r)) return;
+    this.rec = [];
+    if (this.prog.length >= MAX_LINES) throw err16(4);
+    this.prog.splice(this.pc++, 0, r);
+  }
+
+  _findLabel(id) {
+    const i = this.prog.findIndex((l) => l.length === 3 && l[0] === 'g' && l[1] === 'gto' && l[2] === id);
+    if (i < 0) throw err16(4);
+    return i;
+  }
+
+  _execLine(line) {
+    this.shift = null;
+    this.pending = null;
+    for (const k of line) this._pressRaw(k);
+  }
+
+  _run() {
+    this.running = true;
+    this.halt = false;
+    let steps = 0;
+    try {
+      while (!this.halt && this.pc < this.prog.length && ++steps <= MAX_RUN) this._execLine(this.prog[this.pc++]);
+      if (!this.halt && this.pc >= this.prog.length) this.pc = 0;
+    } finally {
+      this.running = false;
+    }
+  }
+
+  _step() {
+    if (this.pc >= this.prog.length) { this.pc = 0; return; }
+    this.running = true;
+    this.halt = false;
+    try {
+      this._execLine(this.prog[this.pc++]);
+      if (this.pc >= this.prog.length) this.pc = 0;
+    } finally {
+      this.running = false;
+    }
+  }
+
+  _skip() {
+    if (this.running && this.pc < this.prog.length) this.pc++;
+  }
+
+  _rtn() {
+    if (this.ret.length) this.pc = this.ret.pop();
+    else {
+      this.pc = 0;
+      this.halt = true;
+    }
+  }
+
+  // Teclas de programação; devolve true se tratou.
+  _control(shift, id) {
+    if (shift === null && (id === 'gsb' || id === 'gto')) { this._commit(); this.pending = id; return true; }
+    if (shift === null && id === 'rs') {
+      if (this.running) this.halt = true;
+      else { this._commit(); this._run(); }
+      return true;
+    }
+    if (shift === null && id === 'sst') { this._commit(); if (!this.running) this._step(); return true; }
+    if (shift === 'f' && id === 'rdown') { this.pc = 0; this.ret = []; return true; }
+    if (shift !== 'g') return false;
+    if (id === 'gsb') { this._commit(); this._rtn(); return true; }
+    if (id === 'gto') { this._commit(); this.pending = 'lbl'; return true; }
+    if (id === 'hex' || id === 'dec') {
+      this._commit();
+      this.idx = (this.idx + (id === 'hex' ? maskOf(this.ws) : 1n)) & maskOf(this.ws);
+      if (this.idx === 0n) this._skip();
+      return true;
+    }
+    if (id === 'rs') { this._commit(); this.prgm = true; this.rec = []; return true; }
+    if (id === 'sst') { this.pc = Math.max(this.pc - 1, 0); return true; }
+    if (id === 'xy') { this.pauses.push(1000); return true; }
+    if (TEST_KEYS.includes(id)) {
+      this._commit();
+      if (!runTest(id, this.st.x, this.st.y, this.ws, this.cmp)) this._skip();
+      return true;
+    }
+    return false;
+  }
+
+  takePauses() {
+    const p = this.pauses;
+    this.pauses = [];
+    return p;
   }
 
   _dispatch(key) {
@@ -151,6 +283,7 @@ export class Engine16 {
     if (!(shift === 'g' && (id === 'sto' || id === 'rcl')) && !this.pending) this.window = 0; // quase toda tecla volta à janela 0
     if (this.pending) return this._finishPending(key);
     if (id === 'on') return;
+    if (!this.pending && this._control(shift, id)) return;
     if (shift === 'f') return this._f(key);
     if (shift === 'g') return this._g(key);
     return this._primary(key);
@@ -571,9 +704,26 @@ export class Engine16 {
     const id = key.id;
     const d = digitOf(id);
     const s = this.st;
+    if (mode === 'gsb' || mode === 'gto' || mode === 'lbl') {
+      if (d === null || mode === 'lbl') return;
+      const to = this._findLabel(id);
+      if (mode === 'gsb') {
+        if (this.running) {
+          if (this.ret.length >= MAX_RETURNS) throw err16(5);
+          this.ret.push(this.pc);
+        } else this.ret = [];
+      }
+      this.pc = to + 1;
+      if (mode === 'gsb' && !this.running) this._run();
+      return;
+    }
     if (mode === 'sto' || mode === 'rcl' || mode === 'sto.' || mode === 'rcl.') {
       if (id === 'dot' && !mode.endsWith('.')) {
         this.pending = mode + '.';
+        return;
+      }
+      if (id === 'sst' && !mode.endsWith('.')) {
+        if (mode === 'sto') { this.idx = s.x; this.lift = true; } else this._push(this.idx);
         return;
       }
       if (d === null) return;
@@ -626,6 +776,10 @@ export class Engine16 {
 
   _display() {
     if (this.error) return 'Error ' + this.error.code;
+    if (this.prgm) {
+      if (this.rec.length) return String(this.pc + 1).padStart(3, '0') + '- ' + this.rec.map(keyCode).filter((c) => c !== undefined).join(',');
+      return this.pc === 0 ? '000-' : lineText(this.pc, this.prog[this.pc - 1]);
+    }
     if (this.temp !== null) return this.temp;
     if (this.entry !== null) return this._slice(this.entry === '' ? '0' : this.entry, 0, this.base);
     return this._valText(this.st.x);
@@ -659,6 +813,11 @@ export class Engine16 {
       error: this.error,
       tape: this.tape,
       tokens: this.tokens,
+      prog: this.prog,
+      pc: this.pc,
+      prgm: this.prgm,
+      ret: this.ret,
+      idx: String(this.idx),
     });
   }
 
@@ -677,7 +836,7 @@ export class Engine16 {
     if (!o.st || !Array.isArray(o.flags) || o.flags.length !== 6 || !o.flags.every((f) => typeof f === 'boolean')) throw bad();
     if (!Array.isArray(o.regs) || !Array.isArray(o.tape) || !Array.isArray(o.tokens)) throw bad();
     if (o.locale !== 'br' && o.locale !== 'us') throw bad();
-    if (![null, 'f', 'g'].includes(o.shift) || ![null, 'sto', 'rcl', 'sto.', 'rcl.', 'sb', 'cb', 'sf', 'cf', 'window'].includes(o.pending)) throw bad();
+    if (![null, 'f', 'g'].includes(o.shift) || ![null, 'sto', 'rcl', 'sto.', 'rcl.', 'sb', 'cb', 'sf', 'cf', 'window', 'gsb', 'gto', 'lbl'].includes(o.pending)) throw bad();
     if (o.entry !== null && !(typeof o.entry === 'string' && /^[0-9A-F]*$/.test(o.entry))) throw bad();
     const e = new Engine16({ locale: o.locale, profile: o.profile });
     Object.assign(e, {
@@ -694,6 +853,15 @@ export class Engine16 {
       tape: o.tape.filter((r) => r && typeof r.keys === 'string' && typeof r.text === 'string').map((r) => ({ keys: r.keys, label: String(r.label), value: String(r.value), text: r.text })),
       tokens: o.tokens.map(String),
     });
+    if (Array.isArray(o.prog)) {
+      const okLine = (l) => Array.isArray(l) && l.length > 0 && l.length <= 4 && l.every((k) => typeof k === 'string' && e.keyById.has(k));
+      if (o.prog.length > MAX_LINES || !o.prog.every(okLine)) throw bad();
+      e.prog = o.prog.map((l) => [...l]);
+      e.pc = Number.isInteger(o.pc) && o.pc >= 0 && o.pc <= e.prog.length ? o.pc : 0;
+      e.prgm = o.prgm === true;
+      e.ret = Array.isArray(o.ret) ? o.ret.filter((n) => Number.isInteger(n) && n >= 0 && n <= e.prog.length).slice(0, MAX_RETURNS) : [];
+      e.idx = typeof o.idx === 'string' && /^[0-9]+$/.test(o.idx) ? big(o.idx, o.ws) : 0n;
+    }
     for (const k of ['x', 'y', 'z', 't', 'l']) e.st[k] = big(o.st[k], o.ws);
     o.regs.slice(0, e.regs.length).forEach((v, n) => { e.regs[n] = big(v, o.ws); });
     return e;

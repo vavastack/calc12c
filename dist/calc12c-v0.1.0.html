@@ -527,20 +527,19 @@ const KEY_BY_ID_PLATINUM = new Map(KEYS_PLATINUM.map((x) => [x.id, x]));
 
 // HP-16C: 39 teclas. O teclado de 4×10 da HP original dobra ao meio como o da 12C: colunas 1-5 em cima, 6-10 embaixo.
 // As letras A-F são teclas de dígito (ids da..df). `enabled:false` = programação e ponto flutuante (fora desta etapa).
-const off = { enabled: false };
 const KEYS_16C = [
   k('da', 'A', 'SL', 'LJ', 0, 0),
   k('db', 'B', 'SR', 'ASR', 0, 1),
   k('dc', 'C', 'RL', 'RLC', 0, 2),
   k('dd', 'D', 'RR', 'RRC', 0, 3),
   k('de', 'E', 'RLn', 'RLCn', 0, 4),
-  k('gsb', 'GSB', 'x≷(i)', 'RTN', 1, 0, off),
-  k('gto', 'GTO', 'x≷I', 'LBL', 1, 1, off),
+  k('gsb', 'GSB', 'x≷(i)', 'RTN', 1, 0),
+  k('gto', 'GTO', 'x≷I', 'LBL', 1, 1),
   k('hex', 'HEX', 'SHOW', 'DSZ', 1, 2),
   k('dec', 'DEC', 'SHOW', 'ISZ', 1, 3),
   k('oct', 'OCT', 'SHOW', '√x', 1, 4),
-  k('rs', 'R/S', '(i)', 'P/R', 2, 0, off),
-  k('sst', 'SST', 'I', 'BST', 2, 1, off),
+  k('rs', 'R/S', '(i)', 'P/R', 2, 0),
+  k('sst', 'SST', 'I', 'BST', 2, 1),
   k('rdown', 'R↓', 'CLEAR PRGM', 'R↑', 2, 2),
   k('xy', 'x≷y', 'CLEAR REG', 'PSE', 2, 3),
   k('bsp', 'BSP', 'CLEAR PREFIX', 'CLx', 2, 4),
@@ -2964,12 +2963,102 @@ function digitsOf(raw, ws, cmp, base, pad = false) {
 return { maskOf, toSigned, range, inRange, toRaw, add, sub, mul, div, rmd, negate, popcount, isqrt, shiftLeft, shiftRight, asr, rotLeft, rotRight, leftJustify, digitsOf };
 })();
 
+const __m_program16 = (() => {
+// Programação da HP-16C: tabela de códigos de tecla, formato das linhas, testes e memória.
+// Uma linha de programa é UMA instrução: a lista de teclas que a formam (ex.: ['g','gto','3'] = LBL 3, ['sto','dot','5'] = STO .5).
+const { toSigned } = __m_intmath;
+
+const MAX_LINES = 203; // 203 bytes de memória, 1 linha = 1 byte
+const MAX_RETURNS = 4; // sub-rotinas aninhadas (a 5ª dá Error 5)
+
+const MESSAGES_16C = {
+  0: 'Operação matemática inválida',
+  1: 'Flag, janela ou dígito fora da faixa',
+  2: 'Número de bit fora da faixa',
+  3: 'Registrador inexistente',
+  4: 'Rótulo ou linha inexistente (ou memória cheia)',
+  5: 'Sub-rotinas aninhadas demais (máximo 4)',
+  6: 'Conteúdo inválido para o modo decimal',
+  9: 'Assistência técnica',
+};
+
+// Código de duas casas de cada tecla (linha 1-4, coluna 1-9 e 0), como no manual: f = 42, g = 43, GSB = 21, GTO = 22.
+const CODES = {
+  da: 11, db: 12, dc: 13, dd: 14, de: 15, df: 16, divide: 10,
+  gsb: 21, gto: 22, hex: 23, dec: 24, oct: 25, bin: 26, times: 20,
+  rs: 31, sst: 32, rdown: 33, xy: 34, bsp: 35, enter: 36, minus: 30,
+  on: 41, f: 42, g: 43, sto: 44, rcl: 45, dot: 48, chs: 49, plus: 40,
+};
+const keyCode = (id) => (/^[0-9]$/.test(id) ? Number(id) : CODES[id]);
+
+const isPrefix = (id) => id === 'f' || id === 'g';
+const digitKey = (id) => /^[0-9]$/.test(id) || /^d[a-f]$/.test(id);
+const labelKey = (n) => (n < 10 ? String(n) : 'd' + 'abcdef'[n - 10]);
+
+// A linha já está completa? (STO e RCL pedem registrador; GSB/GTO/LBL pedem rótulo; SB, CB, SF, CF, B?, F?, WINDOW, FLOAT pedem dígito)
+function lineDone(rec) {
+  const pre = isPrefix(rec[0]) ? rec[0] : null;
+  const k = pre ? rec[1] : rec[0];
+  if (k === undefined) return false;
+  const rest = rec.slice(pre ? 2 : 1);
+  if (!pre && (k === 'sto' || k === 'rcl')) {
+    if (rest.length === 0) return false;
+    return rest[0] === 'dot' ? rest.length >= 2 : true; // dígito, .dígito, I ou (i)
+  }
+  if (!pre && (k === 'gsb' || k === 'gto')) return rest.length >= 1;
+  if (pre === 'g' && (k === 'gto' || k === '4' || k === '5' || k === '6')) return rest.length >= 1;
+  if (pre === 'f' && (k === '4' || k === '5' || k === '6')) {
+    if (rest.length === 0) return false;
+    return rest[0] === 'dot' ? rest.length >= 2 : true;
+  }
+  if (pre === 'f' && k === 'enter') return rest.length >= 1;
+  if (pre === 'f' && k === 'rcl') return rest.length >= 1; // FLOAT n ou FLOAT . (científico)
+  return true;
+}
+
+const argText = (id) => (id === 'dot' ? '.' : id === 'sst' ? 'I' : id === 'rs' ? '(i)' : /^d[a-f]$/.test(id) ? id[1].toUpperCase() : id);
+
+// "003- 43,22, 1": prefixo e tecla com vírgula, argumento depois; dígito sozinho aparece como o próprio dígito.
+function lineText(n, line) {
+  const tag = String(n).padStart(3, '0') + '-';
+  const pre = isPrefix(line[0]) ? line[0] : null;
+  const head = pre ? [keyCode(pre), keyCode(line[1])] : [keyCode(line[0])];
+  const args = line.slice(pre ? 2 : 1);
+  if (!pre && args.length === 0 && /^[0-9]$/.test(line[0])) return `${tag}  ${line[0]}`;
+  return `${tag} ${head.join(',')}${args.length ? ', ' + args.map(argText).join('') : ''}`;
+}
+
+// Testes (g + tecla): recebem X e Y já lidos conforme o complemento; em UNSGN tudo é positivo.
+const TESTS = {
+  1: (x, y) => x <= y,
+  2: (x) => x < 0n,
+  3: (x, y) => x > y,
+  minus: (x) => x > 0n,
+  0: (x, y) => x !== y,
+  dot: (x) => x !== 0n,
+  chs: (x, y) => x === y,
+  plus: (x) => x === 0n,
+};
+const runTest = (id, xRaw, yRaw, ws, cmp) => TESTS[id](toSigned(xRaw, ws, cmp), toSigned(yRaw, ws, cmp));
+
+// f MEM: B = linhas que cabem antes de outros 7 bytes; r = registradores que sobram (as linhas viram memória de 7 em 7 bytes).
+function memInfo(lines, ws) {
+  const used = 7 * Math.ceil(lines / 7);
+  const b = used - lines;
+  const bits = 4 * Math.ceil(ws / 4);
+  return { b, r: Math.floor(((MAX_LINES - used) * 8) / bits) };
+}
+
+return { MAX_LINES, MAX_RETURNS, MESSAGES_16C, keyCode, isPrefix, digitKey, labelKey, lineDone, lineText, TESTS, runTest, memInfo };
+})();
+
 const __m_engine16 = (() => {
 // Motor da HP-16C: inteiros de largura fixa (1 a 64 bits) em HEX, DEC, OCT e BIN, com complemento de 1, de 2 ou sem sinal.
 // Segue a interface do Engine da 12C (press, state, serialize, restore...), mas guarda tudo como BigInt "cru":
 // o padrão de bits de cada registrador. Etapa atual: teclado sem programação nem ponto flutuante.
 const { CalcError } = __m_errors;
 const { getProfile } = __m_profiles;
+const { MAX_LINES, MAX_RETURNS, MESSAGES_16C, isPrefix, lineDone, lineText, keyCode, runTest } = __m_program16;
 const { add, asr, digitsOf, div, inRange, isqrt, leftJustify, maskOf, mul, negate, popcount, range, rmd, rotLeft, rotRight, shiftLeft, shiftRight, sub, toRaw, toSigned } = __m_intmath;
 
 const VERSION = 1;
@@ -2980,6 +3069,9 @@ const RADIX = { hex: 16, dec: 10, oct: 8, bin: 2 };
 const CMP_CODE = { 2: '2', 1: '1', u: '0' };
 const bad = () => new Error('estado salvo inválido');
 const arg = (m) => new CalcError(3, m);
+const err16 = (code) => new CalcError(code, MESSAGES_16C[code]);
+const MAX_RUN = 200000; // passos por execução: evita travar a tela num laço infinito
+const TEST_KEYS = ['1', '2', '3', 'minus', '0', 'dot', 'chs', 'plus'];
 
 const digitOf = (id) => (/^[0-9]$/.test(id) ? id : /^d[a-f]$/.test(id) ? id[1].toUpperCase() : null);
 
@@ -3003,6 +3095,15 @@ class Engine16 {
     this.error = null;
     this.tape = [];
     this.tokens = [];
+    this.prog = []; // linhas do programa: cada uma é a lista de teclas de uma instrução
+    this.pc = 0; // linha atual: a próxima a executar é prog[pc]
+    this.prgm = false;
+    this.rec = []; // instrução em montagem (modo PRGM)
+    this.ret = []; // retornos de GSB pendentes
+    this.idx = 0n; // registrador I
+    this.running = false;
+    this.halt = false;
+    this.pauses = [];
   }
 
   get keyById() {
@@ -3019,14 +3120,14 @@ class Engine16 {
       mode: 'rpn',
       parens: 0,
       stack: { x: String(x), y: String(y), z: String(z), t: String(t), lastX: String(l) },
-      texts: { x: text(x), y: text(y), z: text(z), t: text(t), lastX: text(l), regs: this.regs.map(text) },
+      texts: { x: text(x), y: text(y), z: text(z), t: text(t), lastX: text(l), regs: this.regs.map(text), idx: text(this.idx) },
       regs: this.regs.map(String),
       fin: { n: 0, i: 0, pv: 0, pmt: 0, fv: 0 },
       begin: false,
       compound: false,
       dmy: false,
-      prgm: false,
-      pc: 0,
+      prgm: this.prgm,
+      pc: this.pc,
       shift: this.shift,
       decimals: 0,
       locale: this.locale,
@@ -3094,13 +3195,9 @@ class Engine16 {
       this.pending = null;
       return;
     }
-    if (id === 'f' || id === 'g') {
-      this.pending = null;
-      this.shift = id;
-      return;
-    }
     try {
-      this._dispatch(key);
+      if (this.prgm) this._recordPress(id);
+      else this._pressRaw(id);
     } catch (e) {
       if (!(e instanceof CalcError)) throw e;
       this.error = { code: e.code, message: e.message };
@@ -3108,7 +3205,130 @@ class Engine16 {
       this.pending = null;
       this.entry = null;
       this.tokens = [];
+      this.rec = [];
+      this.running = false;
     }
+  }
+
+  _pressRaw(id) {
+    if (id === 'f' || id === 'g') {
+      if (this.pending !== 'sto' && this.pending !== 'rcl') this.pending = null; // STO f I: o prefixo só prepara o argumento
+      this.shift = id;
+      return;
+    }
+    this._dispatch(this.keyById.get(id));
+  }
+
+  // ---------- programação ----------
+  // Modo PRGM: as teclas viram linhas de programa em vez de serem executadas.
+  _recordPress(id) {
+    const r = this.rec;
+    if (isPrefix(id) && (r.length === 0 || r[0] === 'sto' || r[0] === 'rcl')) {
+      if (r.length === 0) r.push(id);
+      this.shift = id;
+      return;
+    }
+    if (r.length === 0 && id === 'sst') { this.pc = Math.min(this.pc + 1, this.prog.length); return; }
+    if (r.length === 0 && id === 'bsp') {
+      if (this.pc > 0) this.prog.splice(--this.pc, 1);
+      return;
+    }
+    if (r.length === 1 && isPrefix(r[0])) {
+      const pre = r[0];
+      if (pre === 'g' && id === 'rs') { this.rec = []; this.shift = null; this.prgm = false; return; }
+      if (pre === 'g' && id === 'sst') { this.rec = []; this.shift = null; this.pc = Math.max(this.pc - 1, 0); return; }
+      if (pre === 'f' && id === 'rdown') { this.rec = []; this.shift = null; this.prog = []; this.pc = 0; this.ret = []; return; }
+    }
+    r.push(id);
+    this.shift = null;
+    if (!lineDone(r)) return;
+    this.rec = [];
+    if (this.prog.length >= MAX_LINES) throw err16(4);
+    this.prog.splice(this.pc++, 0, r);
+  }
+
+  _findLabel(id) {
+    const i = this.prog.findIndex((l) => l.length === 3 && l[0] === 'g' && l[1] === 'gto' && l[2] === id);
+    if (i < 0) throw err16(4);
+    return i;
+  }
+
+  _execLine(line) {
+    this.shift = null;
+    this.pending = null;
+    for (const k of line) this._pressRaw(k);
+  }
+
+  _run() {
+    this.running = true;
+    this.halt = false;
+    let steps = 0;
+    try {
+      while (!this.halt && this.pc < this.prog.length && ++steps <= MAX_RUN) this._execLine(this.prog[this.pc++]);
+      if (!this.halt && this.pc >= this.prog.length) this.pc = 0;
+    } finally {
+      this.running = false;
+    }
+  }
+
+  _step() {
+    if (this.pc >= this.prog.length) { this.pc = 0; return; }
+    this.running = true;
+    this.halt = false;
+    try {
+      this._execLine(this.prog[this.pc++]);
+      if (this.pc >= this.prog.length) this.pc = 0;
+    } finally {
+      this.running = false;
+    }
+  }
+
+  _skip() {
+    if (this.running && this.pc < this.prog.length) this.pc++;
+  }
+
+  _rtn() {
+    if (this.ret.length) this.pc = this.ret.pop();
+    else {
+      this.pc = 0;
+      this.halt = true;
+    }
+  }
+
+  // Teclas de programação; devolve true se tratou.
+  _control(shift, id) {
+    if (shift === null && (id === 'gsb' || id === 'gto')) { this._commit(); this.pending = id; return true; }
+    if (shift === null && id === 'rs') {
+      if (this.running) this.halt = true;
+      else { this._commit(); this._run(); }
+      return true;
+    }
+    if (shift === null && id === 'sst') { this._commit(); if (!this.running) this._step(); return true; }
+    if (shift === 'f' && id === 'rdown') { this.pc = 0; this.ret = []; return true; }
+    if (shift !== 'g') return false;
+    if (id === 'gsb') { this._commit(); this._rtn(); return true; }
+    if (id === 'gto') { this._commit(); this.pending = 'lbl'; return true; }
+    if (id === 'hex' || id === 'dec') {
+      this._commit();
+      this.idx = (this.idx + (id === 'hex' ? maskOf(this.ws) : 1n)) & maskOf(this.ws);
+      if (this.idx === 0n) this._skip();
+      return true;
+    }
+    if (id === 'rs') { this._commit(); this.prgm = true; this.rec = []; return true; }
+    if (id === 'sst') { this.pc = Math.max(this.pc - 1, 0); return true; }
+    if (id === 'xy') { this.pauses.push(1000); return true; }
+    if (TEST_KEYS.includes(id)) {
+      this._commit();
+      if (!runTest(id, this.st.x, this.st.y, this.ws, this.cmp)) this._skip();
+      return true;
+    }
+    return false;
+  }
+
+  takePauses() {
+    const p = this.pauses;
+    this.pauses = [];
+    return p;
   }
 
   _dispatch(key) {
@@ -3118,6 +3338,7 @@ class Engine16 {
     if (!(shift === 'g' && (id === 'sto' || id === 'rcl')) && !this.pending) this.window = 0; // quase toda tecla volta à janela 0
     if (this.pending) return this._finishPending(key);
     if (id === 'on') return;
+    if (!this.pending && this._control(shift, id)) return;
     if (shift === 'f') return this._f(key);
     if (shift === 'g') return this._g(key);
     return this._primary(key);
@@ -3538,9 +3759,26 @@ class Engine16 {
     const id = key.id;
     const d = digitOf(id);
     const s = this.st;
+    if (mode === 'gsb' || mode === 'gto' || mode === 'lbl') {
+      if (d === null || mode === 'lbl') return;
+      const to = this._findLabel(id);
+      if (mode === 'gsb') {
+        if (this.running) {
+          if (this.ret.length >= MAX_RETURNS) throw err16(5);
+          this.ret.push(this.pc);
+        } else this.ret = [];
+      }
+      this.pc = to + 1;
+      if (mode === 'gsb' && !this.running) this._run();
+      return;
+    }
     if (mode === 'sto' || mode === 'rcl' || mode === 'sto.' || mode === 'rcl.') {
       if (id === 'dot' && !mode.endsWith('.')) {
         this.pending = mode + '.';
+        return;
+      }
+      if (id === 'sst' && !mode.endsWith('.')) {
+        if (mode === 'sto') { this.idx = s.x; this.lift = true; } else this._push(this.idx);
         return;
       }
       if (d === null) return;
@@ -3593,6 +3831,10 @@ class Engine16 {
 
   _display() {
     if (this.error) return 'Error ' + this.error.code;
+    if (this.prgm) {
+      if (this.rec.length) return String(this.pc + 1).padStart(3, '0') + '- ' + this.rec.map(keyCode).filter((c) => c !== undefined).join(',');
+      return this.pc === 0 ? '000-' : lineText(this.pc, this.prog[this.pc - 1]);
+    }
     if (this.temp !== null) return this.temp;
     if (this.entry !== null) return this._slice(this.entry === '' ? '0' : this.entry, 0, this.base);
     return this._valText(this.st.x);
@@ -3626,6 +3868,11 @@ class Engine16 {
       error: this.error,
       tape: this.tape,
       tokens: this.tokens,
+      prog: this.prog,
+      pc: this.pc,
+      prgm: this.prgm,
+      ret: this.ret,
+      idx: String(this.idx),
     });
   }
 
@@ -3644,7 +3891,7 @@ class Engine16 {
     if (!o.st || !Array.isArray(o.flags) || o.flags.length !== 6 || !o.flags.every((f) => typeof f === 'boolean')) throw bad();
     if (!Array.isArray(o.regs) || !Array.isArray(o.tape) || !Array.isArray(o.tokens)) throw bad();
     if (o.locale !== 'br' && o.locale !== 'us') throw bad();
-    if (![null, 'f', 'g'].includes(o.shift) || ![null, 'sto', 'rcl', 'sto.', 'rcl.', 'sb', 'cb', 'sf', 'cf', 'window'].includes(o.pending)) throw bad();
+    if (![null, 'f', 'g'].includes(o.shift) || ![null, 'sto', 'rcl', 'sto.', 'rcl.', 'sb', 'cb', 'sf', 'cf', 'window', 'gsb', 'gto', 'lbl'].includes(o.pending)) throw bad();
     if (o.entry !== null && !(typeof o.entry === 'string' && /^[0-9A-F]*$/.test(o.entry))) throw bad();
     const e = new Engine16({ locale: o.locale, profile: o.profile });
     Object.assign(e, {
@@ -3661,6 +3908,15 @@ class Engine16 {
       tape: o.tape.filter((r) => r && typeof r.keys === 'string' && typeof r.text === 'string').map((r) => ({ keys: r.keys, label: String(r.label), value: String(r.value), text: r.text })),
       tokens: o.tokens.map(String),
     });
+    if (Array.isArray(o.prog)) {
+      const okLine = (l) => Array.isArray(l) && l.length > 0 && l.length <= 4 && l.every((k) => typeof k === 'string' && e.keyById.has(k));
+      if (o.prog.length > MAX_LINES || !o.prog.every(okLine)) throw bad();
+      e.prog = o.prog.map((l) => [...l]);
+      e.pc = Number.isInteger(o.pc) && o.pc >= 0 && o.pc <= e.prog.length ? o.pc : 0;
+      e.prgm = o.prgm === true;
+      e.ret = Array.isArray(o.ret) ? o.ret.filter((n) => Number.isInteger(n) && n >= 0 && n <= e.prog.length).slice(0, MAX_RETURNS) : [];
+      e.idx = typeof o.idx === 'string' && /^[0-9]+$/.test(o.idx) ? big(o.idx, o.ws) : 0n;
+    }
     for (const k of ['x', 'y', 'z', 't', 'l']) e.st[k] = big(o.st[k], o.ws);
     o.regs.slice(0, e.regs.length).forEach((v, n) => { e.regs[n] = big(v, o.ws); });
     return e;

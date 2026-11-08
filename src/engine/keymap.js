@@ -61,20 +61,19 @@ export const KEY_BY_ID_PLATINUM = new Map(KEYS_PLATINUM.map((x) => [x.id, x]));
 
 // HP-16C: 39 teclas. O teclado de 4×10 da HP original dobra ao meio como o da 12C: colunas 1-5 em cima, 6-10 embaixo.
 // As letras A-F são teclas de dígito (ids da..df). `enabled:false` = programação e ponto flutuante (fora desta etapa).
-const off = { enabled: false };
 export const KEYS_16C = [
   k('da', 'A', 'SL', 'LJ', 0, 0),
   k('db', 'B', 'SR', 'ASR', 0, 1),
   k('dc', 'C', 'RL', 'RLC', 0, 2),
   k('dd', 'D', 'RR', 'RRC', 0, 3),
   k('de', 'E', 'RLn', 'RLCn', 0, 4),
-  k('gsb', 'GSB', 'x≷(i)', 'RTN', 1, 0, off),
-  k('gto', 'GTO', 'x≷I', 'LBL', 1, 1, off),
+  k('gsb', 'GSB', 'x≷(i)', 'RTN', 1, 0),
+  k('gto', 'GTO', 'x≷I', 'LBL', 1, 1),
   k('hex', 'HEX', 'SHOW', 'DSZ', 1, 2),
   k('dec', 'DEC', 'SHOW', 'ISZ', 1, 3),
   k('oct', 'OCT', 'SHOW', '√x', 1, 4),
-  k('rs', 'R/S', '(i)', 'P/R', 2, 0, off),
-  k('sst', 'SST', 'I', 'BST', 2, 1, off),
+  k('rs', 'R/S', '(i)', 'P/R', 2, 0),
+  k('sst', 'SST', 'I', 'BST', 2, 1),
   k('rdown', 'R↓', 'CLEAR PRGM', 'R↑', 2, 2),
   k('xy', 'x≷y', 'CLEAR REG', 'PSE', 2, 3),
   k('bsp', 'BSP', 'CLEAR PREFIX', 'CLx', 2, 4),
