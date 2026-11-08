@@ -50,6 +50,7 @@ export class Engine16 {
     this.running = false;
     this.halt = false;
     this.pauses = [];
+    this.gbuf = ''; // dígitos de GTO . nnn
     this.fmode = null; // null = inteiro; 0..9 casas ou 'sci' = decimal (f FLOAT)
     this.fst = { x: 0, y: 0, z: 0, t: 0, l: 0 };
     this.fregs = new Map(); // registradores que guardam decimais
@@ -148,7 +149,7 @@ export class Engine16 {
       return;
     }
     try {
-      if (this.prgm) this._recordPress(id);
+      if (this.prgm && this.pending !== 'gtodot') this._recordPress(id);
       else this._pressRaw(id);
     } catch (e) {
       if (!(e instanceof CalcError)) throw e;
@@ -180,6 +181,7 @@ export class Engine16 {
       this.shift = id;
       return;
     }
+    if (r.length === 1 && r[0] === 'gto' && id === 'dot') { this.rec = []; this.pending = 'gtodot'; this.gbuf = ''; return; } // GTO . nnn não é programável
     if (r.length === 0 && id === 'sst') { this.pc = Math.min(this.pc + 1, this.prog.length); return; }
     if (r.length === 0 && id === 'bsp') {
       if (this.pc > 0) this.prog.splice(--this.pc, 1);
@@ -941,8 +943,19 @@ export class Engine16 {
       return;
     }
     if (this.fmode !== null && (mode === 'sto' || mode === 'rcl' || mode === 'sto.' || mode === 'rcl.')) return this._floatReg(mode, key);
+    if (mode === 'gtodot') {
+      if (d === null || /[A-F]/.test(d)) return;
+      this.gbuf += d;
+      if (this.gbuf.length < 3) { this.pending = 'gtodot'; return; }
+      const n = Number(this.gbuf);
+      this.gbuf = '';
+      if (n > this.prog.length) throw err16(4);
+      this.pc = n;
+      return;
+    }
     if (mode === 'gsb' || mode === 'gto' || mode === 'lbl') {
       if (mode === 'lbl') return;
+      if (mode === 'gto' && id === 'dot') { this.pending = 'gtodot'; this.gbuf = ''; return; }
       let lab = id;
       if (id === 'sst') {
         if (this.idx > 15n) throw err16(4);
@@ -1106,7 +1119,7 @@ export class Engine16 {
     if (!o.st || !Array.isArray(o.flags) || o.flags.length !== 6 || !o.flags.every((f) => typeof f === 'boolean')) throw bad();
     if (!Array.isArray(o.regs) || !Array.isArray(o.tape) || !Array.isArray(o.tokens)) throw bad();
     if (o.locale !== 'br' && o.locale !== 'us') throw bad();
-    if (![null, 'f', 'g'].includes(o.shift) || ![null, 'sto', 'rcl', 'sto.', 'rcl.', 'sb', 'cb', 'sf', 'cf', 'window', 'gsb', 'gto', 'lbl', 'btest', 'ftest', 'float'].includes(o.pending)) throw bad();
+    if (![null, 'f', 'g'].includes(o.shift) || ![null, 'sto', 'rcl', 'sto.', 'rcl.', 'sb', 'cb', 'sf', 'cf', 'window', 'gsb', 'gto', 'lbl', 'btest', 'ftest', 'float', 'gtodot'].includes(o.pending)) throw bad();
     if (o.entry !== null && !(typeof o.entry === 'string' && /^[0-9A-F]*$/.test(o.entry))) throw bad();
     const e = new Engine16({ locale: o.locale, profile: o.profile });
     Object.assign(e, {

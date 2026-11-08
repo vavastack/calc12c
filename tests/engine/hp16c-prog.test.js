@@ -233,3 +233,26 @@ test('estouro vai ao máximo e liga o flag 5; salvar e restaurar mantêm o modo'
   run(r, '2 times');
   assert.equal(disp(r), '3,000');
 });
+
+test('GTO . nnn posiciona na linha (RUN e PRGM), sem executar nem gravar; linha inexistente dá Error 4', () => {
+  const e = E();
+  prog(e, '1 2 3');
+  run(e, 'gto dot 0 0 1');
+  assert.equal(e.state.pc, 1);
+  run(e, 'sst');
+  assert.equal(e.state.stack.x, '2'); // executou a linha 2
+  run(e, 'g rs gto dot 0 0 3');
+  assert.equal(e.state.pc, 3);
+  assert.equal(e.state.prgm, true);
+  run(e, 'g rs');
+  assert.equal(E().state.pc, 0);
+  const f = E();
+  prog(f, '1 2');
+  run(f, 'gto dot 0 0 9');
+  assert.equal(disp(f), 'Error 4');
+  const g = E();
+  prog(g, '1 2');
+  assert.equal(g.state.pc, 2); // GTO . nnn não virou linha: o programa continua com 2 linhas
+  run(g, 'g rs gto dot 0 0 0 g rs');
+  assert.equal(g.state.pc, 0);
+});
